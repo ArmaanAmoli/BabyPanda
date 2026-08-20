@@ -1,0 +1,5 @@
+{
+  "name": "baby-panda",
+  "private": true,
+  "workspaces": ["packages/*"]
+}
