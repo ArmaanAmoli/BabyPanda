@@ -1,37 +1,44 @@
-import OpenAI from 'openai';
 import * as readline from 'node:readline/promises';
 import { stdin as input, stdout as output } from 'node:process';
-import type { ChatCompletionMessageParam } from 'openai/resources';
+import {BabyPandaClient} from './apiCall'
+import type {Message} from './types'
+import {ReasoningEffort, Role} from './types'
 
-const client = new OpenAI({
-  apiKey: process.env['NVIDIA_API_KEY'],
-  baseURL: 'https://nvidia.com',
-});
+
+// If no api key then abort
+if(!process.env['NVIDIA_API_KEY']){
+  process.abort();
+}
+
+const client = new BabyPandaClient('https://integrate.api.nvidia.com/v1', process.env['NVIDIA_API_KEY']);
 const instructions = `
 You are Baby Panda a coding agent
 `
-const model = 'mistralai/mistral-nemotrons';
+const model = 'minimaxai/minimax-m3';
+const rl = readline.createInterface({ input, output });//always create this outside the loop
 
 while (true) {
-  const rl = readline.createInterface({ input, output });
 
-  const messages: ChatCompletionMessageParam[] = // this array will store message history for context building
+  const messages:Message[] = // this array will store message history for context building
   [
-    { role: 'system', content: instructions },
+    { role: Role.system, content: instructions },
   ]
-
   const userInput = await rl.question('');
 
-  messages.push({ role: 'user', content: userInput })
+  messages.push({ role: Role.user, content: userInput })
 
-  const response = await client.chat.completions.create({
-    model: model,
-    messages: messages,
-    store:false
-  });
-
-  if (typeof response._request_id !== null) {
-    console.log(response.choices[0]);
+  const response = await client.chatCompletion(messages , model , ReasoningEffort.high);
+  // if( response.response && response.response.data && response.response.data.choices){
+  //   console.log(response.response.data.choices);
+  // }
+  if(response.response?.data?.choices){
+    console.log(response.response.data.choices);
   }
-
 }
+
+
+// class BabyPandaAgent{
+//   constructor(){
+    
+//   }
+// }

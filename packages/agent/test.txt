@@ -1,0 +1,3 @@
+will a single agent will have a single BabyPandaClient ?
+How will we take the output and put it into the cli ?
+How to wrap the entire agent loop into a object such that we can create multiple agents ?
