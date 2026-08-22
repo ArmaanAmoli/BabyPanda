@@ -1,5 +1,5 @@
 import axios from 'axios'
-import type { Message , ReasoningEffort} from './types' // verbatimModuleSyntax
+import type { Message , ReasoningEffort , UrlApi} from './types' // verbatimModuleSyntax
 class BabyPandaClient {
     /*
     we want user's
@@ -7,12 +7,12 @@ class BabyPandaClient {
         url
     */
     url: string;
-    api_key: string;
+    apikey: string;
     token: string;
-    constructor(url: string, api_key: string) {
+    constructor({url , apikey}:UrlApi) {
         this.url = url;
-        this.api_key = api_key;
-        this.token = 'Bearer ' + api_key;
+        this.apikey = apikey;
+        this.token = 'Bearer ' + apikey;
     }
 
     // write a member function to send a chat message.

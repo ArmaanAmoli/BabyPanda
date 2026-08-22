@@ -5,15 +5,15 @@ export enum Role{
     assistant = 'assistant'
 }
 
-interface Message{
+export interface Message{
     role:Role
     content:string
 }
 
-type userMessage = Omit<Message,'role'> & {role:Role.user}
-type systemMessage = Omit<Message,'role'> & {role:Role.system}
-type contextMessage = Omit<Message,'role'> & {role:Role.context}
-type assistantMessage = Omit<Message,'role'> & {role:Role.assistant}
+export type userMessage = Omit<Message,'role'> & {role:Role.user}
+export type systemMessage = Omit<Message,'role'> & {role:Role.system}
+export type contextMessage = Omit<Message,'role'> & {role:Role.context}
+export type assistantMessage = Omit<Message,'role'> & {role:Role.assistant}
 
 export enum ReasoningEffort{
     none = 'none',
@@ -21,4 +21,7 @@ export enum ReasoningEffort{
     max = 'max'
 }
 
-export type { Message , userMessage , systemMessage , contextMessage , assistantMessage}
+export interface UrlApi{
+    url:string,
+    apikey:string,
+}
