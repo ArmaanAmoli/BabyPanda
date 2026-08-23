@@ -1,7 +1,9 @@
 import React from 'react';
-import { Text, Box, useStdout } from 'ink';
-import { useState, useEffect , useRef} from 'react'
-import {TextInput} from '@inkjs/ui'
+import { Box, useStdout } from 'ink';
+import BigText from 'ink-big-text';
+import Gradient from 'ink-gradient';
+import { useState, useEffect } from 'react'
+import PromptBox from './components/promptBox.js'
 
 export default function App() {
 	const { stdout } = useStdout();
@@ -20,21 +22,20 @@ export default function App() {
 			});
 		}
 
-		stdout.on('resize' , handleResize);
+		stdout.on('resize', handleResize);
 
-		return ()=>{
-			stdout.off('resize' , handleResize)
+		return () => {
+			stdout.off('resize', handleResize)
 		};
 
-	},[stdout]);
+	}, [stdout]);
 
 	return (
 		<Box flexDirection='column' width={dimensions.columns} height={dimensions.rows} borderStyle={'single'} borderColor={'white'}>
-			<Text>Welcome to BabyPanda 🐼</Text>
-			<Box>
-				{/* convert this into a placeholder. */}
-				<TextInput placeholder="How can I help you Today ?"></TextInput>
-			</Box>
+			<Gradient name="pastel">
+				<BigText text="BABY PANDA" align='center' font="block" />
+			</Gradient>
+			<PromptBox placeholder={"How can I help you"} onSave={() => { }} />
 		</Box>
 	);
 }
