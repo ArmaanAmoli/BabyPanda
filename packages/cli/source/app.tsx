@@ -12,7 +12,7 @@ export default function App() {
 		rows: stdout?.rows || 24,
 	});
 
-	useEffect(() => { //an Eventlistner to automatically resize the cli in case of user resize theri terminal window
+	useEffect(() => { //an Eventlistner to automatically resize the cli in case of user resize their terminal window
 		if (!stdout) return;
 
 		const handleResize = () => {
@@ -32,10 +32,15 @@ export default function App() {
 
 	return (
 		<Box flexDirection='column' width={dimensions.columns} height={dimensions.rows} borderStyle={'single'} borderColor={'white'}>
-			<Gradient name="pastel">
-				<BigText text="BABY PANDA" align='center' font="block" />
-			</Gradient>
-			<PromptBox placeholder={"How can I help you"} onSave={() => { }} />
+
+			<Box flexGrow={1}>
+				<Gradient name="pastel">
+					<BigText text="BABY PANDA" align='center' font="block" />
+				</Gradient>
+			</Box>
+			<Box height={8} margin={0} width="100%">
+				<PromptBox placeholder={"How can I help you ?"} onSave={() => { }} />
+			</Box>
 		</Box>
 	);
 }

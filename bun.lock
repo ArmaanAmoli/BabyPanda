@@ -30,6 +30,7 @@
         "@inkjs/ui": "^2.0.0",
         "@types/node": "^26.2.0",
         "ink": "^7.1.1",
+        "ink-scroll-view": "^0.3.7",
         "meow": "^11.0.0",
         "react": "^19.2.8",
         "react-dom": "^19.2.8",
@@ -605,6 +606,8 @@
     "ink-big-text": ["ink-big-text@2.0.0", "", { "dependencies": { "cfonts": "^3.1.1", "prop-types": "^15.8.1" }, "peerDependencies": { "ink": ">=4", "react": ">=18" } }, "sha512-Juzqv+rIOLGuhMJiE50VtS6dg6olWfzFdL7wsU/EARSL5Eaa5JNXMogMBm9AkjgzO2Y3UwWCOh87jbhSn8aNdw=="],
 
     "ink-gradient": ["ink-gradient@4.0.1", "", { "dependencies": { "@types/gradient-string": "^1.1.6", "gradient-string": "^3.0.0", "strip-ansi": "^7.1.2" }, "peerDependencies": { "ink": ">=6", "react": ">=19.2.0" } }, "sha512-0ckdiM84zkfCdnTtcnq4BS3egIhUPPDoCqSx/7NUFsAVooBbdRuGnnWpk0fuaOTqU6rlZRh9F4LN1UI8fxd81Q=="],
+
+    "ink-scroll-view": ["ink-scroll-view@0.3.7", "", { "peerDependencies": { "ink": "^5 || ^6 || ^7", "react": "^18 || ^19" } }, "sha512-lUBLxSbVry/+UtJhuvRu6wumP43+ScVp69J7e+hmYwz1kTkahWfkVwWOu7Mn1DMPb8AU8bnsmEsr6kvSJvnaRw=="],
 
     "ink-testing-library": ["ink-testing-library@3.0.0", "", { "peerDependencies": { "@types/react": ">=18.0.0" }, "optionalPeers": ["@types/react"] }, "sha512-ItyyoOmcm6yftb7c5mZI2HU22BWzue8PBbO3DStmY8B9xaqfKr7QJONiWOXcwVsOk/6HuVQ0v7N5xhPaR3jycA=="],
 
