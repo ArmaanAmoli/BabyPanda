@@ -1,0 +1,16 @@
+{
+  "compilerOptions": {
+    "target": "ESNext",
+    "module": "es2022",
+    "moduleResolution": "bundler",
+    "moduleDetection": "force",
+    "jsx": "react-jsx",
+    "allowJs": true,
+    "types": ["bun"],
+    "paths": {
+      "*": ["./*"],
+      "@/*": ["./*"]
+    }
+  },
+  "include": ["**/*"]
+}

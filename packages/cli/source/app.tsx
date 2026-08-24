@@ -38,7 +38,7 @@ export default function App() {
 					<BigText text="BABY PANDA" align='center' font="block" />
 				</Gradient>
 			</Box>
-			<Box height={8} margin={0} width="100%">
+			<Box height={6} margin={0} width="100%">
 				<PromptBox placeholder={"How can I help you ?"} onSave={() => { }} />
 			</Box>
 		</Box>

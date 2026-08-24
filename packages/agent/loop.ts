@@ -56,7 +56,3 @@ export class BabyPandaAgent {
   }
 
 }
-
-
-const agent = new BabyPandaAgent({'url':'deepseek-ai/deepseek-v4-flash-0731' , 'apikey':process.env['NVIDIA_API_KEY']});
-agent.loop();

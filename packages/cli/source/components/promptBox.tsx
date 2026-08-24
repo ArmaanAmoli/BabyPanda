@@ -4,6 +4,7 @@ import React from 'react'
 import { useState, useRef } from 'react'
 import { PromptBoxArgs } from '../types.js'
 import { ScrollView, ScrollViewRef } from "ink-scroll-view";
+import {BabyPandaAgent} from '@baby-panda/agent';
 
 export default function PromptBox({ placeholder, onSave }: PromptBoxArgs) {
 
@@ -31,6 +32,12 @@ export default function PromptBox({ placeholder, onSave }: PromptBoxArgs) {
             const height = scrollRef.current?.getViewportHeight() || 1;
             scrollRef.current?.scrollBy(height);
         }
+
+        // If key.enter then send the prompt to agent.
+        if(key.return){
+            //call the agent
+        }
+        
     });
 
     return (
