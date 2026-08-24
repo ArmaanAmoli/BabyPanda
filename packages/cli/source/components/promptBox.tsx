@@ -1,12 +1,13 @@
 import { Box, useInput } from 'ink'
 import { TextInput } from '@inkjs/ui'
-import React from 'react'
 import { useState, useRef } from 'react'
 import { PromptBoxArgs } from '../types.js'
 import { ScrollView, ScrollViewRef } from "ink-scroll-view";
 import {BabyPandaAgent} from '@baby-panda/agent';
 
 export default function PromptBox({ placeholder, onSave }: PromptBoxArgs) {
+
+    const agent:BabyPandaAgent = new BabyPandaAgent({url:'https://integrate.api.nvidia.com/v1' , apikey:process.env['NVIDIA_API_KEY']!});
 
     const scrollRef = useRef<ScrollViewRef>(null);
     const [prompt, setPrompt] = useState<string>('');

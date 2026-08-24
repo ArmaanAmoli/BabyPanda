@@ -3,6 +3,7 @@ import { stdin as input, stdout as output } from 'node:process';
 import { BabyPandaClient } from './apiCall'
 import type { Message, UrlApi } from './types'
 import { ReasoningEffort, Role } from './types'
+import { Roles } from 'openai/resources/admin/organization.js';
 
 // If no api key then abort
 if (!process.env['NVIDIA_API_KEY']) {
@@ -19,40 +20,77 @@ export class BabyPandaAgent {
   */
 
   private client: BabyPandaClient;
-  private rl:readline.Interface;
-  instructions:string;
+  private rl: readline.Interface;
+  private isRunning = false;
+  private messageQueue: Message[] = [];
+  private messagesHistory: Message[] = [];
+
+  instructions: string;
   model: string;
-  reasoningEffect:ReasoningEffort
+  reasoningEffect: ReasoningEffort
   constructor({ url, apikey }: UrlApi) {
     this.client = new BabyPandaClient({ url, apikey });
     this.model = 'deepseek-ai/deepseek-v4-flash-0731'; // This will be our default model
     this.rl = readline.createInterface({ input, output });
-    this.instructions=`You are Baby Panda a coding agent`;
+    this.instructions = `You are Baby Panda a coding agent`;
     this.reasoningEffect = ReasoningEffort.none;
   }
 
-  async loop() {
-
+  private async loop() {
     // The real question is how to take the response from user cli and put it in this ? 
+    while (this.messageQueue.length !== 0) {
 
-    while (true) {
-      while (true) {
+      this.isRunning = true;
 
-        const messages: Message[] = // this array will store message history for context building
-          [
-            { role: Role.system, content: this.instructions },
-          ]
-        const userInput = await this.rl.question('');
+      const messages: Message[] = // this array will store message history for context building
+        [...this.messagesHistory,
+        { role: Role.system, content: this.instructions },
+        ]
 
-        messages.push({ role: Role.user, content: userInput })
-
-        const response = await this.client.chatCompletion(messages, this.model, this.reasoningEffect);
-        
-        if (response.response?.data?.choices) {
-          console.log(response.response.data.choices);
-        }
+      if (!this.messageQueue[0]) { // if the first message of messageQueue is undefined then skip this iteration (but atleast tell the user later)
+        this.messageQueue.splice(0, 1);
+        continue;
       }
+
+      const userInput: Message = this.messageQueue[0];
+
+      messages.push(userInput)
+
+      const response = await this.client.chatCompletion(messages, this.model, this.reasoningEffect);
+
+      if (response.response?.data?.choices) {
+
+        /*
+        Right now the content is a stringified JSON make sure to take the 'context' feild out of it and add that to the message history.
+        */
+        messages.push({ role: Role.assistant, content: response.response.data.choices });
+        this.messagesHistory = messages;
+        //save to db
+        console.log(response.response.data.choices);
+
+        //delete from message queue
+      }
+
+      //else response have some error we will retry
+      //In the retry mechanism we will send the same message again until we get a response (at max lets say 5 times after than message will be aborted)
+      this.messageQueue.splice(0, 1);
+    }
+
+    this.isRunning = false;
+  }
+
+  async message(msg: Message) {
+    //push
+    this.messageQueue.push(msg);
+
+    if (this.isRunning) { // this mean the loop is already running we just push in message queue;
+      return;
+    }
+    else{
+      await this.loop();
     }
   }
 
 }
+
+

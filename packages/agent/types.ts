@@ -25,3 +25,5 @@ export interface UrlApi{
     url:string,
     apikey:string,
 }
+
+export type MessageQueueMessage = Message & {isResponded:boolean}
