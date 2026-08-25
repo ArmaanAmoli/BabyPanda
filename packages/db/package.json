@@ -1,5 +1,5 @@
 {
-  "name": "db",
+  "name": "@baby-panda/db",
   "module": "index.ts",
   "type": "module",
   "private": true,
@@ -13,8 +13,10 @@
     "typescript": "^5"
   },
   "dependencies": {
+    "@libsql/client": "^0.17.4",
     "dotenv": "^17.4.2",
     "drizzle-orm": "^1.0.0-rc.4",
-    "pg": "^8.23.0"
+    "pg": "^8.23.0",
+    "@baby-panda/agent":"workspace:*"
   }
 }
