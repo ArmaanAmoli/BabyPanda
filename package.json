@@ -1,5 +1,5 @@
 {
-  "name": "baby-panda",
+  "name": "@baby-panda",
   "private": true,
   "workspaces": ["packages/*"],
   "dependencies": {

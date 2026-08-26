@@ -1,4 +1,7 @@
-import 'dotenv/config'
-import {drizzle} from 'drizzle-orm/libsql'
-const db = drizzle(process.env.DB_FILE_NAME!);
-export {db};
+import {createSession} from './methods'
+import {createMessage} from './methods'
+import {getMessages} from './methods'
+
+export {createSession};
+export {createMessage};
+export {getMessages};
