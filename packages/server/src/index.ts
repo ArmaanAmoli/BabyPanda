@@ -1,5 +1,6 @@
 import { Hono } from 'hono'
 import { getMessages, createSession , createMessage} from '@baby-panda/db';
+import { streamSSE } from 'hono/streaming';
 const app = new Hono()
 
 app.post('/get-messages', async (c) => {
@@ -17,7 +18,7 @@ app.post('/start-session', async (c) => {
   return new Response(session, { status: 201, statusText: "Created" })
 })
 
-app.post('/message' , async(c)=>{
+app.post('/store-message' , async(c)=>{
   const body = await c.req.json()
   if(!body.sessionId || !body.role || !body.content){
     return new Response("missing data {sessionId , content , role}", { status: 400, statusText: "Bad Request" });
@@ -29,7 +30,12 @@ app.post('/message' , async(c)=>{
   catch(e){
     return new Response("message creatation failed", { status: 500, statusText: "Internal Server Error" });
   }
+})
 
+app.post('/message-sse' , async(c)=>{
+  return streamSSE(c , async(stream)=>{
+    // here we will send the llm response
+  })
 })
 
 export default app

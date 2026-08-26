@@ -3,7 +3,6 @@ import { stdin as input, stdout as output } from 'node:process';
 import { BabyPandaClient } from './apiCall'
 import type { Message, UrlApi } from './types'
 import { ReasoningEffort, Role } from './types'
-import { Roles } from 'openai/resources/admin/organization.js';
 
 // If no api key then abort
 if (!process.env['NVIDIA_API_KEY']) {
@@ -32,7 +31,7 @@ export class BabyPandaAgent {
     this.client = new BabyPandaClient({ url, apikey });
     this.model = 'deepseek-ai/deepseek-v4-flash-0731'; // This will be our default model
     this.rl = readline.createInterface({ input, output });
-    this.instructions = `You are Baby Panda a coding agent`;
+    this.instructions = `You are Baby Panda a coding agent `;
     this.reasoningEffect = ReasoningEffort.none;
   }
 
@@ -66,6 +65,11 @@ export class BabyPandaAgent {
         messages.push({ role: Role.assistant, content: response.response.data.choices });
         this.messagesHistory = messages;
         //save to db
+
+        //check for tool call
+
+        // if tool called then we use the tool and push the message again in front of the message queue
+
         console.log(response.response.data.choices);
 
         //delete from message queue
