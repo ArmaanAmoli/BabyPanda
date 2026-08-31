@@ -60,7 +60,7 @@ console.log('instructions read')
 
 const reply = await bc.chatCompletion([
     {role:Role.system , content:instructions},
-    {role:Role.user , content:"write a poem of atleast 500 words"}
+    {role:Role.user , content:"summarize instructions.txt available in the current working directory"}
 ] ,"deepseek-ai/deepseek-v4-pro-0813");
 
 console.log('got the first reply')
@@ -69,10 +69,15 @@ let fullReply = "";
 
 reply.response?.data.on('data' , (chunk:Buffer)=>{
     const encoded = chunk.toString('utf8').trim().slice(6);
+    console.log(encoded)
     // const chk = JSON.parse(chunk.toString('utf8').trim().slice(6)).data.choices[0]?.delta.content;
     const chkFn = ()=>{
+        console.log("chkFn called")
         try{
-            return String(JSON.parse(encoded).choices[0].delta.content);
+            const json = JSON.parse(encoded);
+            console.log(json);
+            // console.log(json.choices[0]);
+            return String(json.choices[0].delta.content);
         }
         catch(err){
             return "[DONE]"

@@ -3,14 +3,14 @@ import { stdin as input, stdout as output } from 'node:process';
 import { BabyPandaClient } from './apiCall'
 import type { Message, UrlApi } from './types'
 import { ReasoningEffort, Role } from './types'
-import {readFileSync} from "fs"
-
+import { readFileSync } from "fs"
+import { EventEmitter } from "events"
 // If no api key then abort
 if (!process.env['NVIDIA_API_KEY']) {
   process.abort();
 }
 
-export class BabyPandaAgent {
+export class BabyPandaAgent extends EventEmitter {
   /*
   what do we need from user when creating an agent ?
     1. api key and url to create the client
@@ -28,12 +28,13 @@ export class BabyPandaAgent {
   instructions: string;
   model: string;
   reasoningEffect: ReasoningEffort
-  
+
   constructor({ url, apikey }: UrlApi) {
+    super();
     this.client = new BabyPandaClient({ url, apikey });
     this.model = 'moonshotai/kimi-k3'; // This will be our default model
     this.rl = readline.createInterface({ input, output });
-    this.instructions = readFileSync('test.txt' , {encoding:'utf-8'});
+    this.instructions = readFileSync('test.txt', { encoding: 'utf-8' });
     this.reasoningEffect = ReasoningEffort.none;
   }
 
@@ -58,29 +59,48 @@ export class BabyPandaAgent {
 
       const response = await this.client.chatCompletion(messages, this.model, this.reasoningEffect);
 
-      if (response.response?.data?.choices) {
+      const toolCall: boolean = false;// for now
+      /*
+        code to verify tool call goes here
+      */
+      if (!toolCall) {
+        response.response?.data.on('data', (chunk: Buffer) => {
+          const encoded = chunk.toString('utf8').trim().slice(6);
+          console.log(encoded)
+          // const chk = JSON.parse(chunk.toString('utf8').trim().slice(6)).data.choices[0]?.delta.content;
+          const chkFn = () => {
+            console.log("chkFn called")
+            try {
+              const json = JSON.parse(encoded);
+              console.log(json);
+              // console.log(json.choices[0]);
+              return String(json.choices[0].delta.content);
+            }
+            catch (err) {
+              return "[DONE]"
+            }
+          }
+          const chk = chkFn();
 
-        /*
-        Right now the content is a stringified JSON make sure to take the 'context' feild out of it and add that to the message history.
-        */
-        messages.push({ role: Role.assistant, content: response.response.data.choices });
-        this.messagesHistory = messages;
-        //save to db
-
-        //check for tool call
-
-        // if tool called then we use the tool and push the message again in front of the message queue
-
-        console.log(response.response.data.choices);
-
-        //delete from message queue
+          if (chk != "[DONE]") {
+            // console.log(fullReply+chk);
+            this.emit('data' , chk); // HTTP server will listen to these events and respond accordingly
+          }
+          else {
+            this.emit('done')
+          }
+          // console.log(chk)
+          // console.log(chunk.toString('utf8'))
+        });
+        this.messageQueue.splice(0, 1);
+        break;
       }
 
-      //else response have some error we will retry
-      //In the retry mechanism we will send the same message again until we get a response (at max lets say 5 times after than message will be aborted)
-      this.messageQueue.splice(0, 1);
+      else {
+        //execute tools attach their response and rerun the loop
+        //push those replies from tool to the message queue
+      }
     }
-
     this.isRunning = false;
   }
 
@@ -91,7 +111,7 @@ export class BabyPandaAgent {
     if (this.isRunning) { // this mean the loop is already running we just push in message queue;
       return;
     }
-    else{
+    else {
       await this.loop();
     }
   }

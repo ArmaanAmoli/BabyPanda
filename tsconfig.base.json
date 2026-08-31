@@ -4,6 +4,8 @@
     "module": "ESNext",
     "moduleResolution": "bundler",
     "moduleDetection": "force",
+    "noImplicitAny": true,
+    "strict": true,
     "jsx": "react-jsx",
     "allowJs": true,
     "types": ["bun"],
