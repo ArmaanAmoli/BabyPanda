@@ -28,6 +28,7 @@ export class BabyPandaAgent {
   instructions: string;
   model: string;
   reasoningEffect: ReasoningEffort
+  
   constructor({ url, apikey }: UrlApi) {
     this.client = new BabyPandaClient({ url, apikey });
     this.model = 'moonshotai/kimi-k3'; // This will be our default model
@@ -37,7 +38,6 @@ export class BabyPandaAgent {
   }
 
   private async loop() {
-    // The real question is how to take the response from user cli and put it in this ? 
     while (this.messageQueue.length !== 0) {
 
       this.isRunning = true;

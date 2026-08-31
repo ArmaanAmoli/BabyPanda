@@ -2,7 +2,8 @@ export enum Role{
     system = 'system',
     context = 'context',
     user = 'user',
-    assistant = 'assistant'
+    assistant = 'assistant',
+    tool = 'tool'
 }
 
 export interface Message{
