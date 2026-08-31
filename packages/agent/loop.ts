@@ -87,7 +87,7 @@ export class BabyPandaAgent extends EventEmitter {
             this.emit('data' , chk); // HTTP server will listen to these events and respond accordingly
           }
           else {
-            this.emit('done')
+            this.emit('end')
           }
           // console.log(chk)
           // console.log(chunk.toString('utf8'))
@@ -117,7 +117,3 @@ export class BabyPandaAgent extends EventEmitter {
   }
 
 }
-
-
-
-

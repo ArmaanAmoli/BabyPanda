@@ -2,7 +2,6 @@
   "name": "@baby-panda/agent",
   "module": "index.ts",
   "dependencies": {
-    "@baby-panda/db":"workspace:*"
   },
   "devDependencies": {
     "@types/bun": "latest"

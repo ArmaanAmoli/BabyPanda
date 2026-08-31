@@ -7,8 +7,8 @@
   },
   "dependencies": {
     "hono": "^4.13.4",
-    "@baby-panda/db":"workspace:*"
-
+    "@baby-panda/db":"workspace:*",
+    "@baby-panda/agent":"workspace:*"
   },
   "devDependencies": {
     "@types/bun": "latest"

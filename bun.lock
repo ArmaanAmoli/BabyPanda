@@ -71,6 +71,7 @@
     "packages/server": {
       "name": "@baby-panda/server",
       "dependencies": {
+        "@baby-panda/agent": "workspace:*",
         "@baby-panda/db": "workspace:*",
         "hono": "^4.13.4",
       },
