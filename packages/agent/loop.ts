@@ -3,6 +3,7 @@ import { stdin as input, stdout as output } from 'node:process';
 import { BabyPandaClient } from './apiCall'
 import type { Message, UrlApi } from './types'
 import { ReasoningEffort, Role } from './types'
+import {readFileSync} from "fs"
 
 // If no api key then abort
 if (!process.env['NVIDIA_API_KEY']) {
@@ -29,9 +30,9 @@ export class BabyPandaAgent {
   reasoningEffect: ReasoningEffort
   constructor({ url, apikey }: UrlApi) {
     this.client = new BabyPandaClient({ url, apikey });
-    this.model = 'deepseek-ai/deepseek-v4-flash-0731'; // This will be our default model
+    this.model = 'moonshotai/kimi-k3'; // This will be our default model
     this.rl = readline.createInterface({ input, output });
-    this.instructions = `You are Baby Panda a coding agent `;
+    this.instructions = readFileSync('test.txt' , {encoding:'utf-8'});
     this.reasoningEffect = ReasoningEffort.none;
   }
 
@@ -96,5 +97,7 @@ export class BabyPandaAgent {
   }
 
 }
+
+
 
 
