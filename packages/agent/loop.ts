@@ -84,15 +84,14 @@ export class BabyPandaAgent extends EventEmitter {
 
           if (chk != "[DONE]") {
             // console.log(fullReply+chk);
-            this.emit('data' , chk); // HTTP server will listen to these events and respond accordingly
+            this.emit('data', chk); // HTTP server will listen to these events and respond accordingly
           }
           else {
             this.emit('end')
           }
-          // console.log(chk)
-          // console.log(chunk.toString('utf8'))
         });
         this.messageQueue.splice(0, 1);
+        this.removeAllListeners();
         break;
       }
 
