@@ -50,7 +50,7 @@ class BabyPandaClient {
 }
 
 export { BabyPandaClient }
-
+/*
 const key = process.env['NVIDIA_API_KEY']!
 const bc = new BabyPandaClient({ url: "https://integrate.api.nvidia.com/v1/chat/completions", apikey: key })
 const instructions = readFileSync('instructions.txt', { encoding: 'utf-8' });
@@ -59,7 +59,7 @@ console.log('instructions read')
 const response = await bc.chatCompletion([
     { role: Role.system, content: instructions },
     { role: Role.user, content: "summarize the index.txt file in the current working directory" }
-], "nvidia/nemotron-3.5-lightning-30b-a3b");
+], "nvidia/nemotron-3-ultra-550b-a55b");
 console.log('got the first reply')
 
 if (response.systemError) {
@@ -87,9 +87,8 @@ let toolCall = false;// for now
 let lineChecked = 0;
 let fullReply = "";
 let buffer: string = '';
-let currentLineContentBuffer = '';
-const MAX_LINE_THRESHOLD_FOR_TOOL_CALL = 3;
-const toolCallChecker = /^.*"tool_call":.*$/m
+const MAX_LINE_THRESHOLD_FOR_TOOL_CALL = 4;
+const toolCallChecker = /^.*"tool_call":.*$/m;
 const lineBuffer: string[] = []
 const regex = /^data:\s/;
 
@@ -105,7 +104,9 @@ response.response?.data.on('data', (chunk: Buffer | string) => {
         line = line.slice(6);
         if (line === '[DONE]') continue;
         const content = getContent(line);
+        if(toolCall)fullReply+=content;
         if (!toolCall && lineChecked < MAX_LINE_THRESHOLD_FOR_TOOL_CALL) {
+            fullReply += content;
             console.log("checking tool call")
             //check for "tool_call"
             if (toolCallChecker.test(fullReply)) {
@@ -123,8 +124,16 @@ response.response?.data.on('data', (chunk: Buffer | string) => {
             }
             // this.emit('data', content)
         }
-        if (content.includes('\n')) lineChecked += 1;
-        fullReply += content;
+        if (content.includes('\n') && lineChecked < MAX_LINE_THRESHOLD_FOR_TOOL_CALL) {
+            for (const char of content) {
+                if (char === '\n') {
+                    lineChecked += 1;
+                    console.log(content)
+                    console.log(lineChecked)
+                }
+            }
+        }
+
     }
 });
 
@@ -138,3 +147,4 @@ response.response?.data.on('end', () => {
     toolCall = false;
 })
 response.response?.data.on('error', (err: Error) => { console.error('Stream error:', err) });
+*/

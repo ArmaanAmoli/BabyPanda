@@ -76,9 +76,8 @@ export class BabyPandaAgent extends EventEmitter {
       let lineChecked = 0;
       let fullReply = "";
       let buffer: string = '';
-      let currentLineContentBuffer = '';
-      const MAX_LINE_THRESHOLD_FOR_TOOL_CALL = 3;
-      const toolCallChecker = /^.*"tool_call":.*$/m
+      const MAX_LINE_THRESHOLD_FOR_TOOL_CALL = 4;
+      const toolCallChecker = /^.*"tool_call":.*$/m;
       const lineBuffer: string[] = []
       const regex = /^data:\s/;
 
@@ -94,7 +93,9 @@ export class BabyPandaAgent extends EventEmitter {
           line = line.slice(6);
           if (line === '[DONE]') continue;
           const content = getContent(line);
+          if(toolCall)fullReply+=content;
           if (!toolCall && lineChecked < MAX_LINE_THRESHOLD_FOR_TOOL_CALL) {
+            fullReply += content;
             console.log("checking tool call")
             //check for "tool_call"
             if (toolCallChecker.test(fullReply)) {
@@ -112,21 +113,26 @@ export class BabyPandaAgent extends EventEmitter {
             }
             this.emit('data', content)
           }
-          if (content.includes('\n')) lineChecked += 1;
-          if(!toolCall && lineChecked >= MAX_LINE_THRESHOLD_FOR_TOOL_CALL )fullReply += content;
+          if (content.includes('\n') && lineChecked < MAX_LINE_THRESHOLD_FOR_TOOL_CALL) {
+            for (const char of content) {
+              if (char === '\n') {
+                lineChecked += 1;
+                console.log(content)
+                console.log(lineChecked)
+              }
+            }
+          }
         }
       });
 
       response.response?.data.on('end', () => {
         console.log("full reply: \n", fullReply);
         if (toolCall) {
-          //if their is tool we will have the fullReply ready else it will be empty
           // tool execution
           // push new message in queue (this message + tool result)
         }
         lineChecked = 0;
         toolCall = false;
-        fullReply = '';
       })
       response.response?.data.on('error', (err: Error) => { console.error('Stream error:', err) });
     }
