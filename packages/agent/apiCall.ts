@@ -60,49 +60,81 @@ const response = await bc.chatCompletion([
     { role: Role.system, content: instructions },
     { role: Role.user, content: "summarize the index.txt file in the current working directory" }
 ], "nvidia/nemotron-3.5-lightning-30b-a3b");
+console.log('got the first reply')
 
 if (response.systemError) {
     console.error('Request failed:', response.error);
     process.exit(1);
 }
 
-console.log('got the first reply')
+const getContent = (encoded: string) => {
+    try {
+        if (encoded) {
+            const json = JSON.parse(encoded);
+            if (!json.choices || json.choices.length === 0) return '';
+            if (!json.choices[0].delta.content) return '';
+            return String(json.choices[0].delta.content);
+        }
+        return '';
+    }
+    catch (err) {
+        console.error('Failed to parse SSE chunk:', encoded, err)
+        return '';
+    }
+}
 
+let toolCall = false;// for now
+let lineChecked = 0;
 let fullReply = "";
 let buffer: string = '';
+let currentLineContentBuffer = '';
+const MAX_LINE_THRESHOLD_FOR_TOOL_CALL = 3;
+const toolCallChecker = /^.*"tool_call":.*$/m
+const lineBuffer: string[] = []
 const regex = /^data:\s/;
+
 response.response?.data.on('data', (chunk: Buffer | string) => {
-    const encodedChunk = typeof chunk === 'string' ? chunk : chunk.toString('utf-8'); // nvidia sen buffer where as openrouter send text
+    const encodedChunk = typeof chunk === 'string' ? chunk : chunk.toString('utf-8');
     buffer += encodedChunk;
     const lines = buffer.split('\n');
     buffer = lines.pop() ?? '';
-    const getContent = (encoded: string) => {
-        try {
-            if (encoded) {
-                const json = JSON.parse(encoded);
-                // console.log(json.choices[0].delta.content);
-                if (!json.choices[0].delta.content) return '';
-                return String(json.choices[0].delta.content);
-            }
-            return '';
-        }
-        catch (err) {
-            console.error('Failed to parse SSE chunk:' , encoded , err)
-            return '';
-        }
-    }
+
     for (let line of lines) {
         line = line.trim();
         if (!regex.test(line)) continue;
         line = line.slice(6);
         if (line === '[DONE]') continue;
         const content = getContent(line);
+        if (!toolCall && lineChecked < MAX_LINE_THRESHOLD_FOR_TOOL_CALL) {
+            console.log("checking tool call")
+            //check for "tool_call"
+            if (toolCallChecker.test(fullReply)) {
+                toolCall = true;
+                console.log("tool called !")
+            }
+            lineBuffer.push(content);
+        }
+        if (lineChecked >= MAX_LINE_THRESHOLD_FOR_TOOL_CALL && !toolCall) {
+            if (lineBuffer.length > 0) {
+                for (const l of lineBuffer) {
+                    // this.emit('data', l)
+                }
+                lineBuffer.length = 0;
+            }
+            // this.emit('data', content)
+        }
+        if (content.includes('\n')) lineChecked += 1;
         fullReply += content;
-        //emit event  
     }
-}
-);
+});
+
 response.response?.data.on('end', () => {
-    console.log("full reply: ", fullReply)
+    console.log("full reply: \n", fullReply);
+    if (toolCall) {
+        // tool execution
+        // push new message in queue (this message + tool result)
+    }
+    lineChecked = 0;
+    toolCall = false;
 })
-response.response?.data.on('error' , (err:Error)=>{console.error('Stream error:',err)});
+response.response?.data.on('error', (err: Error) => { console.error('Stream error:', err) });

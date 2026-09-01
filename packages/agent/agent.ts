@@ -39,73 +39,95 @@ export class BabyPandaAgent extends EventEmitter {
 
   private async loop() {
     while (this.messageQueue.length !== 0) {
-
       this.isRunning = true;
-
       const messages: Message[] = // this array will store message history for context building
         [...this.messagesHistory,
         { role: Role.system, content: this.instructions },
         ]
-
       if (!this.messageQueue[0]) { // if the first message of messageQueue is undefined then skip this iteration (but atleast tell the user later)
         this.messageQueue.splice(0, 1);
         continue;
       }
-
       const userInput: Message = this.messageQueue[0];
-
       messages.push(userInput)
-
       const response = await this.client.chatCompletion(messages, this.model, this.reasoningEffect);
-      const toolCall: boolean = false;// for now
-
       if (response.systemError) {
         console.error('Request failed:', response.error);
         process.exit(1);
       }
 
-      console.log('got the first reply')
+      const getContent = (encoded: string) => {
+        try {
+          if (encoded) {
+            const json = JSON.parse(encoded);
+            if (!json.choices || json.choices.length === 0) return '';
+            if (!json.choices[0].delta.content) return '';
+            return String(json.choices[0].delta.content);
+          }
+          return '';
+        }
+        catch (err) {
+          console.error('Failed to parse SSE chunk:', encoded, err)
+          return '';
+        }
+      }
 
+      let toolCall = false;// for now
+      let lineChecked = 0;
       let fullReply = "";
       let buffer: string = '';
+      let currentLineContentBuffer = '';
+      const MAX_LINE_THRESHOLD_FOR_TOOL_CALL = 3;
+      const toolCallChecker = /^.*"tool_call":.*$/m
+      const lineBuffer: string[] = []
       const regex = /^data:\s/;
 
       response.response?.data.on('data', (chunk: Buffer | string) => {
-        const encodedChunk = typeof chunk === 'string' ? chunk : chunk.toString('utf-8'); // nvidia sen buffer where as openrouter send text
+        const encodedChunk = typeof chunk === 'string' ? chunk : chunk.toString('utf-8');
         buffer += encodedChunk;
         const lines = buffer.split('\n');
         buffer = lines.pop() ?? '';
-        const getContent = (encoded: string) => {
-          try {
-            if (encoded) {
-              const json = JSON.parse(encoded);
-              // console.log(json.choices[0].delta.content);
-              if (!json.choices[0].delta.content) return '';
-              return String(json.choices[0].delta.content);
-            }
-            return '';
-          }
-          catch (err) {
-            console.error('Failed to parse SSE chunk:', encoded, err)
-            return '';
-          }
-        }
+
         for (let line of lines) {
           line = line.trim();
           if (!regex.test(line)) continue;
           line = line.slice(6);
           if (line === '[DONE]') continue;
           const content = getContent(line);
-          fullReply += content;
-          //emit event  
+          if (!toolCall && lineChecked < MAX_LINE_THRESHOLD_FOR_TOOL_CALL) {
+            console.log("checking tool call")
+            //check for "tool_call"
+            if (toolCallChecker.test(fullReply)) {
+              toolCall = true;
+              console.log("tool called !")
+            }
+            lineBuffer.push(content);
+          }
+          if (lineChecked >= MAX_LINE_THRESHOLD_FOR_TOOL_CALL && !toolCall) {
+            if (lineBuffer.length > 0) {
+              for (const l of lineBuffer) {
+                this.emit('data', l)
+              }
+              lineBuffer.length = 0;
+            }
+            this.emit('data', content)
+          }
+          if (content.includes('\n')) lineChecked += 1;
+          if(!toolCall && lineChecked >= MAX_LINE_THRESHOLD_FOR_TOOL_CALL )fullReply += content;
         }
-      }
-      );
+      });
 
       response.response?.data.on('end', () => {
-        console.log("full reply: ", fullReply)
+        console.log("full reply: \n", fullReply);
+        if (toolCall) {
+          //if their is tool we will have the fullReply ready else it will be empty
+          // tool execution
+          // push new message in queue (this message + tool result)
+        }
+        lineChecked = 0;
+        toolCall = false;
+        fullReply = '';
       })
-
       response.response?.data.on('error', (err: Error) => { console.error('Stream error:', err) });
     }
     this.isRunning = false;
@@ -114,7 +136,6 @@ export class BabyPandaAgent extends EventEmitter {
   async message(msg: Message) {
     //push
     this.messageQueue.push(msg);
-
     if (this.isRunning) { // this mean the loop is already running we just push in message queue;
       return;
     }
