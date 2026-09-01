@@ -1,5 +1,3 @@
-import * as readline from 'node:readline/promises';
-import { stdin as input, stdout as output } from 'node:process';
 import { BabyPandaClient } from './apiCall'
 import type { Message, UrlApi } from './types'
 import { ReasoningEffort, Role } from './types'
@@ -20,7 +18,6 @@ export class BabyPandaAgent extends EventEmitter {
   */
 
   private client: BabyPandaClient;
-  private rl: readline.Interface;
   private isRunning = false;
   private messageQueue: Message[] = [];
   private messagesHistory: Message[] = [];
@@ -33,7 +30,6 @@ export class BabyPandaAgent extends EventEmitter {
     super();
     this.client = new BabyPandaClient({ url, apikey });
     this.model = 'moonshotai/kimi-k3'; // This will be our default model
-    this.rl = readline.createInterface({ input, output });
     this.instructions = readFileSync('test.txt', { encoding: 'utf-8' });
     this.reasoningEffect = ReasoningEffort.none;
   }
