@@ -64,35 +64,41 @@ export class BabyPandaAgent extends EventEmitter {
         code to verify tool call goes here
       */
       if (!toolCall) {
-        response.response?.data.on('data', (chunk: Buffer) => {
-          const encoded = chunk.toString('utf8').trim().slice(6);
-          console.log(encoded)
-          // const chk = JSON.parse(chunk.toString('utf8').trim().slice(6)).data.choices[0]?.delta.content;
-          const chkFn = () => {
-            console.log("chkFn called")
+        let fullReply = '';
+        response.response?.data.on('data', (chunk: Buffer | string) => {
+          const phase1 = typeof chunk === 'string' ? chunk : chunk.toString('utf-8'); // nvidia sen buffer where as openrouter send text
+          const phase2 = phase1.split('\n');
+          const regex = /^data:\s/;
+          const getContent = (encoded: string) => {
             try {
-              const json = JSON.parse(encoded);
-              console.log(json);
-              // console.log(json.choices[0]);
-              return String(json.choices[0].delta.content);
+              if (encoded) {
+                const json = JSON.parse(encoded);
+                // console.log(json.choices[0].delta.content);
+                if (!json.choices[0].delta.content) return '';
+                return String(json.choices[0].delta.content);
+              }
+              return '';
             }
             catch (err) {
               return "[DONE]"
             }
           }
-          const chk = chkFn();
-
-          if (chk != "[DONE]") {
-            // console.log(fullReply+chk);
-            this.emit('data', chk); // HTTP server will listen to these events and respond accordingly
-          }
-          else {
-            this.emit('end')
+          for (let i of phase2) {
+            i = i.trim();
+            if (regex.test(i)) {
+              i = i.slice(6);
+              if (i === '[DONE]') continue;
+              const content = getContent(i);
+              if (content !== '[DONE]') {
+                fullReply += content;
+                //emit event
+                this.emit('data' , content)
+              } else {
+                this.emit('end');
+              }
+            }
           }
         });
-        this.messageQueue.splice(0, 1);
-        this.removeAllListeners();
-        break;
       }
 
       else {

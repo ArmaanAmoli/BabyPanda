@@ -15,7 +15,6 @@ class BabyPandaClient {
         this.apikey = apikey;
         this.token = 'Bearer ' + apikey;
     }
-
     // write a member function to send a chat message.
     async chatCompletion(messages: Message[], model: string, reasoning_effort?: ReasoningEffort) {
         let options = {
@@ -38,7 +37,6 @@ class BabyPandaClient {
                 messages: messages
             },
         };
-
         try {
             console.log("in baby panda client trying ....")
             const response = await axios(options);
@@ -48,60 +46,56 @@ class BabyPandaClient {
             return { systemError: true, error }
         }
     }
-
 }
 
 export { BabyPandaClient }
 
-const key = process.env['NVIDIA_API_KEY']!
-const bc = new BabyPandaClient({ url: "https://integrate.api.nvidia.com/v1/chat/completions", apikey: key })
+const key = process.env['AI_KEY']!
+const bc = new BabyPandaClient({ url: "https://openrouter.ai/api/v1/chat/completions", apikey: key })
 const instructions = readFileSync('instructions.txt', { encoding: 'utf-8' });
 console.log('instructions read')
 
 const reply = await bc.chatCompletion([
     { role: Role.system, content: instructions },
     { role: Role.user, content: "summarize the index.txt file in the current working directory" }
-], "deepseek-ai/deepseek-v4-flash-0731");
+], "nvidia/nemotron-3-ultra-550b-a55b:free");
 
 console.log('got the first reply')
 
-let fullReply = '';
+let fullReply = "";
 
-reply.response?.data.on('data', (chunk: Buffer) => {
-    // const encoded = chunk.toString('utf8').trim().slice(6);
-    const encoded1 = chunk.toString('utf-8').split('\n');
-    // console.log(encoded1[0]);
-    const encoded = encoded1[0]?.trim().slice(6)
-
-    // const chk = JSON.parse(chunk.toString('utf8').trim().slice(6)).data.choices[0]?.delta.content;
-    const chkFn = () => {
-        // console.log("chkFn called")
+reply.response?.data.on('data', (chunk: Buffer | string) => {
+    const phase1 = typeof chunk === 'string' ? chunk : chunk.toString('utf-8'); // nvidia sen buffer where as openrouter send text
+    const phase2 = phase1.split('\n');
+    const regex = /^data:\s/;
+    const getContent = (encoded: string) => {
         try {
             if (encoded) {
                 const json = JSON.parse(encoded);
-                console.log(json.choices[0].delta.content);
-                // console.log(json.choices[0]);
-                if(!json.choices[0].delta.content) return '';
+                // console.log(json.choices[0].delta.content);
+                if (!json.choices[0].delta.content) return '';
                 return String(json.choices[0].delta.content);
             }
             return '';
-
         }
         catch (err) {
             return "[DONE]"
         }
     }
-    const chk = chkFn();
-
-    if (chk != "[DONE]") {
-        // console.log(fullReply+chk);
-        fullReply += chk;
+    for (let i of phase2) {
+        i = i.trim();
+        if (regex.test(i)) {
+            i = i.slice(6);
+            if(i==='[DONE]') continue;
+            const content = getContent(i);
+            if(content !== '[DONE]'){
+                fullReply += content;
+                //emit event
+            }else{//end emit
+            }
+        }
     }
-    else {
-        console.log("stream ended")
-        console.log(fullReply)
-    }
-    // console.log(chk)
-    // console.log(chunk.toString('utf8'))
-
 });
+reply.response?.data.on('end', () => {
+    console.log("full reply: ", fullReply)
+})
