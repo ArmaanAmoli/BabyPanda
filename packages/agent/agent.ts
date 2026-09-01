@@ -3,6 +3,7 @@ import type { Message, UrlApi } from './types'
 import { ReasoningEffort, Role } from './types'
 import { readFileSync } from "fs"
 import { EventEmitter } from "events"
+import { MCPClient } from "./mcp/client"
 // If no api key then abort
 if (!process.env['NVIDIA_API_KEY']) {
   process.abort();
@@ -21,6 +22,7 @@ export class BabyPandaAgent extends EventEmitter {
   private isRunning = false;
   private messageQueue: Message[] = [];
   private messagesHistory: Message[] = [];
+  private mcpClient: MCPClient = new MCPClient()
 
   instructions: string;
   model: string;
@@ -32,6 +34,7 @@ export class BabyPandaAgent extends EventEmitter {
     this.model = 'moonshotai/kimi-k3'; // This will be our default model
     this.instructions = readFileSync('test.txt', { encoding: 'utf-8' });
     this.reasoningEffect = ReasoningEffort.none;
+    this.mcpClient.connectToServer('./tools/index.ts');
   }
 
   private async loop() {
@@ -54,53 +57,56 @@ export class BabyPandaAgent extends EventEmitter {
       messages.push(userInput)
 
       const response = await this.client.chatCompletion(messages, this.model, this.reasoningEffect);
-
       const toolCall: boolean = false;// for now
-      /*
-        code to verify tool call goes here
-      */
-      if (!toolCall) {
-        let fullReply = '';
-        response.response?.data.on('data', (chunk: Buffer | string) => {
-          const phase1 = typeof chunk === 'string' ? chunk : chunk.toString('utf-8'); // nvidia sen buffer where as openrouter send text
-          const phase2 = phase1.split('\n');
-          const regex = /^data:\s/;
-          const getContent = (encoded: string) => {
-            try {
-              if (encoded) {
-                const json = JSON.parse(encoded);
-                // console.log(json.choices[0].delta.content);
-                if (!json.choices[0].delta.content) return '';
-                return String(json.choices[0].delta.content);
-              }
-              return '';
-            }
-            catch (err) {
-              return "[DONE]"
-            }
-          }
-          for (let i of phase2) {
-            i = i.trim();
-            if (regex.test(i)) {
-              i = i.slice(6);
-              if (i === '[DONE]') continue;
-              const content = getContent(i);
-              if (content !== '[DONE]') {
-                fullReply += content;
-                //emit event
-                this.emit('data' , content)
-              } else {
-                this.emit('end');
-              }
-            }
-          }
-        });
+
+      if (response.systemError) {
+        console.error('Request failed:', response.error);
+        process.exit(1);
       }
 
-      else {
-        //execute tools attach their response and rerun the loop
-        //push those replies from tool to the message queue
+      console.log('got the first reply')
+
+      let fullReply = "";
+      let buffer: string = '';
+      const regex = /^data:\s/;
+
+      response.response?.data.on('data', (chunk: Buffer | string) => {
+        const encodedChunk = typeof chunk === 'string' ? chunk : chunk.toString('utf-8'); // nvidia sen buffer where as openrouter send text
+        buffer += encodedChunk;
+        const lines = buffer.split('\n');
+        buffer = lines.pop() ?? '';
+        const getContent = (encoded: string) => {
+          try {
+            if (encoded) {
+              const json = JSON.parse(encoded);
+              // console.log(json.choices[0].delta.content);
+              if (!json.choices[0].delta.content) return '';
+              return String(json.choices[0].delta.content);
+            }
+            return '';
+          }
+          catch (err) {
+            console.error('Failed to parse SSE chunk:', encoded, err)
+            return '';
+          }
+        }
+        for (let line of lines) {
+          line = line.trim();
+          if (!regex.test(line)) continue;
+          line = line.slice(6);
+          if (line === '[DONE]') continue;
+          const content = getContent(line);
+          fullReply += content;
+          //emit event  
+        }
       }
+      );
+
+      response.response?.data.on('end', () => {
+        console.log("full reply: ", fullReply)
+      })
+
+      response.response?.data.on('error', (err: Error) => { console.error('Stream error:', err) });
     }
     this.isRunning = false;
   }

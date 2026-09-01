@@ -8,7 +8,7 @@ interface Tool{
 
 type ToolResult = Tool & {result?:unknown , error?:string};
 
-class MCPClient{
+export class MCPClient{
     private mcp : Client;
     private transport : StdioClientTransport | null = null;
     private tools: any = [];
