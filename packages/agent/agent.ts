@@ -1,26 +1,17 @@
 import { BabyPandaClient } from './apiCall'
-import type { Message, UrlApi } from './types'
+import type { Message, UrlApi, ToolMessage} from './types'
 import { ReasoningEffort, Role } from './types'
 import { readFileSync } from "fs"
 import { EventEmitter } from "events"
 import { MCPClient } from "./mcp/client"
-// If no api key then abort
-if (!process.env['NVIDIA_API_KEY']) {
-  process.abort();
-}
+import * as z from "zod";
+import type { Tool, ToolResult } from './types';
+import {MessageQueueSpecialElement} from './types';
 
 export class BabyPandaAgent extends EventEmitter {
-  /*
-  what do we need from user when creating an agent ?
-    1. api key and url to create the client
-    2. declare the client using them.
-    3. Provide the user with model settings like temperature , etc. (not nessesary now)
-    4. provide effort settings (none , high , max);
-  */
-
   private client: BabyPandaClient;
   private isRunning = false;
-  private messageQueue: Message[] = [];
+  private messageQueue: (Message | MessageQueueSpecialElement)[] = [];
   private messagesHistory: Message[] = [];
   private mcpClient: MCPClient = new MCPClient()
 
@@ -40,16 +31,16 @@ export class BabyPandaAgent extends EventEmitter {
   private async loop() {
     while (this.messageQueue.length !== 0) {
       this.isRunning = true;
-      const messages: Message[] = // this array will store message history for context building
-        [...this.messagesHistory,
-        { role: Role.system, content: this.instructions },
-        ]
+      const messages: Message[] = [{ role: Role.system, content: this.instructions }, ...this.messagesHistory]// need optimization
       if (!this.messageQueue[0]) { // if the first message of messageQueue is undefined then skip this iteration (but atleast tell the user later)
         this.messageQueue.splice(0, 1);
+        console.error("message undefined")
         continue;
       }
-      const userInput: Message = this.messageQueue[0];
-      messages.push(userInput)
+      const userInput = this.messageQueue[0];
+      if(userInput !== MessageQueueSpecialElement.toolCallDone){
+        messages.push(userInput)
+      }
       const response = await this.client.chatCompletion(messages, this.model, this.reasoningEffect);
       if (response.systemError) {
         console.error('Request failed:', response.error);
@@ -93,7 +84,7 @@ export class BabyPandaAgent extends EventEmitter {
           line = line.slice(6);
           if (line === '[DONE]') continue;
           const content = getContent(line);
-          if(toolCall)fullReply+=content;
+          if (toolCall) fullReply += content;
           if (!toolCall && lineChecked < MAX_LINE_THRESHOLD_FOR_TOOL_CALL) {
             fullReply += content;
             console.log("checking tool call")
@@ -125,20 +116,68 @@ export class BabyPandaAgent extends EventEmitter {
         }
       });
 
-      response.response?.data.on('end', () => {
+      response.response?.data.on('end', async () => {
         console.log("full reply: \n", fullReply);
         if (toolCall) {
           // tool execution
-          // push new message in queue (this message + tool result)
+          const ReplyJsonSchema = z.object({
+            role: z.string(),
+            toolCall: z.array(z.object(
+              {
+                id: z.string(),
+                type: z.string(),
+                function: z.string(),
+                arguments: z.record(z.string(), z.unknown())
+              }
+            ))
+          });
+          type ReplyJson = z.infer<typeof ReplyJsonSchema>
+          let replyJson = JSON.parse(fullReply)
+          try {
+            if (ReplyJsonSchema.parse(replyJson)) {
+              let toolCalls = (replyJson as ReplyJson).toolCall
+              const toolCallsT: Tool[] = toolCalls.map((tool) => {
+                return {
+                  id: tool.id,
+                  name: tool.function,
+                  args: tool.arguments
+                }
+              });
+              const toolResults = await this.mcpClient.callTools(toolCallsT);
+              // const lastToolResult = toolResults.pop()
+              let i = 0;
+              while (i < toolResults.length) {
+                if (toolResults.at(i) === undefined) {
+                  continue;
+                }
+                else {
+                  this.messagesHistory.push({
+                    role: Role.tool,
+                    tool_call_id: toolResults.at(i)!.id,
+                    content: toolResults.at(i)!.result
+                  })
+                }
+                i += 1;
+              }
+              toolResults.length = 0;
+              i = 0;
+              this.messageQueue.push(MessageQueueSpecialElement.toolCallDone);
+            }
+          }
+          catch (err) {
+            console.log(`An error occured while resolving tool call at agent.ts: ${err}`)
+          }
         }
         lineChecked = 0;
         toolCall = false;
+        fullReply = '';
       })
       response.response?.data.on('error', (err: Error) => { console.error('Stream error:', err) });
+      this.messageQueue.splice(0,1);
     }
     this.isRunning = false;
   }
-
+  
   async message(msg: Message) {
     //push
     this.messageQueue.push(msg);
@@ -149,5 +188,4 @@ export class BabyPandaAgent extends EventEmitter {
       await this.loop();
     }
   }
-
 }

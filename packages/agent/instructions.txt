@@ -38,13 +38,13 @@ RULES:
   from an earlier point in the session — always resolve
   "tool_call_id" by nearest matching "role":"tool" response that
   immediately follows the call, not by global uniqueness.
-1) fs.read
+1) read
    Purpose:    Read the full contents of a file
    Arguments:  path: string   — location of the file to read
    Returns:    content: string — raw file contents
    Notes:      Fails if `path` does not exist; do not pre-guess
                file contents before the tool result arrives.
-2) fs.write
+2) write
    Purpose:    Write (or overwrite) a file
    Arguments:  path: string
                content: string
@@ -52,7 +52,7 @@ RULES:
    Notes:      WARNING — Overwrites the entire file if it already
                exists. No partial/append mode. Read-before-write
                if preserving existing content matters.
-3) fs.grep
+3) grep
    Purpose:    Search file(s) for a regex pattern
    Arguments:  paths: string[]
                pattern: string          (regex)
@@ -60,15 +60,15 @@ RULES:
                                           flags, e.g. -i, -n, -r)
    Returns:    matches: array of
                { path: string, line: number, text: string }
-4) fs.glob
+4) glob
    Purpose:    Find files matching a glob pattern
    Arguments:  pattern: string
    Returns:    paths: string[]
-5) fs.list
+5) list
    Purpose:    List files/dirs in the current working directory
    Arguments:  (none)
    Returns:    entries: string[]
-6) fs.delete
+6) delete
    Purpose:    Delete a file or directory
    Arguments:  path: string
                options?: {
@@ -95,7 +95,7 @@ RULES:
     {
       "id": "call_a1b2c3",
       "type": "function",
-      "function": "fs.read",
+      "function": "read",
       "arguments": { "path": "./folder/test.txt" }
     }
   ]
@@ -119,7 +119,7 @@ RULES:
     {
       "id": "call_d4e5f6",
       "type": "function",
-      "function": "fs.write",
+      "function": "write",
       "arguments": { "path": "./notes.txt", "content": "Meeting at 5pm" }
     }
   ]
@@ -143,7 +143,7 @@ RULES:
     {
       "id": "call_g7h8i9",
       "type": "function",
-      "function": "fs.grep",
+      "function": "grep",
       "arguments": { "paths": ["./src"], "pattern": "TODO", "flags": "-rn" }
     }
   ]
@@ -170,7 +170,7 @@ RULES:
     {
       "id": "call_j0k1l2",
       "type": "function",
-      "function": "fs.glob",
+      "function": "glob",
       "arguments": { "pattern": "**/*.ts" }
     }
   ]
@@ -195,7 +195,7 @@ RULES:
     {
       "id": "call_m3n4o5",
       "type": "function",
-      "function": "fs.list",
+      "function": "list",
       "arguments": {}
     }
   ]
@@ -220,7 +220,7 @@ RULES:
     {
       "id": "call_p6q7r8",
       "type": "function",
-      "function": "fs.list",
+      "function": "list",
       "arguments": {}
     }
   ]
@@ -236,7 +236,7 @@ RULES:
     {
       "id": "call_s9t0u1",
       "type": "function",
-      "function": "fs.delete",
+      "function": "delete",
       "arguments": { "path": "./build", "options": { "recursive": true, "force": true } }
     }
   ]
@@ -263,13 +263,13 @@ pattern for any fs.delete call, per the safety notes above.
     {
       "id": "call_v2w3x4",
       "type": "function",
-      "function": "fs.read",
+      "function": "read",
       "arguments": { "path": "./config.json" }
     },
     {
       "id": "call_y5z1a6",
       "type": "function",
-      "function": "fs.read",
+      "function": "read",
       "arguments": { "path": "./package.json" }
     }
   ]

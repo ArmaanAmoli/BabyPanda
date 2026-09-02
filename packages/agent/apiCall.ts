@@ -1,13 +1,7 @@
 import axios from 'axios'
 import { readFileSync } from 'fs'
-import { Role, type Message, type ReasoningEffort, type UrlApi } from './types' // verbatimModuleSyntax
-import { MissingRequiredClientCapabilityError } from '@modelcontextprotocol/client';
+import type { Message, ReasoningEffort, UrlApi } from './types' // verbatimModuleSyntax
 class BabyPandaClient {
-    /*
-    we want user's
-        api key
-        url
-    */
     url: string;
     apikey: string;
     token: string;
@@ -16,7 +10,6 @@ class BabyPandaClient {
         this.apikey = apikey;
         this.token = 'Bearer ' + apikey;
     }
-    // write a member function to send a chat message.
     async chatCompletion(messages: Message[], model: string, reasoning_effort?: ReasoningEffort) {
         let options = {
             method: 'POST' as const,
