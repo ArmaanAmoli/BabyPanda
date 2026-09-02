@@ -3,8 +3,6 @@
   "compilerOptions": {
     "strict": true,
     "types": ["bun"],
-    "jsx": "react-jsx",
-    "jsxImportSource": "hono/jsx",
     // Bundler mode
     "moduleResolution": "bundler",
     "allowImportingTsExtensions": true,

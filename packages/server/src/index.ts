@@ -4,7 +4,7 @@ import { streamText } from 'hono/streaming';
 import { BabyPandaAgent } from '@baby-panda/agent'
 const app = new Hono()
 
-const agentStore = new Map<string, BabyPandaAgent>();
+const agentStore = new Map<string, BabyPandaAgent>(); // sessionID - agent
 
 app.post('/get-messages', async (c) => {
   const body = await c.req.json()
@@ -63,8 +63,6 @@ app.post('/message', async (c) => {
   const babyPanda = agent!;
   babyPanda.message(body.message);
   return streamText(c, async (stream) => {
-    // here we will send the llm response
-
     stream.onAbort(()=>{
       // IDK
     })
@@ -77,11 +75,16 @@ app.post('/message', async (c) => {
       stream.abort()
     });
   })
-})
+});
 
 app.post('/api-key', async (c) => {
   const key = c.body;
   //save to db;
 })
 
-export default app
+export default {
+  port:3000,
+  fetch(request: Request) {
+    return app.fetch(request)
+  },
+}
