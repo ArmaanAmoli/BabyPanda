@@ -32,7 +32,6 @@ export default function PromptBox({ placeholder, onSave }: PromptBoxArgs) {
         if(key.return){
             
         }
-        
     });
     return (
         <Box borderStyle={'single'} borderColor={'#FFAF87'} width="100%" height="100%">
