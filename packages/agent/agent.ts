@@ -17,21 +17,23 @@ export class BabyPandaAgent extends EventEmitter {
 
   instructions: string;
   model: string;
+  sessionId: string;
   reasoningEffect: ReasoningEffort
 
-  constructor({ url, apikey }: UrlApi) {
+  constructor({ url, apikey }: UrlApi , sessionId:string) {
     super();
     this.client = new BabyPandaClient({ url, apikey });
     this.model = 'moonshotai/kimi-k3'; // This will be our default model
     this.instructions = readFileSync('test.txt', { encoding: 'utf-8' });
     this.reasoningEffect = ReasoningEffort.none;
     this.mcpClient.connectToServer('./tools/index.ts');
+    this.sessionId = sessionId
   }
 
   private async loop() {
     while (this.messageQueue.length !== 0) {
       this.isRunning = true;
-      const messages: Message[] = [{ role: Role.system, content: this.instructions }, ...this.messagesHistory]// need optimization
+      const messages: Message[] = [{ role: Role.system, content: this.instructions , sessionId:this.sessionId}, ...this.messagesHistory]// need optimization
       if (!this.messageQueue[0]) { // if the first message of messageQueue is undefined then skip this iteration (but atleast tell the user later)
         this.messageQueue.splice(0, 1);
         console.error("message undefined")
@@ -46,7 +48,6 @@ export class BabyPandaAgent extends EventEmitter {
         console.error('Request failed:', response.error);
         process.exit(1);
       }
-
       const getContent = (encoded: string) => {
         try {
           if (encoded) {
@@ -154,7 +155,8 @@ export class BabyPandaAgent extends EventEmitter {
                   this.messagesHistory.push({
                     role: Role.tool,
                     tool_call_id: toolResults.at(i)!.id,
-                    content: toolResults.at(i)!.result
+                    content: toolResults.at(i)!.result,
+                    sessionId:this.sessionId
                   })
                 }
                 i += 1;
@@ -179,9 +181,8 @@ export class BabyPandaAgent extends EventEmitter {
   }
   
   async message(msg: Message) {
-    //push
     this.messageQueue.push(msg);
-    if (this.isRunning) { // this mean the loop is already running we just push in message queue;
+    if (this.isRunning) {
       return;
     }
     else {
@@ -189,3 +190,5 @@ export class BabyPandaAgent extends EventEmitter {
     }
   }
 }
+
+// index , sessionId } -> from hono server

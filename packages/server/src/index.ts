@@ -1,5 +1,5 @@
 import { Hono } from 'hono'
-import { getMessages, createSession, createMessage , addProvider} from '@baby-panda/db';
+import { getMessages, createSession, createMessage , addProvider , getSessions} from '@baby-panda/db';
 import { streamText } from 'hono/streaming';
 import { BabyPandaAgent } from '@baby-panda/agent'
 const app = new Hono()
@@ -19,6 +19,11 @@ app.post('/get-messages', async (c) => {
 app.post('/start-session', async (c) => {
   const session = await createSession();
   return new Response(session, { status: 201, statusText: "Created" })
+})
+
+app.post('/get-session', async (c) => {
+  const sessions = await getSessions();
+  return new Response(JSON.stringify(sessions), { status: 201, statusText: "Created" })
 })
 
 app.post('/message', async (c) => {
@@ -45,7 +50,7 @@ app.post('/message', async (c) => {
       Fetch apikey and url from db or else return
       */
       const { url, apikey } = { url: '', apikey: '' };
-      agent = new BabyPandaAgent({ url, apikey })
+      agent = new BabyPandaAgent({ url, apikey } , body.sessionId);
       agentStore.set(body.sessionId, agent);
     }
 
@@ -68,8 +73,6 @@ app.post('/message', async (c) => {
   catch (e) {
     return new Response("message creatation failed", { status: 500, statusText: "Internal Server Error" });
   }
-
-
 });
 
 app.post('/add-provider', async (c) => {

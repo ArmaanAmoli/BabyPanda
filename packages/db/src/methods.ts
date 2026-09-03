@@ -2,13 +2,16 @@ import { db } from './index.db'
 import { Session, Message , ApiKeys} from './db/schema'
 import type { Role } from '@baby-panda/agent';
 import { eq } from 'drizzle-orm'
-
+interface APIProvider{
+    provider:string;
+    endpoint:string;
+    key:string;
+}
 export async function createSession(parentSessionId?: string) {
     const id: string = crypto.randomUUID()
     await db.insert(Session).values(parentSessionId ? { id, parentSessionId } : { id });
     return id;
 }
-
 export async function createMessage(sessionId: string, content: string, role: Role) {
     await db.transaction(async (tx) => {
         const session = await tx.select({
@@ -23,18 +26,6 @@ export async function createMessage(sessionId: string, content: string, role: Ro
         tx.update(Session).set({ messagesCount: messageIndex + 1 }).where(eq(Session.id, sessionId));
     })
 }
-
-export async function getMessages(sessionId:string){
-    const messages = await db.select().from(Message).where(eq(Message.sessionId , sessionId));
-    return messages;
-}
-
-interface APIProvider{
-    provider:string;
-    endpoint:string;
-    key:string;
-}
-
 export async function addProvider(details:APIProvider){
     console.log(details)
     try{
@@ -44,4 +35,12 @@ export async function addProvider(details:APIProvider){
         console.log(`Error occred while adding provider, ${err}`);
         throw new Error(`Error occred while adding provider, ${err}`);
     }
+}
+export async function getMessages(sessionId:string){
+    const messages = await db.select().from(Message).where(eq(Message.sessionId , sessionId));
+    return messages;
+}
+export async function getSessions(){
+    const sessions = await db.select().from(Session);
+    return sessions;
 }
