@@ -1,12 +1,13 @@
 import { BabyPandaClient } from './apiCall'
-import type { Message, UrlApi, ToolMessage} from './types'
+import type { Message, UrlApi, ToolMessage } from './types'
 import { ReasoningEffort, Role } from './types'
 import { readFileSync } from "fs"
 import { EventEmitter } from "events"
 import { MCPClient } from "./mcp/client"
 import * as z from "zod";
 import type { Tool, ToolResult } from './types';
-import {MessageQueueSpecialElement} from './types';
+import { MessageQueueSpecialElement } from './types';
+import { getMessages, getSession, updateSession, createMessage } from '@baby-panda/db';
 
 export class BabyPandaAgent extends EventEmitter {
   private client: BabyPandaClient;
@@ -18,9 +19,10 @@ export class BabyPandaAgent extends EventEmitter {
   instructions: string;
   model: string;
   sessionId: string;
-  reasoningEffect: ReasoningEffort
+  reasoningEffect: ReasoningEffort;
+  numberOfMessages: number = 0;
 
-  constructor({ url, apikey }: UrlApi , sessionId:string) {
+  constructor({ url, apikey }: UrlApi, sessionId: string) {
     super();
     this.client = new BabyPandaClient({ url, apikey });
     this.model = 'moonshotai/kimi-k3'; // This will be our default model
@@ -28,19 +30,33 @@ export class BabyPandaAgent extends EventEmitter {
     this.reasoningEffect = ReasoningEffort.none;
     this.mcpClient.connectToServer('./tools/index.ts');
     this.sessionId = sessionId
+    const getNoMessages = async (sessionId: string) => {
+      try {
+        const session = await getSession(sessionId);
+        if (!session[0] || session[0].messagesCount == null) {
+          throw new Error('Session Id no found')
+        }
+        this.numberOfMessages = session[0].messagesCount
+      }
+      catch (err) {
+        console.log(`An error occured while initiating agent ${err}`);
+        throw err;
+      }
+    }
+    getNoMessages(sessionId);
   }
 
   private async loop() {
     while (this.messageQueue.length !== 0) {
       this.isRunning = true;
-      const messages: Message[] = [{ role: Role.system, content: this.instructions , sessionId:this.sessionId}, ...this.messagesHistory]// need optimization
+      const messages: Message[] = [{ role: Role.system, content: this.instructions, sessionId: this.sessionId }, ...this.messagesHistory]// need optimization
       if (!this.messageQueue[0]) { // if the first message of messageQueue is undefined then skip this iteration (but atleast tell the user later)
         this.messageQueue.splice(0, 1);
         console.error("message undefined")
         continue;
       }
       const userInput = this.messageQueue[0];
-      if(userInput !== MessageQueueSpecialElement.toolCallDone){
+      if (userInput !== MessageQueueSpecialElement.toolCallDone) {
         messages.push(userInput)
       }
       const response = await this.client.chatCompletion(messages, this.model, this.reasoningEffect);
@@ -116,9 +132,16 @@ export class BabyPandaAgent extends EventEmitter {
           }
         }
       });
-
       response.response?.data.on('end', async () => {
         console.log("full reply: \n", fullReply);
+        //store to db
+        try {
+          await createMessage(this.sessionId, fullReply, Role.assistant);
+          this.numberOfMessages += 1;
+        } catch (err) {
+          throw new Error(`Unable to store assistant message to database: ${err}`);
+        }
+
         if (toolCall) {
           // tool execution
           const ReplyJsonSchema = z.object({
@@ -152,12 +175,19 @@ export class BabyPandaAgent extends EventEmitter {
                   continue;
                 }
                 else {
-                  this.messagesHistory.push({
-                    role: Role.tool,
-                    tool_call_id: toolResults.at(i)!.id,
-                    content: toolResults.at(i)!.result,
-                    sessionId:this.sessionId
-                  })
+                  try {
+                    await createMessage(this.sessionId, JSON.stringify(toolResults.at(i)), Role.tool);
+                    this.numberOfMessages += 1;
+                    this.messagesHistory.push({
+                      role: Role.tool,
+                      tool_call_id: toolResults.at(i)!.id,
+                      content: toolResults.at(i)!.result,
+                      sessionId: this.sessionId
+                    }
+                    )
+                  } catch (err) {
+                    throw new Error(`Unable to store tool message to database: ${err}`);
+                  }
                 }
                 i += 1;
               }
@@ -175,11 +205,11 @@ export class BabyPandaAgent extends EventEmitter {
         fullReply = '';
       })
       response.response?.data.on('error', (err: Error) => { console.error('Stream error:', err) });
-      this.messageQueue.splice(0,1);
+      this.messageQueue.splice(0, 1);
     }
     this.isRunning = false;
   }
-  
+
   async message(msg: Message) {
     this.messageQueue.push(msg);
     if (this.isRunning) {

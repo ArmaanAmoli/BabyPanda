@@ -44,3 +44,10 @@ export async function getSessions(){
     const sessions = await db.select().from(Session);
     return sessions;
 }
+export async function updateSession(sessionId:string , updatedValue:{messagesCount:number} ){
+    await db.update(Session).set(updatedValue).where(eq(Session.id , sessionId));
+}
+export async function getSession(sessionId:string){
+    const session = await db.select().from(Session).where(eq(Session.id , sessionId));
+    return session;
+}

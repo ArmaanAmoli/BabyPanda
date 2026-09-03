@@ -13,6 +13,7 @@
     "packages/agent": {
       "name": "@baby-panda/agent",
       "dependencies": {
+        "@baby-panda/db": "workspace:*",
         "@modelcontextprotocol/client": "^2.0.0",
         "@modelcontextprotocol/server": "^2.0.0",
         "zod": "^4.5.4",
@@ -29,7 +30,6 @@
       "version": "0.0.0",
       "bin": "dist/cli.js",
       "dependencies": {
-        "@baby-panda/agent": "workspace:*",
         "@baby-panda/server": "workspace:*",
         "@inkjs/ui": "^2.0.0",
         "@types/node": "^26.2.0",
