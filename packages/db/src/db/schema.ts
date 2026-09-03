@@ -16,3 +16,9 @@ export const Message = sqliteTable("message" , {
     content:text("content"),
     role:text("role").$type<Role>(),
 },(table)=>[primaryKey({columns:[table.messageIndex , table.sessionId]})])
+
+export const ApiKeys = sqliteTable("api_keys", {
+    provider:text("provider"),
+    endpoint:text("endpoint"),
+    key:text("key").primaryKey(),
+})

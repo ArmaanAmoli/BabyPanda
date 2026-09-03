@@ -1,5 +1,5 @@
 import { db } from './index.db'
-import { Session, Message } from './db/schema'
+import { Session, Message , ApiKeys} from './db/schema'
 import type { Role } from '@baby-panda/agent';
 import { eq } from 'drizzle-orm'
 
@@ -27,4 +27,21 @@ export async function createMessage(sessionId: string, content: string, role: Ro
 export async function getMessages(sessionId:string){
     const messages = await db.select().from(Message).where(eq(Message.sessionId , sessionId));
     return messages;
+}
+
+interface APIProvider{
+    provider:string;
+    endpoint:string;
+    key:string;
+}
+
+export async function addProvider(details:APIProvider){
+    console.log(details)
+    try{
+        await db.insert(ApiKeys).values({provider:details.provider , endpoint:details.endpoint , key:details.key});
+        return true;
+    }catch(err){
+        console.log(`Error occred while adding provider, ${err}`);
+        throw new Error(`Error occred while adding provider, ${err}`);
+    }
 }
