@@ -1,14 +1,19 @@
 import React, {createContext, useState} from 'react';
-const [userPrompt , setPrompt] = useState('')
-export const PromptContext = createContext([userPrompt , setPrompt]);
+import type {ReactChildPropInterface} from '../types';
 
-interface ReactChildPropInterface{
-    children: React.ReactNode
-}
+
+export const PromptContext = createContext({
+    userPrompt:'',
+    setUserPrompt: (newPrompt:string)=>{}
+});
 
 export function PromptContextProvider({children}:ReactChildPropInterface){
+    const [userPrompt , setPrompt] = useState('')
+    const setUserPrompt = (newPrompt:string)=>{
+        setPrompt((prev)=>newPrompt)
+    }
     return( 
-    <PromptContext.Provider value={[userPrompt , setPrompt]}>
+    <PromptContext.Provider value={{userPrompt , setUserPrompt}}>
         {children}
     </PromptContext.Provider>)
-}
+}   

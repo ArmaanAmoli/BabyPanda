@@ -1,16 +1,23 @@
-import { Box, useInput } from 'ink'
+import { Box, useInput , Text} from 'ink'
 import { TextInput } from '@inkjs/ui'
 import React, { useState, useRef , useContext} from 'react'
-import type { PromptBoxArgs } from '../types'
+import { type PromptBoxArgs , type MessageStatusElement, Role } from '../types'
 import { ScrollView, type ScrollViewRef } from "ink-scroll-view";
 import {PromptContext} from "../context/prompt"
+import {GlobalMessageQueueContext} from '../context/messageQueueContext'
 
 export default function PromptBox({ placeholder, onSave }: PromptBoxArgs) {
     const scrollRef = useRef<ScrollViewRef>(null);
-    const [prompt, setPrompt] = useContext(PromptContext) as [string , React.Dispatch<React.SetStateAction<string>>];
+    const {userPrompt , setUserPrompt} = useContext(PromptContext);
+    const {queue , setQueue} = useContext(GlobalMessageQueueContext);
+    const [userMessageState , setUserMessageState] = useState<MessageStatusElement>({
+                sessionId:'',
+                content:userPrompt,
+                role:Role.user,
+                sended:false
+            })
     const onChangeOfPrompt = (value: string) => {
-        setPrompt(value)
-        console.log(prompt);
+        setUserPrompt(value);
     }
     // 2. Handle Keyboard Input
     useInput((input, key) => {
@@ -30,16 +37,15 @@ export default function PromptBox({ placeholder, onSave }: PromptBoxArgs) {
             scrollRef.current?.scrollBy(height);
         }
         if(key.return){
-            
+            setQueue({message: userMessageState , setMessage:(newMessage:MessageStatusElement)=>setUserMessageState(newMessage)});
         }
     });
     return (
         <Box borderStyle={'single'} borderColor={'#FFAF87'} width="100%" height="100%">
             {/* convert this into a placeholder. */}
             <ScrollView ref={scrollRef}>
-                <TextInput placeholder={placeholder} defaultValue={prompt} onChange={onChangeOfPrompt} />
+                <TextInput placeholder={placeholder} onChange={onChangeOfPrompt} />
             </ScrollView>
         </Box>
-
     );
 }
