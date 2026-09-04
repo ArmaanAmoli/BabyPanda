@@ -50,6 +50,7 @@ async function registerProvider(details: APIProvider) {
         console.error(`Error in sendPrompt function: `, err)
     }
 }
+
 async function sendMessage(msg: Message) {
     const req = new Request('http://localhost:3000/message', {
         method: "POST",
@@ -59,21 +60,26 @@ async function sendMessage(msg: Message) {
     const stream = res.body;
     if(!stream){throw new Error('Got null response from server')}
     const reader = stream.getReader();
-    const chunks:Uint8Array[] = []
+    const textDecoder = new TextDecoder();
+    let reply = "";
     while(true){
         const {done , value} = await reader.read()
         if(done){
-            console.log(`CLI got the complete streamed reply`)
+            reply += textDecoder.decode(); 
+            console.log(`CLI got the complete streamed reply`);
             break;
         }
         else{
             if(value){
-                chunks.push(value);
+                const decodedText = textDecoder.decode(value, { stream: true });
+                reply+=decodedText
+                console.log(decodedText)
             }
         }
     }
-    return decoder.decode(concatArrayBuffer(chunks));
+    return reply;
 }
+
 async function getAllSessions(): Promise<Session[]> {
     const req = new Request('http://localhost:3000/get-session', { method: "POST" });
     const res = await app.fetch(req);

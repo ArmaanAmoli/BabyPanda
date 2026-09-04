@@ -1,6 +1,6 @@
 import { Hono } from 'hono'
-import { getMessages, createSession, createMessage , addProvider , getSessions} from '@baby-panda/db';
-import { streamText } from 'hono/streaming';
+import { getMessages, createSession, createMessage, addProvider, getSessions } from '@baby-panda/db';
+import { stream, streamText } from 'hono/streaming';
 import { BabyPandaAgent, type Message } from '@baby-panda/agent'
 import { create } from 'axios';
 const app = new Hono()
@@ -28,14 +28,7 @@ app.post('/get-session', async (c) => {
 })
 
 app.post('/message', async (c) => {
-  /*
-    session id
-    session messages (to pass to agent)
-    url and api key of user (fetch from db if available)
-  */
-  //we need a way to identify if a session is new or old
   const body = await c.req.json()
-
   if (!body.sessionId || !body.role || !body.content) {
     return new Response("missing data {sessionId , content , role}", { status: 400, statusText: "Bad Request" });
   }
@@ -51,43 +44,67 @@ app.post('/message', async (c) => {
       Fetch apikey and url from db or else return
       */
       const { url, apikey } = { url: "https://integrate.api.nvidia.com/v1/chat/completions", apikey: process.env['NVIDIA_API_KEY']! };
-      agent = new BabyPandaAgent({ url, apikey } , body.sessionId);
+      agent = new BabyPandaAgent({ url, apikey }, body.sessionId);
       await agent.init()
       agentStore.set(body.sessionId, agent);
     }
     const babyPanda = agent!;
-    babyPanda.message(body as Message);
     return streamText(c, async (stream) => {
-      stream.onAbort(() => {
-      })
-      babyPanda.on('data', (data) => {
-        stream.write(data);
-      });
-      babyPanda.on('end', () => {
-        stream.abort()
-        return new Response("Data stream ended" , {status:200 , statusText:"Ok"});
-      });
-    } ,async (err , stream)=>{
-      stream.write('An error occured');
-      console.log(err);
+      let isDone = false;
+      const queue:string[] = [];
+        const onData = (data: string) => {
+          queue.push(data);
+        };
+        const onEnd = () => {
+          isDone = true;
+        }
+        const onError = (err: Error) => {
+          isDone = true;
+        }
+        const cleanup = () => {
+          babyPanda.off('data', onData);
+          babyPanda.off('end', onEnd);
+          babyPanda.off('error', onError);
+        }
+        babyPanda.on('data', onData);
+        babyPanda.on('end', onEnd);
+        babyPanda.on('error', onError);
+
+        babyPanda.message(body as Message).catch((err) => {
+          onError(err);
+        })
+      let i = 1;
+      while(!isDone || queue.length>0){
+        const chunk = queue.shift()
+        if(chunk === undefined){
+          await stream.sleep(10);
+          continue;
+        }
+        await stream.write(chunk);
+      }
+      cleanup();
+    }, async (err, stream) => {
+      console.log("stream error", err);
+      stream.write("An error occured during streaming");
       throw err;
-    })
+    });
   }
   catch (e) {
+    console.log(e);
     return new Response(`message creatation failed ${e}`, { status: 500, statusText: "Internal Server Error" });
   }
 });
 
 app.post('/add-provider', async (c) => {
   const body = await c.req.json();
-  if(!(body.key && body.provider && body.endpoint)){
+  if (!(body.key && body.provider && body.endpoint)) {
     return new Response("missing data {provider , endpoint , key}", { status: 400, statusText: "Bad Request" });
   }
-  try{
-    await addProvider({key:body.key , provider:body.provider , endpoint:body.endpoint})
+  try {
+    await addProvider({ key: body.key, provider: body.provider, endpoint: body.endpoint })
     return new Response("Provider Added", { status: 201, statusText: "Created" })
   }
-  catch(err){
+  catch (err) {
     return new Response("Unable to add provider", { status: 500, statusText: "Internal Server Error" });
   }
 })

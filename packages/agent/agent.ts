@@ -114,7 +114,7 @@ export class BabyPandaAgent extends EventEmitter {
           line = line.slice(6);
           if (line === '[DONE]') continue;
           const content = getContent(line);
-          console.log(content);
+          // console.log(content);
           fullReply += content;
           if (!toolCall && lineChecked < MAX_LINE_THRESHOLD_FOR_TOOL_CALL) {
             // console.log("checking tool call")
@@ -138,15 +138,15 @@ export class BabyPandaAgent extends EventEmitter {
             for (const char of content) {
               if (char === '\n') {
                 lineChecked += 1;
-                console.log(content)
-                console.log(lineChecked)
+                // console.log(content)
+                // console.log(lineChecked)
               }
             }
           }
         }
       });
       response.response?.data.on('end', async () => {
-        console.log("full reply: \n", fullReply);
+        // console.log("full reply: \n", fullReply);
         //store to db
         try {
           await createMessage(this.sessionId, fullReply, Role.assistant);
