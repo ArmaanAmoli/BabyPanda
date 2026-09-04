@@ -1,10 +1,13 @@
 {
   "compilerOptions": {
     "target": "ESNext",
-    "module": "es2022",
+    "module": "ESNext",
     "moduleResolution": "bundler",
     "moduleDetection": "force",
+    "noImplicitAny": true,
+    "strict": true,
     "jsx": "react-jsx",
+    "jsxImportSource": "react",
     "allowJs": true,
     "types": ["bun"],
     "paths": {

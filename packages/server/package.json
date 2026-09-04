@@ -1,0 +1,20 @@
+{
+  "name": "@baby-panda/server",
+  "type": "module",
+  "module": "./src/index.ts",
+  "private": true,
+  "scripts": {
+    "dev": "bun run --hot src/index.ts"
+  },
+  "dependencies": {
+    "hono": "^4.13.4",
+    "@baby-panda/db":"workspace:*",
+    "@baby-panda/agent":"workspace:*"
+  },
+  "devDependencies": {
+    "@types/bun": "latest"
+  },
+  "exports":{
+    ".":"./src/index.ts"
+  }
+}

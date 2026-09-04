@@ -1,20 +1,17 @@
 import { Box, useInput } from 'ink'
 import { TextInput } from '@inkjs/ui'
-import React from 'react'
-import { useState, useRef } from 'react'
-import { PromptBoxArgs } from '../types.js'
-import { ScrollView, ScrollViewRef } from "ink-scroll-view";
-import {BabyPandaAgent} from '@baby-panda/agent';
+import React, { useState, useRef , useContext} from 'react'
+import type { PromptBoxArgs } from '../types'
+import { ScrollView, type ScrollViewRef } from "ink-scroll-view";
+import {PromptContext} from "../context/prompt"
 
 export default function PromptBox({ placeholder, onSave }: PromptBoxArgs) {
-
     const scrollRef = useRef<ScrollViewRef>(null);
-    const [prompt, setPrompt] = useState<string>('');
+    const [prompt, setPrompt] = useContext(PromptContext) as [string , React.Dispatch<React.SetStateAction<string>>];
     const onChangeOfPrompt = (value: string) => {
         setPrompt(value)
         console.log(prompt);
     }
-
     // 2. Handle Keyboard Input
     useInput((input, key) => {
         if (key.upArrow) {
@@ -32,14 +29,10 @@ export default function PromptBox({ placeholder, onSave }: PromptBoxArgs) {
             const height = scrollRef.current?.getViewportHeight() || 1;
             scrollRef.current?.scrollBy(height);
         }
-
-        // If key.enter then send the prompt to agent.
         if(key.return){
-            //call the agent
+            
         }
-        
     });
-
     return (
         <Box borderStyle={'single'} borderColor={'#FFAF87'} width="100%" height="100%">
             {/* convert this into a placeholder. */}

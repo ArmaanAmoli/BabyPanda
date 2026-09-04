@@ -1,16 +1,21 @@
 {
   "name": "@baby-panda/agent",
   "module": "index.ts",
-  "type": "module",
-  "exports":{".":"./index.ts"},
-  "private": true,
+  "dependencies": {
+    "@modelcontextprotocol/client": "^2.0.0",
+    "@modelcontextprotocol/server": "^2.0.0",
+    "@baby-panda/db":"workspace:*",
+    "zod": "^4.5.4"
+  },
   "devDependencies": {
     "@types/bun": "latest"
   },
   "peerDependencies": {
     "typescript": "^5"
   },
-  "dependencies": {
-    "openai": "^7.5.0"
-  }
+  "exports": {
+    ".": "./index.ts"
+  },
+  "private": true,
+  "type": "module"
 }

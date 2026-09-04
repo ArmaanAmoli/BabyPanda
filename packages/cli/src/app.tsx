@@ -3,7 +3,8 @@ import { Box, useStdout } from 'ink';
 import BigText from 'ink-big-text';
 import Gradient from 'ink-gradient';
 import { useState, useEffect } from 'react'
-import PromptBox from './components/promptBox.js'
+import PromptBox from './components/promptBox'
+import { PromptContextProvider } from './context/prompt'
 
 export default function App() {
 	const { stdout } = useStdout();
@@ -31,16 +32,19 @@ export default function App() {
 	}, [stdout]);
 
 	return (
-		<Box flexDirection='column' width={dimensions.columns} height={dimensions.rows} borderStyle={'single'} borderColor={'white'}>
+		<PromptContextProvider>
+			<Box flexDirection='column' width={dimensions.columns} height={dimensions.rows} borderStyle={'single'} borderColor={'white'}>
 
-			<Box flexGrow={1}>
-				<Gradient name="pastel">
-					<BigText text="BABY PANDA" align='center' font="block" />
-				</Gradient>
+				<Box flexGrow={1}>
+					<Gradient name="pastel">
+						<BigText text="BABY PANDA" align='center' font="block" />
+					</Gradient>
+				</Box>
+				<Box height={6} margin={0} width="100%">
+					<PromptBox placeholder={"How can I help you ?"} onSave={() => { }} />
+				</Box>
 			</Box>
-			<Box height={6} margin={0} width="100%">
-				<PromptBox placeholder={"How can I help you ?"} onSave={() => { }} />
-			</Box>
-		</Box>
+		</PromptContextProvider>
+
 	);
 }

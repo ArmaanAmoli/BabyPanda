@@ -1,17 +1,8 @@
 {
   "extends":"../../tsconfig.base.json",
   "compilerOptions": {
-    // Environment setup & latest features
-    "lib": ["ESNext"],
-    "target": "ESNext",
-    "module": "esnext",
-    "moduleDetection": "force",
-    "jsx": "react-jsx",
-    "allowJs": true,
+    "strict": true,
     "types": ["bun"],
-    "paths": {
-      "@/*": ["./*"]
-    },
     // Bundler mode
     "moduleResolution": "bundler",
     "allowImportingTsExtensions": true,
@@ -19,7 +10,6 @@
     "noEmit": true,
 
     // Best practices
-    "strict": true,
     "skipLibCheck": true,
     "noFallthroughCasesInSwitch": true,
     "noUncheckedIndexedAccess": true,
@@ -29,7 +19,5 @@
     "noUnusedLocals": false,
     "noUnusedParameters": false,
     "noPropertyAccessFromIndexSignature": false
-  },
-  "include": ["**/*"]
-
+  }
 }

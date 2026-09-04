@@ -1,0 +1,23 @@
+{
+  "name": "@baby-panda/db",
+  "module": "index.ts",
+  "type": "module",
+  "exports":{".":"./src/index.ts"},
+  "private": true,
+  "devDependencies": {
+    "@types/bun": "latest",
+    "@types/pg": "^8.23.1",
+    "drizzle-kit": "^1.0.0-rc.4",
+    "tsx": "^4.23.12"
+  },
+  "peerDependencies": {
+    "typescript": "^5"
+  },
+  "dependencies": {
+    "@libsql/client": "^0.17.4",
+    "dotenv": "^17.4.2",
+    "drizzle-orm": "^1.0.0-rc.4",
+    "pg": "^8.23.0",
+    "@baby-panda/agent":"workspace:*"
+  }
+}
