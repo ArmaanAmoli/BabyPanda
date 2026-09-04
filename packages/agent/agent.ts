@@ -216,6 +216,7 @@ export class BabyPandaAgent extends EventEmitter {
         lineChecked = 0;
         toolCall = false;
         fullReply = '';
+        this.emit('end');
       })
       response.response?.data.on('error', (err: Error) => { console.error('Stream error:', err) });
       this.messageQueue.splice(0, 1);

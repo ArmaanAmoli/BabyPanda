@@ -65,6 +65,7 @@ app.post('/message', async (c) => {
           babyPanda.off('data', onData);
           babyPanda.off('end', onEnd);
           babyPanda.off('error', onError);
+          stream.abort();
         }
         babyPanda.on('data', onData);
         babyPanda.on('end', onEnd);
@@ -73,7 +74,6 @@ app.post('/message', async (c) => {
         babyPanda.message(body as Message).catch((err) => {
           onError(err);
         })
-      let i = 1;
       while(!isDone || queue.length>0){
         const chunk = queue.shift()
         if(chunk === undefined){
@@ -82,6 +82,7 @@ app.post('/message', async (c) => {
         }
         await stream.write(chunk);
       }
+      stream.onAbort(()=>{console.log("stream aborted")})
       cleanup();
     }, async (err, stream) => {
       console.log("stream error", err);
