@@ -11,8 +11,9 @@ export enum Role{
 }
 interface MessageRegular{
     role:Role,
-    content:unknown
-    sessionId:string
+    content:unknown,
+    sessionId:string,
+    index?:number
 }
 export type UserMessage = Omit<MessageRegular,'role'> & {role:Role.user}
 export type SystemMessage = Omit<MessageRegular,'role'> & {role:Role.system}

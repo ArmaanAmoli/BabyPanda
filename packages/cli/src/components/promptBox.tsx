@@ -41,7 +41,7 @@ export default function PromptBox({ placeholder, onSave }: PromptBoxArgs) {
         }
     });
     return (
-        <Box borderStyle={'single'} borderColor={'#FFAF87'} width="100%" height="100%">
+        <Box borderStyle={'single'} borderColor={'white'} width="100%" height="100%">
             {/* convert this into a placeholder. */}
             <ScrollView ref={scrollRef}>
                 <TextInput placeholder={placeholder} onChange={onChangeOfPrompt} />
