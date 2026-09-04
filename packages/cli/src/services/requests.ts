@@ -121,6 +121,6 @@ async function getMessages(sessionId:string): Promise<MessageDB[]> {
     return messagesList;
 }
 
-const message:Message = {role:Role.user , content:"summarize the test.txt file" , sessionId:'2d9dc32a-df6c-4685-8936-7be1598de04e'};
+const message:Message = {role:Role.user , content:"Hi baby panda how are you can plese tell me how to run a loop in javascript ?" , sessionId:'2d9dc32a-df6c-4685-8936-7be1598de04e'};
 const reply = await sendMessage(message);
 console.log("CLI:",reply);
