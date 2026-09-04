@@ -8,6 +8,10 @@ import * as z from "zod";
 import type { Tool, ToolResult } from './types';
 import { MessageQueueSpecialElement } from './types';
 import { getMessages, getSession, updateSession, createMessage } from '@baby-panda/db';
+import * as path from 'path';
+import { fileURLToPath } from 'url';
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 export class BabyPandaAgent extends EventEmitter {
   private client: BabyPandaClient;
@@ -23,31 +27,39 @@ export class BabyPandaAgent extends EventEmitter {
   numberOfMessages: number = 0;
 
   constructor({ url, apikey }: UrlApi, sessionId: string) {
+    console.log(sessionId, "in agent constructor")
     super();
     this.client = new BabyPandaClient({ url, apikey });
-    this.model = 'moonshotai/kimi-k3'; // This will be our default model
-    this.instructions = readFileSync('test.txt', { encoding: 'utf-8' });
+    this.model = 'nvidia/nemotron-3.5-lightning-30b-a3b'; // This will be our default model
+    this.instructions = readFileSync((__dirname + '/instructions.txt'), { encoding: 'utf-8' });
     this.reasoningEffect = ReasoningEffort.none;
-    this.mcpClient.connectToServer('./tools/index.ts');
     this.sessionId = sessionId
-    const getNoMessages = async (sessionId: string) => {
-      try {
-        const session = await getSession(sessionId);
-        if (!session[0] || session[0].messagesCount == null) {
-          throw new Error('Session Id no found')
-        }
-        this.numberOfMessages = session[0].messagesCount
+  }
+
+  public async init() {
+    await this.connectToMCP();
+    await this.getNoMessages();
+  }
+
+  private async connectToMCP() { await this.mcpClient.connectToServer((__dirname + '/mcp/index.ts')); }
+
+  private async getNoMessages() {
+    try {
+      const session = await getSession(this.sessionId);
+      if (!session[0] || session[0].messagesCount == null) {
+        throw new Error('Session Id no found')
       }
-      catch (err) {
-        console.log(`An error occured while initiating agent ${err}`);
-        throw err;
-      }
+      this.numberOfMessages = session[0].messagesCount
     }
-    getNoMessages(sessionId);
+    catch (err) {
+      console.log(`An error occured while initiating agent ${err}`);
+      throw err;
+    }
   }
 
   private async loop() {
     while (this.messageQueue.length !== 0) {
+      console.log("in the loop")
       this.isRunning = true;
       const messages: Message[] = [{ role: Role.system, content: this.instructions, sessionId: this.sessionId }, ...this.messagesHistory]// need optimization
       if (!this.messageQueue[0]) { // if the first message of messageQueue is undefined then skip this iteration (but atleast tell the user later)
@@ -60,6 +72,7 @@ export class BabyPandaAgent extends EventEmitter {
         messages.push(userInput)
       }
       const response = await this.client.chatCompletion(messages, this.model, this.reasoningEffect);
+      console.log("first reply")
       if (response.systemError) {
         console.error('Request failed:', response.error);
         process.exit(1);
@@ -101,10 +114,10 @@ export class BabyPandaAgent extends EventEmitter {
           line = line.slice(6);
           if (line === '[DONE]') continue;
           const content = getContent(line);
-          if (toolCall) fullReply += content;
+          console.log(content);
+          fullReply += content;
           if (!toolCall && lineChecked < MAX_LINE_THRESHOLD_FOR_TOOL_CALL) {
-            fullReply += content;
-            console.log("checking tool call")
+            // console.log("checking tool call")
             //check for "tool_call"
             if (toolCallChecker.test(fullReply)) {
               toolCall = true;
@@ -208,6 +221,7 @@ export class BabyPandaAgent extends EventEmitter {
       this.messageQueue.splice(0, 1);
     }
     this.isRunning = false;
+    console.log('loop has ended')
   }
 
   async message(msg: Message) {
@@ -216,9 +230,8 @@ export class BabyPandaAgent extends EventEmitter {
       return;
     }
     else {
+      console.log('called loop')
       await this.loop();
     }
   }
 }
-
-// index , sessionId } -> from hono server

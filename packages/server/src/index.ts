@@ -1,7 +1,8 @@
 import { Hono } from 'hono'
 import { getMessages, createSession, createMessage , addProvider , getSessions} from '@baby-panda/db';
 import { streamText } from 'hono/streaming';
-import { BabyPandaAgent } from '@baby-panda/agent'
+import { BabyPandaAgent, type Message } from '@baby-panda/agent'
+import { create } from 'axios';
 const app = new Hono()
 
 const agentStore = new Map<string, BabyPandaAgent>(); // sessionID - agent
@@ -49,29 +50,31 @@ app.post('/message', async (c) => {
       /*
       Fetch apikey and url from db or else return
       */
-      const { url, apikey } = { url: '', apikey: '' };
+      const { url, apikey } = { url: "https://integrate.api.nvidia.com/v1/chat/completions", apikey: process.env['NVIDIA_API_KEY']! };
       agent = new BabyPandaAgent({ url, apikey } , body.sessionId);
+      await agent.init()
       agentStore.set(body.sessionId, agent);
     }
-
     const babyPanda = agent!;
-    babyPanda.message(body.message);
+    babyPanda.message(body as Message);
     return streamText(c, async (stream) => {
       stream.onAbort(() => {
-        // IDK
       })
-
       babyPanda.on('data', (data) => {
         stream.write(data);
       });
-
       babyPanda.on('end', () => {
         stream.abort()
+        return new Response("Data stream ended" , {status:200 , statusText:"Ok"});
       });
+    } ,async (err , stream)=>{
+      stream.write('An error occured');
+      console.log(err);
+      throw err;
     })
   }
   catch (e) {
-    return new Response("message creatation failed", { status: 500, statusText: "Internal Server Error" });
+    return new Response(`message creatation failed ${e}`, { status: 500, statusText: "Internal Server Error" });
   }
 });
 
