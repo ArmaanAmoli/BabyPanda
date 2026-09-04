@@ -1,6 +1,7 @@
 import app from '@baby-panda/server';
-import type { APIProvider, Message, Session, MessageDB } from '../types'
+import { type APIProvider, type Message, type Session, type MessageDB, Role } from '../types'
 
+const decoder = new TextDecoder();
 function concatArrayBuffer(chunks: Uint8Array[]) {
     const result = new Uint8Array(chunks.reduce((accumulator, current) => { return accumulator + current.length }, 0));
     let offset = 0;
@@ -16,7 +17,6 @@ async function startSession() {
     if (!res.ok) { return ''; }
     const body = res.body;
     if (!body) return '';
-    const decoder = new TextDecoder();
     const chunks: Uint8Array[] = [];
     const reader = body.getReader();
     while (true) {
@@ -56,6 +56,23 @@ async function sendMessage(msg: Message) {
         body: JSON.stringify(msg)
     })
     const res = await app.fetch(req);
+    const stream = res.body;
+    if(!stream){throw new Error('Got null response from server')}
+    const reader = stream.getReader();
+    const chunks:Uint8Array[] = []
+    while(true){
+        const {done , value} = await reader.read()
+        if(done){
+            console.log(`CLI got the complete streamed reply`)
+            break;
+        }
+        else{
+            if(value){
+                chunks.push(value);
+            }
+        }
+    }
+    return decoder.decode(concatArrayBuffer(chunks));
 }
 async function getAllSessions(): Promise<Session[]> {
     const req = new Request('http://localhost:3000/get-session', { method: "POST" });
@@ -63,7 +80,6 @@ async function getAllSessions(): Promise<Session[]> {
     if (!res.ok) { return []; }
     const body = res.body;
     if (!body) return [];
-    const decoder = new TextDecoder();
     const chunks: Uint8Array[] = [];
     const reader = body.getReader();
     while (true) {
@@ -87,7 +103,6 @@ async function getMessages(sessionId:string): Promise<MessageDB[]> {
     if (!res.ok) { return []; }
     const body = res.body;
     if (!body) return [];
-    const decoder = new TextDecoder();
     const chunks: Uint8Array[] = [];
     const reader = body.getReader();
     while (true) {
@@ -105,3 +120,7 @@ async function getMessages(sessionId:string): Promise<MessageDB[]> {
     const messagesList = JSON.parse(messages) as MessageDB[]
     return messagesList;
 }
+
+const message:Message = {role:Role.user , content:"summarize the test.txt file" , sessionId:'2d9dc32a-df6c-4685-8936-7be1598de04e'};
+const reply = await sendMessage(message);
+console.log("CLI:",reply);
