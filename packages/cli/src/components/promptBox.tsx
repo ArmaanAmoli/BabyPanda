@@ -1,5 +1,6 @@
 import { Box, useInput , Text} from 'ink'
-import { TextInput } from '@inkjs/ui'
+// import { TextInput } from '@inkjs/ui'
+import TextInput from 'ink-text-input';
 import { useState, useRef , useContext} from 'react'
 import { type PromptBoxArgs , type MessageStatusElement, Role } from '../types'
 import { ScrollView, type ScrollViewRef } from "ink-scroll-view";
@@ -19,6 +20,10 @@ export default function PromptBox({ placeholder, onSave }: PromptBoxArgs) {
     const onChangeOfPrompt = (value: string) => {
         setUserPrompt(value);
     }
+    const submit = ()=>{
+        setQueue({message: userMessageState , setMessage:(newMessage:MessageStatusElement)=>setUserMessageState(newMessage)});
+        setUserPrompt('');
+    }
     // 2. Handle Keyboard Input
     useInput((input, key) => {
         if (key.upArrow) {
@@ -36,16 +41,12 @@ export default function PromptBox({ placeholder, onSave }: PromptBoxArgs) {
             const height = scrollRef.current?.getViewportHeight() || 1;
             scrollRef.current?.scrollBy(height);
         }
-        if(key.return){
-            setQueue({message: userMessageState , setMessage:(newMessage:MessageStatusElement)=>setUserMessageState(newMessage)});
-            setUserPrompt('');
-        }
     });
     return (
         <Box borderStyle={'single'} borderColor={'white'} width="100%" height="100%" backgroundColor={'black'}>
             {/* convert this into a placeholder. */}
             <ScrollView ref={scrollRef} height="100%" width="100%">
-                <TextInput placeholder={placeholder} onChange={onChangeOfPrompt} />
+                <TextInput value={userPrompt} placeholder={placeholder} onChange={onChangeOfPrompt} onSubmit={submit}/>
             </ScrollView>
         </Box>
     );
