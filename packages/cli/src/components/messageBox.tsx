@@ -3,7 +3,7 @@ import {useState , useEffect , useContext} from "react";
 import {GlobalMessageQueueContext , GlobalMessageQueueContextProvider} from '../context/messageQueueContext';
 import {Role, type Message} from '../types';
 import {sendMessage} from '../services/requests'
-
+import {Markdown} from './markdown'
 interface MessageBoxProps{
     content:string;
     sended:boolean;
@@ -44,10 +44,9 @@ export function MessageBox({content , sended , role}: MessageBoxProps) {
 			}
 	}, [])
     return (
-        <Box width="100%" flexDirection='column' borderColor={role===Role.user ? '#82994C':'white'} borderStyle={'classic'}>
-            <Text>{userMessageString}</Text>
-            <Spacer/>
-            <Text>{agentMessageString}</Text>
+        <Box width="100%" flexDirection='column' borderColor={role===Role.user ? '#82994C':'white'} borderStyle={'classic'} gap={1}>
+            <Markdown>{userMessageString}</Markdown>
+            <Markdown>{agentMessageString}</Markdown>
         </Box>
     );
 }

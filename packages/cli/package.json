@@ -15,14 +15,15 @@
 	},
 	"files": ["dist"],
 	"dependencies": {
+		"@baby-panda/server": "workspace:*",
 		"@inkjs/ui": "^2.0.0",
 		"@types/node": "^26.2.0",
 		"ink": "^7.1.1",
 		"ink-scroll-view": "^0.3.7",
+		"marked": "^18.0.11",
 		"meow": "^11.0.0",
 		"react": "^19.2.8",
-		"react-dom": "^19.2.8",
-		"@baby-panda/server":"workspace:*"
+		"react-dom": "^19.2.8"
 	},
 	"devDependencies": {
 		"@sindresorhus/tsconfig": "^3.0.1",
