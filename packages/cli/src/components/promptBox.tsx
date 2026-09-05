@@ -1,6 +1,6 @@
 import { Box, useInput , Text} from 'ink'
 import { TextInput } from '@inkjs/ui'
-import React, { useState, useRef , useContext} from 'react'
+import { useState, useRef , useContext} from 'react'
 import { type PromptBoxArgs , type MessageStatusElement, Role } from '../types'
 import { ScrollView, type ScrollViewRef } from "ink-scroll-view";
 import {PromptContext} from "../context/prompt"
@@ -38,12 +38,13 @@ export default function PromptBox({ placeholder, onSave }: PromptBoxArgs) {
         }
         if(key.return){
             setQueue({message: userMessageState , setMessage:(newMessage:MessageStatusElement)=>setUserMessageState(newMessage)});
+            setUserPrompt('');
         }
     });
     return (
-        <Box borderStyle={'single'} borderColor={'white'} width="100%" height="100%">
+        <Box borderStyle={'single'} borderColor={'white'} width="100%" height="100%" backgroundColor={'black'}>
             {/* convert this into a placeholder. */}
-            <ScrollView ref={scrollRef}>
+            <ScrollView ref={scrollRef} height="100%" width="100%">
                 <TextInput placeholder={placeholder} onChange={onChangeOfPrompt} />
             </ScrollView>
         </Box>

@@ -1,21 +1,46 @@
 import React from 'react';
-import { Box, useStdout , Text} from 'ink';
+import { Box, useStdout, Text, useInput } from 'ink';
 import BigText from 'ink-big-text';
 import Gradient from 'ink-gradient';
-import { useState, useEffect , useContext } from 'react'
+import { useState, useEffect, useContext, useRef } from 'react'
 import PromptBox from './components/promptBox'
 import { PromptContextProvider } from './context/prompt'
-import { GlobalMessageQueueContextProvider , GlobalMessageQueueContext } from './context/messageQueueContext'
-import {MessageBox} from './components/messageBox'
-import type { Message } from './types';
+import { GlobalMessageQueueContextProvider, GlobalMessageQueueContext } from './context/messageQueueContext'
+import { MessageBox } from './components/messageBox'
+import type { Message, MessageDB } from './types';
+import { getMessages } from './services/requests'
+import { type ScrollViewRef, ScrollView } from 'ink-scroll-view'
 
 export default function App() {
-	const {queue , setQueue} = useContext(GlobalMessageQueueContext);
+	let i = 0;
+	const scrollRef = useRef<ScrollViewRef>(null);
+	let [messageHistory, setMessageHistory] = useState<MessageDB[]>([]);
+	const { queue, setQueue } = useContext(GlobalMessageQueueContext);
 	const { stdout } = useStdout();
 	const [dimensions, setDimensions] = useState({
 		columns: stdout?.columns || 80,
 		rows: stdout?.rows || 24,
 	});
+
+	useInput((input, key) => {
+		if (key.upArrow) {
+			scrollRef.current?.scrollBy(-1); // Scroll up 1 line
+		}
+		if (key.downArrow) {
+			scrollRef.current?.scrollBy(1); // Scroll down 1 line
+		}
+		if (key.pageUp) {
+			// Scroll up by viewport height
+			const height = scrollRef.current?.getViewportHeight() || 1;
+			scrollRef.current?.scrollBy(-height);
+		}
+		if (key.pageDown) {
+			const height = scrollRef.current?.getViewportHeight() || 1;
+			scrollRef.current?.scrollBy(height);
+		}
+
+	});
+
 	useEffect(() => { //an Eventlistner to automatically resize the cli in case of user resize their terminal window
 		if (!stdout) return;
 		const handleResize = () => {
@@ -31,25 +56,29 @@ export default function App() {
 
 	}, [stdout]);
 
-	useEffect(()=>{
-		for(const element of queue){
-			let {message , setMessage} = element;
-			if(message.sended){
-				continue;
-			}
-			const msg = message as Message;
-			//send to agent
-			message.sended = true;
+	useEffect(() => {
+		const getHistory = async () => {
+			setMessageHistory(await getMessages('2d9dc32a-df6c-4685-8936-7be1598de04e'));
 		}
-	}, [queue])
+		getHistory()
+	}, []);
 
 	return (
 		<GlobalMessageQueueContextProvider>
 			<PromptContextProvider>
-				<Box flexDirection='column' width={dimensions.columns} height={dimensions.rows} padding={0}>
-					<Box flexGrow={1}>
-						{/* <BigText text="BABY PANDA" align='center' font="block" colors={['white']} /> */}
-						<MessageBox content="you"/>
+				<Box flexDirection='column' width={dimensions.columns} height={dimensions.rows} padding={0} backgroundColor={'black'}>
+					<Box flexGrow={1} flexDirection='column'>
+						<ScrollView ref={scrollRef} flexGrow={1} flexDirection='column'>
+
+							{messageHistory.length > 0 && messageHistory.map((message) => {
+								return (<MessageBox content={message.content as string} sended={true} />);
+							})}
+							{queue.length === 0 && messageHistory.length === 0 && <BigText text="BABY PANDA" align='center' font="block" colors={['white']} />}
+							{queue.map((messsage) => {
+								return (<MessageBox content={messsage.message.content as string} sended={messsage.message.sended} key={i++} />);
+							})}
+						</ScrollView>
+
 					</Box>
 					<Box height={6} margin={0} width="100%">
 						<PromptBox placeholder={"How can I help you ?"} onSave={() => { }} />
