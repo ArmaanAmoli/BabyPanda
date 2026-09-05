@@ -1,4 +1,4 @@
-import { Box, Text } from "ink";
+import { Box, Spacer, Text } from "ink";
 import {useState , useEffect , useContext} from "react";
 import {GlobalMessageQueueContext , GlobalMessageQueueContextProvider} from '../context/messageQueueContext';
 import {Role, type Message} from '../types';
@@ -6,10 +6,11 @@ import {sendMessage} from '../services/requests'
 
 interface MessageBoxProps{
     content:string;
-    sended:boolean
+    sended:boolean;
+    role:Role;
 }
 
-export function MessageBox({content , sended}: MessageBoxProps) {
+export function MessageBox({content , sended , role}: MessageBoxProps) {
     const [userMessageString , setUserMessageString] = useState<string>(content);
     const [agentMessageString , setAgentMessageString] = useState<string>('');
 	const { queue, setQueue } = useContext(GlobalMessageQueueContext);
@@ -43,8 +44,9 @@ export function MessageBox({content , sended}: MessageBoxProps) {
 			}
 	}, [])
     return (
-        <Box width="100%" flexDirection='column'>
+        <Box width="100%" flexDirection='column' borderColor={role===Role.user ? '#82994C':'white'} borderStyle={'classic'}>
             <Text>{userMessageString}</Text>
+            <Spacer/>
             <Text>{agentMessageString}</Text>
         </Box>
     );

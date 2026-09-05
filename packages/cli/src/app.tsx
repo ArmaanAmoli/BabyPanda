@@ -7,7 +7,7 @@ import PromptBox from './components/promptBox'
 import { PromptContextProvider } from './context/prompt'
 import { GlobalMessageQueueContextProvider, GlobalMessageQueueContext } from './context/messageQueueContext'
 import { MessageBox } from './components/messageBox'
-import type { Message, MessageDB } from './types';
+import { Role, type Message, type MessageDB } from './types';
 import { getMessages } from './services/requests'
 import { type ScrollViewRef, ScrollView } from 'ink-scroll-view'
 
@@ -67,22 +67,24 @@ export default function App() {
 		<GlobalMessageQueueContextProvider>
 			<PromptContextProvider>
 				<Box flexDirection='column' width={dimensions.columns} height={dimensions.rows} padding={0} backgroundColor={'black'}>
-					<Box flexGrow={1} flexDirection='column'>
-						<ScrollView ref={scrollRef} flexGrow={1} flexDirection='column'>
-
-							{messageHistory.length > 0 && messageHistory.map((message) => {
-								return (<MessageBox content={message.content as string} sended={true} />);
-							})}
+					<Box height="100%" width="100%" paddingX={2} flexDirection='column'>
+						<Box flexGrow={1} flexDirection='column'>
 							{queue.length === 0 && messageHistory.length === 0 && <BigText text="BABY PANDA" align='center' font="block" colors={['white']} />}
-							{queue.map((messsage) => {
-								return (<MessageBox content={messsage.message.content as string} sended={messsage.message.sended} key={i++} />);
-							})}
-						</ScrollView>
+							<ScrollView ref={scrollRef} flexGrow={1} flexDirection='column' gap={2}>
+								{messageHistory.length > 0 && messageHistory.map((message) => {
+									return (<MessageBox content={message.content as string} sended={true} role={message.role} />);
+								})}
+								{queue.map((messsage) => {
+									return (<MessageBox content={messsage.message.content as string} sended={messsage.message.sended} role={Role.user} key={i++} />);
+								})}
+							</ScrollView>
 
+						</Box>
+						<Box height={6} margin={0} width="100%">
+							<PromptBox placeholder={"How can I help you ?"} onSave={() => { }} />
+						</Box>
 					</Box>
-					<Box height={6} margin={0} width="100%">
-						<PromptBox placeholder={"How can I help you ?"} onSave={() => { }} />
-					</Box>
+
 				</Box>
 			</PromptContextProvider>
 		</GlobalMessageQueueContextProvider>
