@@ -1,18 +1,54 @@
-import React from 'react';
 import { Box, useStdout, Text, useInput } from 'ink';
 import BigText from 'ink-big-text';
-import Gradient from 'ink-gradient';
 import { useState, useEffect, useContext, useRef } from 'react'
 import PromptBox from './components/promptBox'
 import { PromptContextProvider } from './context/prompt'
 import { GlobalMessageQueueContextProvider, GlobalMessageQueueContext } from './context/messageQueueContext'
 import { MessageBox } from './components/messageBox'
 import { Role, type Message, type MessageDB } from './types';
-import { getMessages } from './services/requests'
+import { getMessages, sendMessage } from './services/requests'
 import { type ScrollViewRef, ScrollView } from 'ink-scroll-view'
 
 export default function App() {
+	const sessionId = '2d9dc32a-df6c-4685-8936-7be1598de04e'
 	let i = 0;
+	const [prompt, setPrompt] = useState('');
+	const onChange = (value: string) => setPrompt(value);
+	const onSubmit = async () => {
+		const reader = await sendMessage({ role: Role.user, content: prompt, sessionId: sessionId });
+		const textDecoder = new TextDecoder();
+		let reply = "";
+		let pushed = false
+		while(true){
+		    const {done , value} = await reader.read()
+		    if(done){
+		        reply += textDecoder.decode(); 
+		        console.log(`CLI got the complete streamed reply`);
+		        break;
+		    }
+		    else{
+		        if(value){
+		            const decodedText = textDecoder.decode(value, { stream: true });
+		            reply+=decodedText
+		            // console.log(decodedText)
+					if(!pushed){
+						setMessageHistory((prev)=>[...prev , {role:Role.assistant , content:reply , createdAt:new Date , sessionId:sessionId}]);
+						pushed = true;
+					}
+					else{
+						setMessageHistory((prev)=>{
+							const last =  prev.at(prev.length ? prev.length - 1 : 0)
+							if(last){
+								last.content+=reply;
+							}
+							return prev;
+						 }
+						)
+					}
+		        }
+		    }
+		}
+	}
 	const scrollRef = useRef<ScrollViewRef>(null);
 	let [messageHistory, setMessageHistory] = useState<MessageDB[]>([]);
 	const { queue, setQueue } = useContext(GlobalMessageQueueContext);
@@ -69,19 +105,15 @@ export default function App() {
 				<Box flexDirection='column' width={dimensions.columns} height={dimensions.rows} padding={0} backgroundColor={'black'}>
 					<Box height="100%" width="100%" paddingX={2} flexDirection='column'>
 						<Box flexGrow={1} flexDirection='column'>
-							{queue.length === 0 && messageHistory.length === 0 && <BigText text="BABY PANDA" align='center' font="block" colors={['white']} />}
+							{messageHistory.length === 0 && <BigText text="BABY PANDA" align='center' font="block" colors={['white']} />}
 							<ScrollView ref={scrollRef} flexGrow={1} flexDirection='column' gap={2}>
 								{messageHistory.length > 0 && messageHistory.map((message) => {
-									return (<MessageBox content={message.content as string} sended={true} role={message.role} />);
-								})}
-								{queue.map((messsage) => {
-									return (<MessageBox content={messsage.message.content as string} sended={messsage.message.sended} role={Role.user} key={i++} />);
+									return (<MessageBox key={i++} content={message.content as string} sended={true} role={message.role} />);
 								})}
 							</ScrollView>
-
 						</Box>
 						<Box height={6} margin={0} width="100%">
-							<PromptBox placeholder={"How can I help you ?"} onSave={() => { }} />
+							<PromptBox placeholder={"How can I help you ?"} value={prompt} onChange={onChange} onSubmit={onSubmit} />
 						</Box>
 					</Box>
 

@@ -61,24 +61,6 @@ export async function sendMessage(msg: Message) {
     if(!stream){throw new Error('Got null response from server')}
     const reader = stream.getReader();
     return reader;
-    const textDecoder = new TextDecoder();
-    let reply = "";
-    while(true){
-        const {done , value} = await reader.read()
-        if(done){
-            reply += textDecoder.decode(); 
-            console.log(`CLI got the complete streamed reply`);
-            break;
-        }
-        else{
-            if(value){
-                const decodedText = textDecoder.decode(value, { stream: true });
-                reply+=decodedText
-                console.log(decodedText)
-            }
-        }
-    }
-    return reply;
 }
 
 async function getAllSessions(): Promise<Session[]> {

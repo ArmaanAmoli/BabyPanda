@@ -7,23 +7,8 @@ import { ScrollView, type ScrollViewRef } from "ink-scroll-view";
 import {PromptContext} from "../context/prompt"
 import {GlobalMessageQueueContext} from '../context/messageQueueContext'
 
-export default function PromptBox({ placeholder, onSave }: PromptBoxArgs) {
+export default function PromptBox({ placeholder, value , onChange , onSubmit}: PromptBoxArgs) {
     const scrollRef = useRef<ScrollViewRef>(null);
-    const {userPrompt , setUserPrompt} = useContext(PromptContext);
-    const {queue , setQueue} = useContext(GlobalMessageQueueContext);
-    const [userMessageState , setUserMessageState] = useState<MessageStatusElement>({
-                sessionId:'',
-                content:userPrompt,
-                role:Role.user,
-                sended:false
-            })
-    const onChangeOfPrompt = (value: string) => {
-        setUserPrompt(value);
-    }
-    const submit = ()=>{
-        setQueue({message: userMessageState , setMessage:(newMessage:MessageStatusElement)=>setUserMessageState(newMessage)});
-        setUserPrompt('');
-    }
     // 2. Handle Keyboard Input
     useInput((input, key) => {
         if (key.upArrow) {
@@ -44,9 +29,8 @@ export default function PromptBox({ placeholder, onSave }: PromptBoxArgs) {
     });
     return (
         <Box borderStyle={'single'} borderColor={'white'} width="100%" height="100%" backgroundColor={'black'}>
-            {/* convert this into a placeholder. */}
             <ScrollView ref={scrollRef} height="100%" width="100%">
-                <TextInput value={userPrompt} placeholder={placeholder} onChange={onChangeOfPrompt} onSubmit={submit}/>
+                <TextInput value={value} placeholder={placeholder} onChange={onChange} onSubmit={onSubmit}/>
             </ScrollView>
         </Box>
     );
