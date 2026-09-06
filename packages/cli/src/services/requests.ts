@@ -11,7 +11,7 @@ function concatArrayBuffer(chunks: Uint8Array[]) {
     }
     return result;
 }
-async function startSession() {
+export async function startSession() {
     const req = new Request('http://localhost:3000/start-session', { method: "POST" });
     const res = await app.fetch(req);
     if (!res.ok) { return ''; }

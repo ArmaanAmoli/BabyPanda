@@ -6,17 +6,31 @@ import { PromptContextProvider } from './context/prompt'
 import { GlobalMessageQueueContextProvider, GlobalMessageQueueContext } from './context/messageQueueContext'
 import { MessageBox } from './components/messageBox'
 import { Role, type Message, type MessageDB } from './types';
-import { getMessages, sendMessage } from './services/requests'
+import { getMessages, sendMessage, startSession } from './services/requests'
 import { type ScrollViewRef, ScrollView } from 'ink-scroll-view'
 
+const getInitialSessionId = () => {
+  if (typeof process !== 'undefined' && process.argv && process.argv[2]) {
+    return process.argv[2];
+  }
+  return null; 
+};
+
+let initialSessionId = getInitialSessionId();
+if(initialSessionId === null){
+	initialSessionId = await startSession();
+}
+
 export default function App() {
-	const sessionId = '2d9dc32a-df6c-4685-8936-7be1598de04e'
+	let [messageHistory, setMessageHistory] = useState<MessageDB[]>([]);
+	const sessionId = useRef(initialSessionId?initialSessionId:'');
 	let i = 0;
 	const [prompt, setPrompt] = useState('');
 	const onChange = (value: string) => setPrompt(value);
 	const onSubmit = async () => {
-		setMessageHistory((prev)=>[...prev, {role:Role.user , content:prompt , createdAt:new Date , sessionId:sessionId}])
-		const reader = await sendMessage({ role: Role.user, content: prompt, sessionId: sessionId });
+		setMessageHistory((prev) => [...prev, { role: Role.user, content: prompt, createdAt: new Date, sessionId: sessionId.current }]);
+		setPrompt('');
+		const reader = await sendMessage({ role: Role.user, content: prompt, sessionId: sessionId.current });
 		const textDecoder = new TextDecoder();
 		let reply = "";
 		let pushed = false
@@ -32,8 +46,7 @@ export default function App() {
 					const decodedText = textDecoder.decode(value, { stream: true });
 					reply += decodedText
 					if (!pushed) {
-						setMessageHistory((prev) => [...prev , { role: Role.assistant, content: reply, createdAt: new Date, sessionId: sessionId }]);
-						setPrompt('');
+						setMessageHistory((prev) => [...prev, { role: Role.assistant, content: reply, createdAt: new Date, sessionId: sessionId.current }]);
 						pushed = true;
 					}
 					else {
@@ -52,7 +65,6 @@ export default function App() {
 		}
 	}
 	const scrollRef = useRef<ScrollViewRef>(null);
-	let [messageHistory, setMessageHistory] = useState<MessageDB[]>([]);
 	const { queue, setQueue } = useContext(GlobalMessageQueueContext);
 	const { stdout } = useStdout();
 	const [dimensions, setDimensions] = useState({
@@ -78,6 +90,12 @@ export default function App() {
 		}
 
 	});
+	// useEffect(() => {
+	// 	if (sessionId.current === '') {
+	// 		const startsession = async () => { sessionId.current = await startSession() };
+	// 		startsession();
+	// 	}
+	// }, [])
 
 	useEffect(() => { //an Eventlistner to automatically resize the cli in case of user resize their terminal window
 		if (!stdout) return;
@@ -96,7 +114,7 @@ export default function App() {
 
 	useEffect(() => {
 		const getHistory = async () => {
-			setMessageHistory(await getMessages('2d9dc32a-df6c-4685-8936-7be1598de04e'));
+			setMessageHistory(await getMessages(sessionId.current));
 		}
 		getHistory()
 	}, []);
