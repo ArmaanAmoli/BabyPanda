@@ -15,38 +15,40 @@ export default function App() {
 	const [prompt, setPrompt] = useState('');
 	const onChange = (value: string) => setPrompt(value);
 	const onSubmit = async () => {
+		setMessageHistory((prev)=>[...prev, {role:Role.user , content:prompt , createdAt:new Date , sessionId:sessionId}])
 		const reader = await sendMessage({ role: Role.user, content: prompt, sessionId: sessionId });
 		const textDecoder = new TextDecoder();
 		let reply = "";
 		let pushed = false
-		while(true){
-		    const {done , value} = await reader.read()
-		    if(done){
-		        reply += textDecoder.decode(); 
-		        console.log(`CLI got the complete streamed reply`);
-		        break;
-		    }
-		    else{
-		        if(value){
-		            const decodedText = textDecoder.decode(value, { stream: true });
-		            reply+=decodedText
-		            // console.log(decodedText)
-					if(!pushed){
-						setMessageHistory((prev)=>[...prev , {role:Role.assistant , content:reply , createdAt:new Date , sessionId:sessionId}]);
+		while (true) {
+			const { done, value } = await reader.read()
+			if (done) {
+				reply += textDecoder.decode();
+				console.log(`CLI got the complete streamed reply`);
+				break;
+			}
+			else {
+				if (value) {
+					const decodedText = textDecoder.decode(value, { stream: true });
+					reply += decodedText
+					if (!pushed) {
+						setMessageHistory((prev) => [...prev , { role: Role.assistant, content: reply, createdAt: new Date, sessionId: sessionId }]);
+						setPrompt('');
 						pushed = true;
 					}
-					else{
-						setMessageHistory((prev)=>{
-							const last =  prev.at(prev.length ? prev.length - 1 : 0)
-							if(last){
-								last.content+=reply;
+					else {
+						setMessageHistory((prev) => {
+							let current = [...prev];
+							const last = current.at(prev.length ? prev.length - 1 : 0);
+							if (last) {
+								last.content += decodedText;
 							}
-							return prev;
-						 }
+							return current;
+						}
 						)
 					}
-		        }
-		    }
+				}
+			}
 		}
 	}
 	const scrollRef = useRef<ScrollViewRef>(null);
@@ -60,10 +62,10 @@ export default function App() {
 
 	useInput((input, key) => {
 		if (key.upArrow) {
-			scrollRef.current?.scrollBy(-1); // Scroll up 1 line
+			scrollRef.current?.scrollBy(-3); // Scroll up 1 line
 		}
 		if (key.downArrow) {
-			scrollRef.current?.scrollBy(1); // Scroll down 1 line
+			scrollRef.current?.scrollBy(3); // Scroll down 1 line
 		}
 		if (key.pageUp) {
 			// Scroll up by viewport height
@@ -112,7 +114,7 @@ export default function App() {
 								})}
 							</ScrollView>
 						</Box>
-						<Box height={6} margin={0} width="100%">
+						<Box height={6} minHeight={6} margin={0} width="100%">
 							<PromptBox placeholder={"How can I help you ?"} value={prompt} onChange={onChange} onSubmit={onSubmit} />
 						</Box>
 					</Box>

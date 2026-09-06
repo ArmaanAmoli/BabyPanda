@@ -1,5 +1,5 @@
-import { Box, Spacer, Text } from "ink";
-import {Role, type Message} from '../types';
+import { Box} from "ink";
+import {Role} from '../types';
 import {Markdown} from './markdown'
 interface MessageBoxProps{
     content:string;
