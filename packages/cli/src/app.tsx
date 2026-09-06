@@ -1,9 +1,7 @@
 import { Box, useStdout, Text, useInput } from 'ink';
 import BigText from 'ink-big-text';
-import { useState, useEffect, useContext, useRef } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import PromptBox from './components/promptBox'
-import { PromptContextProvider } from './context/prompt'
-import { GlobalMessageQueueContextProvider, GlobalMessageQueueContext } from './context/messageQueueContext'
 import { MessageBox } from './components/messageBox'
 import { Role, type Message, type MessageDB } from './types';
 import { getMessages, sendMessage, startSession } from './services/requests'
@@ -65,7 +63,6 @@ export default function App() {
 		}
 	}
 	const scrollRef = useRef<ScrollViewRef>(null);
-	const { queue, setQueue } = useContext(GlobalMessageQueueContext);
 	const { stdout } = useStdout();
 	const [dimensions, setDimensions] = useState({
 		columns: stdout?.columns || 80,
@@ -120,8 +117,6 @@ export default function App() {
 	}, []);
 
 	return (
-		<GlobalMessageQueueContextProvider>
-			<PromptContextProvider>
 				<Box flexDirection='column' width={dimensions.columns} height={dimensions.rows} padding={0} backgroundColor={'black'}>
 					<Box height="100%" width="100%" paddingX={2} flexDirection='column'>
 						<Box flexGrow={1} flexDirection='column'>
@@ -138,7 +133,5 @@ export default function App() {
 					</Box>
 
 				</Box>
-			</PromptContextProvider>
-		</GlobalMessageQueueContextProvider>
 	);
 }

@@ -7,7 +7,7 @@ import { MCPClient } from "./mcp/client"
 import * as z from "zod";
 import type { Tool, ToolResult } from './types';
 import { MessageQueueSpecialElement } from './types';
-import { getMessages, getSession, updateSession, createMessage } from '@baby-panda/db';
+import { getMessages, getSession, createMessage } from '@baby-panda/db';
 import * as path from 'path';
 import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
@@ -39,10 +39,9 @@ export class BabyPandaAgent extends EventEmitter {
   public async init() {
     await this.connectToMCP();
     await this.getNoMessages();
+    await this.getMessageHistory();
   }
-
   private async connectToMCP() { await this.mcpClient.connectToServer((__dirname + '/mcp/index.ts')); }
-
   private async getNoMessages() {
     try {
       const session = await getSession(this.sessionId);
@@ -55,6 +54,10 @@ export class BabyPandaAgent extends EventEmitter {
       console.log(`An error occured while initiating agent ${err}`);
       throw err;
     }
+  }
+
+  private async getMessageHistory(){
+    this.messagesHistory = await getMessages(this.sessionId) as Message[];
   }
 
   private async loop() {
@@ -138,8 +141,6 @@ export class BabyPandaAgent extends EventEmitter {
             for (const char of content) {
               if (char === '\n') {
                 lineChecked += 1;
-                // console.log(content)
-                // console.log(lineChecked)
               }
             }
           }
