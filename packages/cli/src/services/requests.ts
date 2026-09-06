@@ -11,7 +11,7 @@ function concatArrayBuffer(chunks: Uint8Array[]) {
     }
     return result;
 }
-async function startSession() {
+export async function startSession() {
     const req = new Request('http://localhost:3000/start-session', { method: "POST" });
     const res = await app.fetch(req);
     if (!res.ok) { return ''; }
@@ -51,7 +51,7 @@ async function registerProvider(details: APIProvider) {
     }
 }
 
-async function sendMessage(msg: Message) {
+export async function sendMessage(msg: Message) {
     const req = new Request('http://localhost:3000/message', {
         method: "POST",
         body: JSON.stringify(msg)
@@ -60,24 +60,7 @@ async function sendMessage(msg: Message) {
     const stream = res.body;
     if(!stream){throw new Error('Got null response from server')}
     const reader = stream.getReader();
-    const textDecoder = new TextDecoder();
-    let reply = "";
-    while(true){
-        const {done , value} = await reader.read()
-        if(done){
-            reply += textDecoder.decode(); 
-            console.log(`CLI got the complete streamed reply`);
-            break;
-        }
-        else{
-            if(value){
-                const decodedText = textDecoder.decode(value, { stream: true });
-                reply+=decodedText
-                console.log(decodedText)
-            }
-        }
-    }
-    return reply;
+    return reader;
 }
 
 async function getAllSessions(): Promise<Session[]> {
@@ -103,7 +86,7 @@ async function getAllSessions(): Promise<Session[]> {
     const sessionsList = JSON.parse(sessions) as Session[]
     return sessionsList;
 }
-async function getMessages(sessionId:string): Promise<MessageDB[]> {
+export async function getMessages(sessionId:string): Promise<MessageDB[]> {
     const req = new Request('http://localhost:3000/get-messages', { method: "POST" , body:JSON.stringify({sessionId}) });
     const res = await app.fetch(req);
     if (!res.ok) { return []; }
@@ -127,6 +110,6 @@ async function getMessages(sessionId:string): Promise<MessageDB[]> {
     return messagesList;
 }
 
-const message:Message = {role:Role.user , content:"Hi baby panda how are you can plese tell me how to run a loop in javascript ?" , sessionId:'2d9dc32a-df6c-4685-8936-7be1598de04e'};
-const reply = await sendMessage(message);
-console.log("CLI:",reply);
+// const message:Message = {role:Role.user , content:"Hi baby panda how are you can plese tell me how to run a loop in javascript ?" , sessionId:'2d9dc32a-df6c-4685-8936-7be1598de04e'};
+// const reply = await sendMessage(message);
+// console.log("CLI:",reply);

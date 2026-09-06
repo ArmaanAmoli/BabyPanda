@@ -1,17 +1,14 @@
-import { Box, useInput } from 'ink'
-import { TextInput } from '@inkjs/ui'
-import React, { useState, useRef , useContext} from 'react'
-import type { PromptBoxArgs } from '../types'
+import { Box, useInput , Text} from 'ink'
+// import { TextInput } from '@inkjs/ui'
+import TextInput from 'ink-text-input';
+import { useState, useRef , useContext} from 'react'
+import { type PromptBoxArgs , type MessageStatusElement, Role } from '../types'
 import { ScrollView, type ScrollViewRef } from "ink-scroll-view";
 import {PromptContext} from "../context/prompt"
+import {GlobalMessageQueueContext} from '../context/messageQueueContext'
 
-export default function PromptBox({ placeholder, onSave }: PromptBoxArgs) {
+export default function PromptBox({ placeholder, value , onChange , onSubmit}: PromptBoxArgs) {
     const scrollRef = useRef<ScrollViewRef>(null);
-    const [prompt, setPrompt] = useContext(PromptContext) as [string , React.Dispatch<React.SetStateAction<string>>];
-    const onChangeOfPrompt = (value: string) => {
-        setPrompt(value)
-        console.log(prompt);
-    }
     // 2. Handle Keyboard Input
     useInput((input, key) => {
         if (key.upArrow) {
@@ -29,17 +26,12 @@ export default function PromptBox({ placeholder, onSave }: PromptBoxArgs) {
             const height = scrollRef.current?.getViewportHeight() || 1;
             scrollRef.current?.scrollBy(height);
         }
-        if(key.return){
-            
-        }
     });
     return (
-        <Box borderStyle={'single'} borderColor={'#FFAF87'} width="100%" height="100%">
-            {/* convert this into a placeholder. */}
-            <ScrollView ref={scrollRef}>
-                <TextInput placeholder={placeholder} defaultValue={prompt} onChange={onChangeOfPrompt} />
+        <Box borderStyle={'single'} borderColor={'white'} width="100%" height="100%" backgroundColor={'black'}>
+            <ScrollView ref={scrollRef} height="100%" width="100%">
+                <TextInput value={value} placeholder={placeholder} onChange={onChange} onSubmit={onSubmit}/>
             </ScrollView>
         </Box>
-
     );
 }
