@@ -38,6 +38,7 @@ export class MCPClient {
         const finalResult: ToolResult[] = [];
         for (const tool of tools) {
             try {
+                console.log("MCP client",tool);
                 const result = await this.mcp.callTool(tool);
 
                 finalResult.push({ id: tool.id, name: tool.name, args: tool.args, result: result });

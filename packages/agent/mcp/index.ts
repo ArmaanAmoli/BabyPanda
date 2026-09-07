@@ -9,15 +9,16 @@ const server = new McpServer({
 })
 
 server.registerTool(
-    "read_file",
+    "read",
     {
         description:"Read content of a file",
         inputSchema: z.object({
             path:z.string().describe("Location of file"),
         }),
     },
-    async ({path})=>{
-        const text:string = await read(path);
+    async (args)=>{
+        console.log("in the read tool" , args.path)
+        const text:string = await read(args.path);
         return {content:[{
             type:'text',
             text: text
