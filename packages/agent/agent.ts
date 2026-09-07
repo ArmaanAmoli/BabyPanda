@@ -40,8 +40,9 @@ export class BabyPandaAgent extends EventEmitter {
     await this.connectToMCP();
     await this.getNoMessages();
     await this.getMessageHistory();
+    console.log("agent:init");
   }
-  private async connectToMCP() { await this.mcpClient.connectToServer((__dirname + '/mcp/index.ts')); }
+  private async connectToMCP() { await this.mcpClient.connectToServer((__dirname + '/mcp/index.ts')); console.log("agent:MCP") }
   private async getNoMessages() {
     try {
       const session = await getSession(this.sessionId);
@@ -49,6 +50,7 @@ export class BabyPandaAgent extends EventEmitter {
         throw new Error('Session Id no found')
       }
       this.numberOfMessages = session[0].messagesCount
+      console.log("agent:MessageCount")
     }
     catch (err) {
       console.log(`An error occured while initiating agent ${err}`);
@@ -58,6 +60,7 @@ export class BabyPandaAgent extends EventEmitter {
 
   private async getMessageHistory(){
     this.messagesHistory = await getMessages(this.sessionId) as Message[];
+    console.log("agent:MessageHistory")
   }
 
   private async loop() {
@@ -147,7 +150,7 @@ export class BabyPandaAgent extends EventEmitter {
         }
       });
       response.response?.data.on('end', async () => {
-        // console.log("full reply: \n", fullReply);
+        console.log("full reply: \n", fullReply);
         //store to db
         try {
           await createMessage(this.sessionId, fullReply, Role.assistant);
@@ -160,7 +163,7 @@ export class BabyPandaAgent extends EventEmitter {
           // tool execution
           const ReplyJsonSchema = z.object({
             role: z.string(),
-            toolCall: z.array(z.object(
+            tool_call: z.array(z.object(
               {
                 id: z.string(),
                 type: z.string(),
@@ -170,10 +173,17 @@ export class BabyPandaAgent extends EventEmitter {
             ))
           });
           type ReplyJson = z.infer<typeof ReplyJsonSchema>
-          let replyJson = JSON.parse(fullReply)
+          let replyJson = JSON.parse(fullReply) as ReplyJson
+          console.log('reply-json' , replyJson)
+          console.log(replyJson.tool_call[0]!.arguments)
           try {
-            if (ReplyJsonSchema.parse(replyJson)) {
-              let toolCalls = (replyJson as ReplyJson).toolCall
+            console.log('Try:execute tool call')
+            const parsed = ReplyJsonSchema.parse(replyJson)
+            console.log(parsed)
+            if (parsed) {
+              console.log('parsed')
+              let toolCalls = (replyJson as ReplyJson).tool_call;
+              console.log('raw-tool-call-message-array' , toolCalls);
               const toolCallsT: Tool[] = toolCalls.map((tool) => {
                 return {
                   id: tool.id,
@@ -181,7 +191,9 @@ export class BabyPandaAgent extends EventEmitter {
                   args: tool.arguments
                 }
               });
+              console.log('Toolcall-message-array' , toolCallsT);
               const toolResults = await this.mcpClient.callTools(toolCallsT);
+              console.log('agent:tool result from mcp' , toolResults)
               // const lastToolResult = toolResults.pop()
               let i = 0;
               while (i < toolResults.length) {
