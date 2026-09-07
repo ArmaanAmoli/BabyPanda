@@ -194,7 +194,7 @@ export class BabyPandaAgent extends EventEmitter {
                 return {
                   id: tool.id,
                   name: tool.function,
-                  args: tool.arguments
+                  arguments: tool.arguments
                 }
               });
               console.log('Toolcall-message-array' , toolCallsT);

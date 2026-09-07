@@ -32,6 +32,6 @@ export type MessageQueueMessage = Message & {isResponded:boolean | false}
 export interface Tool{
     id:string
     name:string;
-    args:{[x:string]:unknown} | undefined;
+    arguments:{[x:string]:unknown} | undefined;
 }
 export type ToolResult = Tool & {result?:unknown , error?:string};

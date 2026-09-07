@@ -41,9 +41,9 @@ export class MCPClient {
                 console.log("MCP client",tool);
                 const result = await this.mcp.callTool(tool);
 
-                finalResult.push({ id: tool.id, name: tool.name, args: tool.args, result: result });
+                finalResult.push({ id: tool.id, name: tool.name, arguments: tool.arguments, result: result });
             } catch (err) {
-                finalResult.push({ id: tool.id, name: tool.name, args: tool.args, error: String(err) });
+                finalResult.push({ id: tool.id, name: tool.name, arguments: tool.arguments, error: String(err) });
                 console.error(`An error occured while calling ${tool} \n ${err}`);
             }
         }
