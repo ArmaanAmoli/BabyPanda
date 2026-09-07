@@ -25,8 +25,8 @@ class BabyPandaClient {
                 temperature: 1,
                 top_p: 0.95,
                 // max_tokens: 16384,
-                reasoning_effort: reasoning_effort ? reasoning_effort : 'none',
-                seed: null,
+                // reasoning_effort: reasoning_effort ? reasoning_effort : 'none',
+                seed: 42,
                 stream: true,
                 messages: messages
             },

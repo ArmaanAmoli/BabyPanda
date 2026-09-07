@@ -1,5 +1,5 @@
 import { BabyPandaClient } from './apiCall'
-import type { Message, UrlApi, ToolMessage } from './types'
+import type { Message, UrlApi, ToolMessage , MessageRegular } from './types'
 import { ReasoningEffort, Role } from './types'
 import { readFileSync } from "fs"
 import { EventEmitter } from "events"
@@ -59,8 +59,14 @@ export class BabyPandaAgent extends EventEmitter {
   }
 
   private async getMessageHistory(){
-    this.messagesHistory = await getMessages(this.sessionId) as Message[];
+    const messageHistoryFromDb = await getMessages(this.sessionId);
+
+    // this.messagesHistory = await getMessages(this.sessionId) as Message[];
     console.log("agent:MessageHistory")
+    return messageHistoryFromDb.map((msg)=>{
+      const msgApi:Message = {role:msg.role! , sessionId:msg.sessionId! , content:msg.content!}
+      return msgApi;
+    })
   }
 
   private async loop() {
@@ -239,6 +245,7 @@ export class BabyPandaAgent extends EventEmitter {
   }
 
   async message(msg: Message) {
+    await createMessage(this.sessionId , msg.content as string , msg.role);
     this.messageQueue.push(msg);
     if (this.isRunning) {
       return;

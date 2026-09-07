@@ -29,6 +29,8 @@ ID FORMAT:
 - Valid:    call_a1b2c3, call_000001, call_xyzabc, call_9f3k2q
 - Invalid:  call_1, call_ab, call_ABC123, call_a1b2c3d (too long)
 
+STRICT JSON OUTPUT REQUIREMENT: Your entire response must be a single, valid JSON object parseable by JSON.parse(). You must properly escape all string values: replace all literal newlines with \n, escape all double quotes as \", and escape tabs as \t. Do not include unescaped control characters or unescaped markdown blocks inside JSON string properties. The output must be completely compactible onto a single line without breaking syntax.
+
 RULES:
 - Never fabricate a tool result.
 - Never continue reasoning as if a tool ran before its
