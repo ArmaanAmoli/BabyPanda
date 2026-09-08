@@ -9,7 +9,7 @@ export class MCPClient {
     constructor() {
         this.mcp = new Client({ name: "baby-panda/mcp-client", version: "1.0.0" });
     }
-    async connectToServer(serverScriptPath: string) {
+    async connectToServer(serverScriptPath: string, cwd: string) {
         try {
             const isJs = serverScriptPath.endsWith(".ts");
             if (!isJs) {
@@ -18,6 +18,11 @@ export class MCPClient {
             this.transport = new StdioClientTransport({
                 command: "npx",
                 args: ["tsx", serverScriptPath],
+                cwd: cwd,
+                env: {
+                    ...process.env,
+                    CLIENT_CWD: cwd
+                }
             });
             await this.mcp.connect(this.transport);
             const toolsResult = await this.mcp.listTools();
@@ -38,7 +43,7 @@ export class MCPClient {
         const finalResult: ToolResult[] = [];
         for (const tool of tools) {
             try {
-                console.log("MCP client",tool);
+                console.log("MCP client", tool);
                 const result = await this.mcp.callTool(tool);
 
                 finalResult.push({ id: tool.id, name: tool.name, arguments: tool.arguments, result: result });

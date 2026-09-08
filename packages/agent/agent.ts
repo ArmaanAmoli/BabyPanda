@@ -12,13 +12,15 @@ import * as path from 'path';
 import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+const cwd = process.cwd();
 
 export class BabyPandaAgent extends EventEmitter {
   private client: BabyPandaClient;
   private isRunning = false;
   private messageQueue: (Message | MessageQueueSpecialElement)[] = [];
   private messagesHistory: Message[] = [];
-  private mcpClient: MCPClient = new MCPClient()
+  private mcpClient: MCPClient = new MCPClient();
+  private cwd = cwd;
 
   instructions: string;
   model: string;
@@ -27,8 +29,9 @@ export class BabyPandaAgent extends EventEmitter {
   numberOfMessages: number = 0;
 
   constructor({ url, apikey }: UrlApi, sessionId: string) {
-    console.log(sessionId, "in agent constructor")
     super();
+    console.log("agent cwd " , this.cwd);
+    console.log(sessionId, "in agent constructor")
     this.client = new BabyPandaClient({ url, apikey });
     this.model = 'nvidia/nemotron-3.5-lightning-30b-a3b'; // This will be our default model
     this.instructions = readFileSync((__dirname + '/instructions.txt'), { encoding: 'utf-8' });
@@ -42,7 +45,7 @@ export class BabyPandaAgent extends EventEmitter {
     await this.getMessageHistory();
     console.log("agent:init");
   }
-  private async connectToMCP() { await this.mcpClient.connectToServer((__dirname + '/mcp/index.ts')); console.log("agent:MCP") }
+  private async connectToMCP() { await this.mcpClient.connectToServer((__dirname + '/mcp/index.ts') , this.cwd); console.log("agent:MCP") }
   private async getNoMessages() {
     try {
       const session = await getSession(this.sessionId);
@@ -73,7 +76,7 @@ export class BabyPandaAgent extends EventEmitter {
     while (this.messageQueue.length !== 0) {
       console.log("in the loop")
       this.isRunning = true;
-      const messages: Message[] = [{ role: Role.system, content: this.instructions, sessionId: this.sessionId }, ...this.messagesHistory]// need optimization
+      const messages: Message[] = [{ role: Role.system, content: (this.instructions + `user current working directory: "${this.cwd}"`), sessionId: this.sessionId }, ...this.messagesHistory]// need optimization
       if (!this.messageQueue[0]) { // if the first message of messageQueue is undefined then skip this iteration (but atleast tell the user later)
         this.messageQueue.splice(0, 1);
         console.error("message undefined")

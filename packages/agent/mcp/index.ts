@@ -3,6 +3,7 @@ import {StdioServerTransport} from "@modelcontextprotocol/server/stdio";
 import {read} from './tools/filesystem'
 import {z} from "zod";
 
+const cwd = process.env.CLIENT_CWD || process.cwd();
 const server = new McpServer({
     name:"baby-panda/mcp",
     version:"1.0.0",

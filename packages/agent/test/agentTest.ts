@@ -2,6 +2,7 @@ import {BabyPandaAgent} from '../agent.ts'
 import type {Message } from '../types.ts'
 import {Role} from '../types.ts'
 
+
 const sessionId = '471582a1-8894-4a58-9800-882f40f86fc2';
 const agent = new BabyPandaAgent({url:'https://integrate.api.nvidia.com/v1/chat/completions' , apikey:process.env['NVIDIA_API_KEY']!} , sessionId);
 await agent.init()

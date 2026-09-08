@@ -7,7 +7,7 @@ const execPromis = promisify(exec);
 
 export async function read(path: string) {
     try {
-        const data = await fs.readFile(path, { encoding: 'utf8' });
+        const data = await fs.readFile((path), { encoding: 'utf8' });
         return data;
     } catch (err) {
         throw new Error(`An error occured while reading file: ${err}`);
