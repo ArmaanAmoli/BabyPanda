@@ -56,8 +56,8 @@ export async function edit(args: EditArgs) {
             throw new Error(`More than 1 substring found`)
         }
         else if(count === 1){
-            data.replace(args.old_str , args.old_str);
-            await fsp.writeFile(args.path , data);
+            const newData = data.replace(args.old_str , args.new_str);
+            await fsp.writeFile(args.path , newData);
             return true;
         }
         throw new Error(`string not found`)
