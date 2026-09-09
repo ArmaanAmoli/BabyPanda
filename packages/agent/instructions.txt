@@ -102,6 +102,31 @@ Usage notes:
                  directory dotfiles) even if `force` is requested.
                - When uncertain whether a path is safe, run fs.list
                  first to confirm scope before deleting.
+7) edit — Make a targeted change to an existing file by replacing an 
+exact snippet of its content with new content.
+
+Parameters:
+- path (string, required): path to the file to edit.
+- old_str (string, required): the exact text to find and replace. Must 
+  match the file's current content exactly, including whitespace, 
+  indentation, and line breaks. Must be unique within the file — if 
+  the same text appears more than once, include additional surrounding 
+  lines until the snippet uniquely identifies one location.
+- new_str (string, required): the text to replace old_str with.
+
+Behavior:
+- Fails if old_str is not found in the file (it may be stale — re-read 
+  the file to confirm its current content before retrying).
+- Fails if old_str matches more than one location in the file (widen 
+  old_str with more surrounding context to make it unique).
+- To insert new content without deleting anything, include the 
+  surrounding unchanged lines in both old_str and new_str, adding the 
+  new lines only in new_str.
+- To delete content, set new_str to an empty string.
+- This tool replaces only the matched portion — the rest of the file 
+  is left untouched. Do not use this tool to rewrite an entire file; 
+  use it for targeted, localized changes.
+  
 {
   "role": "user",
   "content": "Summarize the text.txt file"
