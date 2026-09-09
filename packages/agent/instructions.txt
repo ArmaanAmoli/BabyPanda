@@ -40,12 +40,27 @@ RULES:
   from an earlier point in the session — always resolve
   "tool_call_id" by nearest matching "role":"tool" response that
   immediately follows the call, not by global uniqueness.
-1) read
-   Purpose:    Read the full contents of a file
-   Arguments:  path: string   — location of the file to read
-   Returns:    content: string — raw file contents
-   Notes:      Fails if `path` does not exist; do not pre-guess
-               file contents before the tool result arrives.
+1) read — Read the contents of a file, optionally restricted to a 
+line range.
+
+Parameters:
+- path (string, required): path to the file.
+- offset (integer, optional): line number to start reading from 
+  (1-indexed — line 1 is the first line of the file). If omitted, 
+  reading starts at the beginning of the file.
+- limit (integer, optional): number of lines to return, counted from 
+  offset. E.g. offset=200, limit=50 returns lines 200 through 249. 
+  If omitted, reads to the end of the file.
+
+Usage notes:
+- For large files, prefer specifying offset/limit rather than reading 
+  the whole file — use grep or an earlier read's output to find the 
+  approximate line range you need first.
+- If a file exceeds [N] lines and no offset/limit is given, only the 
+  first [N] lines are returned, with a note indicating the file was 
+  truncated and how to read further.
+- The returned content is prefixed with line numbers for reference 
+  when specifying edits or requesting a different range.
 2) write
    Purpose:    Write (or overwrite) a file
    Arguments:  path: string

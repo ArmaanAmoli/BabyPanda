@@ -1,14 +1,38 @@
-import * as fs from 'node:fs/promises';
+import * as fsp from 'node:fs/promises';
+import * as fs from 'fs';
 import { exec } from 'node:child_process';
 import { promisify } from 'node:util';
 import { spawn } from 'child_process';
+import * as readline from 'readline';
 
 const execPromis = promisify(exec);
 
-export async function read(path: string) {
+interface ReadArgs{
+    path:string,
+    offset?:number,
+    limit?:number,
+}
+export async function read(args:ReadArgs) {
     try {
-        const data = await fs.readFile((path), { encoding: 'utf8' });
-        return data;
+        if(!args.limit || !args.offset){
+            const data = await fsp.readFile((args.path), { encoding: 'utf8' });
+            return data;
+        }
+        const fileStream = fs.createReadStream(args.path);
+        const rl = readline.createInterface({
+            input:fileStream,
+            crlfDelay:Infinity
+        });
+        let i = 0;
+        let result = ``;
+        for await (const line of rl){
+            i+=1;
+            if(i>=args.offset && (i<=(i+args.limit-1))){
+                result+= line;
+                if(i=== (i+args.limit-1)) break;
+            }
+        }
+        return result;
     } catch (err) {
         throw new Error(`An error occured while reading file: ${err}`);
     }
@@ -16,7 +40,7 @@ export async function read(path: string) {
 
 export async function write(path: string, content: string) { //create new file
     try {
-        await fs.writeFile(path, content);
+        await fsp.writeFile(path, content);
     } catch (err) {
         throw new Error(`An error occured while writing file: ${err}`);
     }
@@ -98,5 +122,5 @@ interface RmOptions {
     }
 
 export async function del(path:string , options?:RmOptions) {
-    fs.rm(path , options);
+    fsp.rm(path , options);
 }

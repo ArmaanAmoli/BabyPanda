@@ -15,11 +15,13 @@ server.registerTool(
         description:"Read content of a file",
         inputSchema: z.object({
             path:z.string().describe("Location of file"),
+            offset:z.number().optional().describe("Starting line number"),
+            limit:z.number().optional().describe("Number of lines coming after offset (including offset)")
         }),
     },
     async (args)=>{
         console.log("in the read tool" , args.path)
-        const text:string = await read(args.path);
+        const text:string = await read(args);
         return {content:[{
             type:'text',
             text: text
