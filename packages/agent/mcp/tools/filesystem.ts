@@ -52,10 +52,14 @@ function getLineNumber(content:string , index:number):number{
 
 export async function edit(args: EditArgs) {
     try {
-        const data = await fsp.readFile((args.path), { encoding: 'utf8' });
+        const raw = await fsp.readFile((args.path), { encoding: 'utf8' });
+        const usesCRLF = raw.includes('\r\n');
+        const data = usesCRLF ? raw.replace(/\r\n/g , '\n') : raw;
+        const oldStr = args.old_str.replace(/\r\n/g, '\n');
+        const newStr = args.new_str.replace(/\r\n/g, '\n');
         let count = 0, pos = 0;
         let lines = []
-        while ((pos = data.indexOf(args.old_str, pos)) !== -1) {
+        while ((pos = data.indexOf(oldStr, pos)) !== -1) {
             lines.push(getLineNumber(data , pos));
             pos += args.old_str.length;
             count++;
@@ -67,7 +71,7 @@ Include more surrounding context (e.g. the enclosing function
 name or a nearby comment) to uniquely identify the location you mean.`)
         }
         else if (count === 1) {
-            const newData = data.replace(args.old_str, args.new_str);
+            const newData = data.replace(oldStr, newStr);
             await fsp.writeFile(args.path, newData);
             return true;
         }
