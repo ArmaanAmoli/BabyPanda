@@ -7,34 +7,63 @@ import * as readline from 'readline';
 
 const execPromis = promisify(exec);
 
-interface ReadArgs{
-    path:string,
-    offset?:number,
-    limit?:number,
-}
-export async function read(args:ReadArgs) {
+interface ReadArgs {
+    path: string,
+    offset?: number,
+    limit?: number,
+};
+interface EditArgs {
+    path: string,
+    old_str: string,
+    new_str: string
+};
+
+export async function read(args: ReadArgs) {
     try {
-        if(!args.limit || !args.offset){
+        if (!args.limit || !args.offset) {
             const data = await fsp.readFile((args.path), { encoding: 'utf8' });
             return data;
         }
         const fileStream = fs.createReadStream(args.path);
         const rl = readline.createInterface({
-            input:fileStream,
-            crlfDelay:Infinity
+            input: fileStream,
+            crlfDelay: Infinity
         });
         let i = 0;
         let result = ``;
-        for await (const line of rl){
-            i+=1;
-            if(i>=args.offset && (i<=(i+args.limit-1))){
-                result+= line;
-                if(i=== (i+args.limit-1)) break;
+        for await (const line of rl) {
+            i += 1;
+            if (i >= args.offset && (i <= (i + args.limit - 1))) {
+                result += line;
+                if (i === (i + args.limit - 1)) break;
             }
         }
         return result;
     } catch (err) {
         throw new Error(`An error occured while reading file: ${err}`);
+    }
+}
+
+export async function edit(args: EditArgs) {
+    try {
+        const data = await fsp.readFile((args.path), { encoding: 'utf8' });
+        let count = 0 , pos = 0;
+        while((pos=data.indexOf(args.old_str , pos)) !== -1){
+            pos+=args.old_str.length;
+            count++;
+        }
+        if(count>1){
+            throw new Error(`More than 1 substring found`)
+        }
+        else if(count === 1){
+            data.replace(args.old_str , args.old_str);
+            await fsp.writeFile(args.path , data);
+            return true;
+        }
+        throw new Error(`string not found`)
+    }
+    catch (err) {
+        throw new Error(`An error occured while editing file: ${err}`);
     }
 }
 
@@ -89,38 +118,35 @@ export async function list() {
     return { stdout, stderr }
 }
 
-export async function edit(path:string , line_No:number , isReplace:boolean) {
+interface RmOptions {
+    /**
+     * When `true`, exceptions will be ignored if `path` does not exist.
+     * @default false
+     */
+    force?: boolean | undefined;
+    /**
+     * If an `EBUSY`, `EMFILE`, `ENFILE`, `ENOTEMPTY`, or
+     * `EPERM` error is encountered, Node.js will retry the operation with a linear
+     * backoff wait of `retryDelay` ms longer on each try. This option represents the
+     * number of retries. This option is ignored if the `recursive` option is not
+     * `true`.
+     * @default 0
+     */
+    maxRetries?: number | undefined;
+    /**
+     * If `true`, perform a recursive directory removal. In
+     * recursive mode, operations are retried on failure.
+     * @default false
+     */
+    recursive?: boolean | undefined;
+    /**
+     * The amount of time in milliseconds to wait between retries.
+     * This option is ignored if the `recursive` option is not `true`.
+     * @default 100
+     */
+    retryDelay?: number | undefined;
 }
 
-interface RmOptions {
-        /**
-         * When `true`, exceptions will be ignored if `path` does not exist.
-         * @default false
-         */
-        force?: boolean | undefined;
-        /**
-         * If an `EBUSY`, `EMFILE`, `ENFILE`, `ENOTEMPTY`, or
-         * `EPERM` error is encountered, Node.js will retry the operation with a linear
-         * backoff wait of `retryDelay` ms longer on each try. This option represents the
-         * number of retries. This option is ignored if the `recursive` option is not
-         * `true`.
-         * @default 0
-         */
-        maxRetries?: number | undefined;
-        /**
-         * If `true`, perform a recursive directory removal. In
-         * recursive mode, operations are retried on failure.
-         * @default false
-         */
-        recursive?: boolean | undefined;
-        /**
-         * The amount of time in milliseconds to wait between retries.
-         * This option is ignored if the `recursive` option is not `true`.
-         * @default 100
-         */
-        retryDelay?: number | undefined;
-    }
-
-export async function del(path:string , options?:RmOptions) {
-    fsp.rm(path , options);
+export async function del(path: string, options?: RmOptions) {
+    fsp.rm(path, options);
 }
