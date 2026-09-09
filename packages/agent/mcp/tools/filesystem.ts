@@ -44,20 +44,31 @@ export async function read(args: ReadArgs) {
     }
 }
 
+function getLineNumber(content:string , index:number):number{
+    const before = content.slice(0,index);
+    const newLineCount = (before.match(/\n/g) || []).length;
+    return newLineCount+1;
+}
+
 export async function edit(args: EditArgs) {
     try {
         const data = await fsp.readFile((args.path), { encoding: 'utf8' });
-        let count = 0 , pos = 0;
-        while((pos=data.indexOf(args.old_str , pos)) !== -1){
-            pos+=args.old_str.length;
+        let count = 0, pos = 0;
+        let lines = []
+        while ((pos = data.indexOf(args.old_str, pos)) !== -1) {
+            lines.push(getLineNumber(data , pos));
+            pos += args.old_str.length;
             count++;
         }
-        if(count>1){
-            throw new Error(`More than 1 substring found`)
+        if (count > 1) {
+            throw new Error(
+`old_str matched ${count} times in ${args.path} at lines ${lines}.
+Include more surrounding context (e.g. the enclosing function 
+name or a nearby comment) to uniquely identify the location you mean.`)
         }
-        else if(count === 1){
-            const newData = data.replace(args.old_str , args.new_str);
-            await fsp.writeFile(args.path , newData);
+        else if (count === 1) {
+            const newData = data.replace(args.old_str, args.new_str);
+            await fsp.writeFile(args.path, newData);
             return true;
         }
         throw new Error(`string not found`)
