@@ -3,21 +3,25 @@ import {StdioServerTransport} from "@modelcontextprotocol/server/stdio";
 import {read} from './tools/filesystem'
 import {z} from "zod";
 
+const cwd = process.env.CLIENT_CWD || process.cwd();
 const server = new McpServer({
     name:"baby-panda/mcp",
     version:"1.0.0",
 })
 
 server.registerTool(
-    "read_file",
+    "read",
     {
         description:"Read content of a file",
         inputSchema: z.object({
             path:z.string().describe("Location of file"),
+            offset:z.number().optional().describe("Starting line number"),
+            limit:z.number().optional().describe("Number of lines coming after offset (including offset)")
         }),
     },
-    async ({path})=>{
-        const text:string = await read(path);
+    async (args)=>{
+        console.log("in the read tool" , args.path)
+        const text:string = await read(args);
         return {content:[{
             type:'text',
             text: text

@@ -2,6 +2,7 @@
 import React from 'react';
 import { render } from 'ink';
 import App from './app';
+import Bun from 'bun'
 
 if (typeof Bun !== 'undefined') {
 	process.stdin.resume();

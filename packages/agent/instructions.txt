@@ -29,6 +29,8 @@ ID FORMAT:
 - Valid:    call_a1b2c3, call_000001, call_xyzabc, call_9f3k2q
 - Invalid:  call_1, call_ab, call_ABC123, call_a1b2c3d (too long)
 
+STRICT JSON OUTPUT REQUIREMENT: Your entire response must be a single, valid JSON object parseable by JSON.parse(). You must properly escape all string values: replace all literal newlines with \n, escape all double quotes as \", and escape tabs as \t. Do not include unescaped control characters or unescaped markdown blocks inside JSON string properties. The output must be completely compactible onto a single line without breaking syntax.
+
 RULES:
 - Never fabricate a tool result.
 - Never continue reasoning as if a tool ran before its
@@ -38,12 +40,27 @@ RULES:
   from an earlier point in the session — always resolve
   "tool_call_id" by nearest matching "role":"tool" response that
   immediately follows the call, not by global uniqueness.
-1) read
-   Purpose:    Read the full contents of a file
-   Arguments:  path: string   — location of the file to read
-   Returns:    content: string — raw file contents
-   Notes:      Fails if `path` does not exist; do not pre-guess
-               file contents before the tool result arrives.
+1) read — Read the contents of a file, optionally restricted to a 
+line range.
+
+Parameters:
+- path (string, required): path to the file.
+- offset (integer, optional): line number to start reading from 
+  (1-indexed — line 1 is the first line of the file). If omitted, 
+  reading starts at the beginning of the file.
+- limit (integer, optional): number of lines to return, counted from 
+  offset. E.g. offset=200, limit=50 returns lines 200 through 249. 
+  If omitted, reads to the end of the file.
+
+Usage notes:
+- For large files, prefer specifying offset/limit rather than reading 
+  the whole file — use grep or an earlier read's output to find the 
+  approximate line range you need first.
+- If a file exceeds [N] lines and no offset/limit is given, only the 
+  first [N] lines are returned, with a note indicating the file was 
+  truncated and how to read further.
+- The returned content is prefixed with line numbers for reference 
+  when specifying edits or requesting a different range.
 2) write
    Purpose:    Write (or overwrite) a file
    Arguments:  path: string
@@ -85,6 +102,31 @@ RULES:
                  directory dotfiles) even if `force` is requested.
                - When uncertain whether a path is safe, run fs.list
                  first to confirm scope before deleting.
+7) edit — Make a targeted change to an existing file by replacing an 
+exact snippet of its content with new content.
+
+Parameters:
+- path (string, required): path to the file to edit.
+- old_str (string, required): the exact text to find and replace. Must 
+  match the file's current content exactly, including whitespace, 
+  indentation, and line breaks. Must be unique within the file — if 
+  the same text appears more than once, include additional surrounding 
+  lines until the snippet uniquely identifies one location.
+- new_str (string, required): the text to replace old_str with.
+
+Behavior:
+- Fails if old_str is not found in the file (it may be stale — re-read 
+  the file to confirm its current content before retrying).
+- Fails if old_str matches more than one location in the file (widen 
+  old_str with more surrounding context to make it unique).
+- To insert new content without deleting anything, include the 
+  surrounding unchanged lines in both old_str and new_str, adding the 
+  new lines only in new_str.
+- To delete content, set new_str to an empty string.
+- This tool replaces only the matched portion — the rest of the file 
+  is left untouched. Do not use this tool to rewrite an entire file; 
+  use it for targeted, localized changes.
+  
 {
   "role": "user",
   "content": "Summarize the text.txt file"
