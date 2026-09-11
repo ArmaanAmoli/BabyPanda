@@ -33,7 +33,6 @@ app.post('/message', async (c) => {
     return new Response("missing data {sessionId , content , role}", { status: 400, statusText: "Bad Request" });
   }
   try {
-    await createMessage(body.sessionId, body.content, body.role); // store message to db
     let agent: BabyPandaAgent | undefined;
     if (agentStore.get(body.sessionId)) {
       //session already exist

@@ -1,5 +1,5 @@
 import { BabyPandaClient } from './apiCall'
-import type { Message, UrlApi, ToolMessage } from './types'
+import type { Message, UrlApi, ToolMessage , MessageRegular } from './types'
 import { ReasoningEffort, Role } from './types'
 import { readFileSync } from "fs"
 import { EventEmitter } from "events"
@@ -7,18 +7,20 @@ import { MCPClient } from "./mcp/client"
 import * as z from "zod";
 import type { Tool, ToolResult } from './types';
 import { MessageQueueSpecialElement } from './types';
-import { getMessages, getSession, updateSession, createMessage } from '@baby-panda/db';
+import { getMessages, getSession, createMessage } from '@baby-panda/db';
 import * as path from 'path';
 import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+const cwd = process.cwd();
 
 export class BabyPandaAgent extends EventEmitter {
   private client: BabyPandaClient;
   private isRunning = false;
   private messageQueue: (Message | MessageQueueSpecialElement)[] = [];
   private messagesHistory: Message[] = [];
-  private mcpClient: MCPClient = new MCPClient()
+  private mcpClient: MCPClient = new MCPClient();
+  private cwd = cwd;
 
   instructions: string;
   model: string;
@@ -27,8 +29,9 @@ export class BabyPandaAgent extends EventEmitter {
   numberOfMessages: number = 0;
 
   constructor({ url, apikey }: UrlApi, sessionId: string) {
-    console.log(sessionId, "in agent constructor")
     super();
+    console.log("agent cwd " , this.cwd);
+    console.log(sessionId, "in agent constructor")
     this.client = new BabyPandaClient({ url, apikey });
     this.model = 'nvidia/nemotron-3.5-lightning-30b-a3b'; // This will be our default model
     this.instructions = readFileSync((__dirname + '/instructions.txt'), { encoding: 'utf-8' });
@@ -39,10 +42,10 @@ export class BabyPandaAgent extends EventEmitter {
   public async init() {
     await this.connectToMCP();
     await this.getNoMessages();
+    await this.getMessageHistory();
+    console.log("agent:init");
   }
-
-  private async connectToMCP() { await this.mcpClient.connectToServer((__dirname + '/mcp/index.ts')); }
-
+  private async connectToMCP() { await this.mcpClient.connectToServer((__dirname + '/mcp/index.ts') , this.cwd); console.log("agent:MCP") }
   private async getNoMessages() {
     try {
       const session = await getSession(this.sessionId);
@@ -50,6 +53,7 @@ export class BabyPandaAgent extends EventEmitter {
         throw new Error('Session Id no found')
       }
       this.numberOfMessages = session[0].messagesCount
+      console.log("agent:MessageCount")
     }
     catch (err) {
       console.log(`An error occured while initiating agent ${err}`);
@@ -57,11 +61,22 @@ export class BabyPandaAgent extends EventEmitter {
     }
   }
 
+  private async getMessageHistory(){
+    const messageHistoryFromDb = await getMessages(this.sessionId);
+
+    // this.messagesHistory = await getMessages(this.sessionId) as Message[];
+    console.log("agent:MessageHistory")
+    return messageHistoryFromDb.map((msg)=>{
+      const msgApi:Message = {role:msg.role! , sessionId:msg.sessionId! , content:msg.content!}
+      return msgApi;
+    })
+  }
+
   private async loop() {
     while (this.messageQueue.length !== 0) {
       console.log("in the loop")
       this.isRunning = true;
-      const messages: Message[] = [{ role: Role.system, content: this.instructions, sessionId: this.sessionId }, ...this.messagesHistory]// need optimization
+      const messages: Message[] = [{ role: Role.system, content: (this.instructions + `user current working directory: "${this.cwd}"`), sessionId: this.sessionId }, ...this.messagesHistory]// need optimization
       if (!this.messageQueue[0]) { // if the first message of messageQueue is undefined then skip this iteration (but atleast tell the user later)
         this.messageQueue.splice(0, 1);
         console.error("message undefined")
@@ -138,15 +153,13 @@ export class BabyPandaAgent extends EventEmitter {
             for (const char of content) {
               if (char === '\n') {
                 lineChecked += 1;
-                // console.log(content)
-                // console.log(lineChecked)
               }
             }
           }
         }
       });
       response.response?.data.on('end', async () => {
-        // console.log("full reply: \n", fullReply);
+        console.log("full reply: \n", fullReply);
         //store to db
         try {
           await createMessage(this.sessionId, fullReply, Role.assistant);
@@ -159,7 +172,7 @@ export class BabyPandaAgent extends EventEmitter {
           // tool execution
           const ReplyJsonSchema = z.object({
             role: z.string(),
-            toolCall: z.array(z.object(
+            tool_call: z.array(z.object(
               {
                 id: z.string(),
                 type: z.string(),
@@ -169,18 +182,27 @@ export class BabyPandaAgent extends EventEmitter {
             ))
           });
           type ReplyJson = z.infer<typeof ReplyJsonSchema>
-          let replyJson = JSON.parse(fullReply)
+          let replyJson = JSON.parse(fullReply) as ReplyJson
+          console.log('reply-json' , replyJson)
+          console.log(replyJson.tool_call[0]!.arguments)
           try {
-            if (ReplyJsonSchema.parse(replyJson)) {
-              let toolCalls = (replyJson as ReplyJson).toolCall
+            console.log('Try:execute tool call')
+            const parsed = ReplyJsonSchema.parse(replyJson)
+            console.log(parsed)
+            if (parsed) {
+              console.log('parsed')
+              let toolCalls = (replyJson as ReplyJson).tool_call;
+              console.log('raw-tool-call-message-array' , toolCalls);
               const toolCallsT: Tool[] = toolCalls.map((tool) => {
                 return {
                   id: tool.id,
                   name: tool.function,
-                  args: tool.arguments
+                  arguments: tool.arguments
                 }
               });
+              console.log('Toolcall-message-array' , toolCallsT);
               const toolResults = await this.mcpClient.callTools(toolCallsT);
+              console.log('agent:tool result from mcp' , toolResults)
               // const lastToolResult = toolResults.pop()
               let i = 0;
               while (i < toolResults.length) {
@@ -226,6 +248,7 @@ export class BabyPandaAgent extends EventEmitter {
   }
 
   async message(msg: Message) {
+    await createMessage(this.sessionId , msg.content as string , msg.role);
     this.messageQueue.push(msg);
     if (this.isRunning) {
       return;
