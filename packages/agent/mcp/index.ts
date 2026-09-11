@@ -1,7 +1,7 @@
 import {McpServer} from "@modelcontextprotocol/server";
 import {StdioServerTransport} from "@modelcontextprotocol/server/stdio";
-import {read} from './tools/filesystem'
-import {z} from "zod";
+import {read , grep , edit} from './tools/filesystem'
+import {string, z} from "zod";
 
 const cwd = process.env.CLIENT_CWD || process.cwd();
 const server = new McpServer({
@@ -26,6 +26,48 @@ server.registerTool(
             type:'text',
             text: text
         }]}
+    }
+);
+
+server.registerTool(
+    "grep",
+    {
+        description:"Search content across files",
+        inputSchema:z.object({
+            path:z.string().describe("Location of file"),
+            pattern:z.string().describe("Regular expression for searching"),
+            flag:z.string().describe("flags to use (spawn process of nodeJs) [flag , pattern , path]").optional()
+        }),
+    },
+    async (args)=>{
+        const searchResult = await grep(args.path , args.pattern , args.flag)
+        return {
+            content:[
+                {
+                    type:"text",
+                    text:JSON.stringify(searchResult)
+                }
+            ]
+        }}
+);
+
+server.registerTool(
+    "edit",
+    {
+        description:"edit content of a pre existing file",
+        inputSchema:z.object({
+            path:z.string().describe("Location of file"),
+            old_str:string().describe("String that will be replaced"),
+            new_str:string().describe("The string that will replace")
+        }),
+    },
+    async (args)=>{
+        const edited = await edit(args);
+        return{
+            content:[
+                {type:"text" , text:`${edited}`}
+            ]
+        }
     }
 )
 

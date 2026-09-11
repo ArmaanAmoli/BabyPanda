@@ -123,6 +123,7 @@ export function grep(path: string, pattern: string, flag?: string): Promise<Grep
         // 3. Resolve the promise ONLY when the process has closed
         grepProcess.on('close', (code) => {
             output.exitCode = code;
+            console.log(output);
             resolve(output);
         });
     });
