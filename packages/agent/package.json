@@ -2,9 +2,10 @@
   "name": "@baby-panda/agent",
   "module": "index.ts",
   "dependencies": {
+    "@baby-panda/db": "workspace:*",
     "@modelcontextprotocol/client": "^2.0.0",
     "@modelcontextprotocol/server": "^2.0.0",
-    "@baby-panda/db":"workspace:*",
+    "glob": "^13.0.6",
     "zod": "^4.5.4"
   },
   "devDependencies": {

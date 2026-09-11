@@ -4,6 +4,8 @@ import { exec } from 'node:child_process';
 import { promisify } from 'node:util';
 import { spawn } from 'child_process';
 import * as readline from 'readline';
+import * as gl from 'glob';
+import { file } from 'zod';
 
 const execPromis = promisify(exec);
 
@@ -165,4 +167,13 @@ interface RmOptions {
 
 export async function del(path: string, options?: RmOptions) {
     fsp.rm(path, options);
+}
+
+export async function glob(pattern:string , ignorePatterns?:string[]):Promise<string[]>{
+    try{
+        const files = await gl.glob(pattern ,{ignore:ignorePatterns , windowsPathsNoEscape:true});
+        return files;
+    }catch(e){
+        throw e;
+    }
 }

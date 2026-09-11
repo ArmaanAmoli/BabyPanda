@@ -1,7 +1,7 @@
 import {McpServer} from "@modelcontextprotocol/server";
 import {StdioServerTransport} from "@modelcontextprotocol/server/stdio";
-import {read , grep , edit} from './tools/filesystem'
-import {string, z} from "zod";
+import {read , grep , edit , glob , del} from './tools/filesystem'
+import {array, string, z} from "zod";
 
 const cwd = process.env.CLIENT_CWD || process.cwd();
 const server = new McpServer({
@@ -66,6 +66,49 @@ server.registerTool(
         return{
             content:[
                 {type:"text" , text:`${edited}`}
+            ]
+        }
+    }
+)
+
+server.registerTool(
+    "glob",
+    {
+        description:"search for files",
+        inputSchema:z.object({
+            pattern:string().describe("String that will be replaced"),
+            ignorePatterns:array(z.string()).describe("The string that will replace").optional()
+        }),
+    },
+    async (args)=>{
+        const edited = await glob(args.pattern , args.ignorePatterns);
+        return{
+            content:[
+                {type:"text" , text:`${edited}`}
+            ]
+        }
+    }
+)
+
+server.registerTool(
+    "delete",
+    {
+        description:"deletes a file",
+        inputSchema:z.object({
+            path:string().describe("path of the file"),
+            options:z.object({
+                force:z.boolean().or(z.undefined()).optional().default(false),
+                maxRetries:z.number().or(z.undefined()).optional().default(0),
+                recursive:z.boolean().or(z.undefined()).optional().default(false),
+                retryDelay:z.number().or(z.undefined()).default(100),
+            }).optional()
+        }),
+    },
+    async (args)=>{
+        await del(args.path , args.options);
+        return{
+            content:[
+                {type:"text" , text:``}
             ]
         }
     }
