@@ -1,6 +1,6 @@
 import {McpServer} from "@modelcontextprotocol/server";
 import {StdioServerTransport} from "@modelcontextprotocol/server/stdio";
-import {read , grep , edit , glob , del} from './tools/filesystem'
+import {read , grep , edit , glob , del , list} from './tools/filesystem'
 import {array, string, z} from "zod";
 
 const server = new McpServer({
@@ -110,6 +110,24 @@ server.registerTool(
                 {type:"text" , text:``}
             ]
         }
+    }
+);
+
+server.registerTool(
+    "list",
+    {
+        description:"List all the files in a folder",
+        inputSchema:z.object({
+            path:z.string()
+        }),
+    },
+    async (args)=>{
+        const result = await list(args.path);
+        return {
+            content:[
+                {type:"text" , text:`${result.stdout?result.stdout:result.stderr}`}
+            ]
+        };
     }
 );
 

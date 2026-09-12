@@ -81,10 +81,13 @@ Usage notes:
    Purpose:    Find files matching a glob pattern
    Arguments:  pattern: string
    Returns:    paths: string[]
+
 5) list
-   Purpose:    List files/dirs in the current working directory
-   Arguments:  (none)
+   Purpose:    List files/dirs in a folder by giving location in the argument
+   Arguments:  path: string
    Returns:    entries: string[]
+   Note: It is mandatory to paas the path argument for list tool or else it will throw error (even if you want to run the tool on current working directory you have to pass it in path)
+
 6) delete
    Purpose:    Delete a file or directory
    Arguments:  path: string
@@ -238,7 +241,7 @@ Behavior:
       "id": "call_m3n4o5",
       "type": "function",
       "function": "list",
-      "arguments": {}
+      "arguments": {path:/home/user/Project/abcd}
     }
   ]
 }

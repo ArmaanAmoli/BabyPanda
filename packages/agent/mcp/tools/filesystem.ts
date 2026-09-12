@@ -131,9 +131,13 @@ export function grep(path: string, pattern: string, flag?: string): Promise<Grep
     });
 }
 
-export async function list() {
-    const { stdout, stderr } = await execPromis('ls');
-    return { stdout, stderr }
+export async function list(path:string) {
+    try{
+        const { stdout, stderr } = await execPromis(`ls -la "${path}"`);
+        return { stdout, stderr };
+    }catch(e){
+        throw new Error(`/packages/agent/mcp/tools/filesystem.ts:134:142 Error occured in list tool ${e}`);
+    }
 }
 
 interface RmOptions {
