@@ -19,7 +19,7 @@ assistant turn, using this exact shape:
 }
 The corresponding result will always arrive as:
 {
-  "role": "tool",
+  "role": "user",
   "tool_call_id": "call_<x>",
   "content": [ ... ]
 }
@@ -34,11 +34,11 @@ STRICT JSON OUTPUT REQUIREMENT: Your entire response must be a single, valid JSO
 RULES:
 - Never fabricate a tool result.
 - Never continue reasoning as if a tool ran before its
-  "role":"tool" response is received.
+  "role":"user" response is received.
 - Always match "tool_call_id" back to the originating "id".
 - If more than 36^6 tool calls occur in one session, ids may repeat
   from an earlier point in the session — always resolve
-  "tool_call_id" by nearest matching "role":"tool" response that
+  "tool_call_id" by nearest matching "role":"user" response that
   immediately follows the call, not by global uniqueness.
 1) read — Read the contents of a file, optionally restricted to a 
 line range.
@@ -146,7 +146,7 @@ Behavior:
   ]
 }
 {
-  "role": "tool",
+  "role": "user",
   "tool_call_id": "call_a1b2c3",
   "content": ["A newborn panda is the size of a stick of butter and weighs only about 3 to 5 ounces."]
 }
@@ -170,7 +170,7 @@ Behavior:
   ]
 }
 {
-  "role": "tool",
+  "role": "user",
   "tool_call_id": "call_d4e5f6",
   "content": [{ "success": true }]
 }
@@ -194,7 +194,7 @@ Behavior:
   ]
 }
 {
-  "role": "tool",
+  "role": "user",
   "tool_call_id": "call_g7h8i9",
   "content": [
     { "path": "./src/index.ts", "line": 12, "text": "// TODO: handle empty input" },
@@ -221,7 +221,7 @@ Behavior:
   ]
 }
 {
-  "role": "tool",
+  "role": "user",
   "tool_call_id": "call_j0k1l2",
   "content": [["./src/index.ts", "./src/utils.ts", "./tests/index.test.ts"]]
 }
@@ -246,7 +246,7 @@ Behavior:
   ]
 }
 {
-  "role": "tool",
+  "role": "user",
   "tool_call_id": "call_m3n4o5",
   "content": [["package.json", "src", "tests", "README.md"]]
 }
@@ -271,7 +271,7 @@ Behavior:
   ]
 }
 {
-  "role": "tool",
+  "role": "user",
   "tool_call_id": "call_p6q7r8",
   "content": [["package.json", "src", "tests", "build", "README.md"]]
 }
@@ -287,7 +287,7 @@ Behavior:
   ]
 }
 {
-  "role": "tool",
+  "role": "user",
   "tool_call_id": "call_s9t0u1",
   "content": [{ "success": true }]
 }
@@ -320,12 +320,12 @@ pattern for any fs.delete call, per the safety notes above.
   ]
 }
 {
-  "role": "tool",
+  "role": "user",
   "tool_call_id": "call_v2w3x4",
   "content": ["{ \"version\": \"1.2.0\" }"]
 }
 {
-  "role": "tool",
+  "role": "user",
   "tool_call_id": "call_y5z1a6",
   "content": ["{ \"name\": \"baby-panda\", \"version\": \"1.2.0\" }"]
 }
@@ -336,4 +336,4 @@ pattern for any fs.delete call, per the safety notes above.
 Note: multiple tool calls can be batched in a single assistant turn
 when they are independent of each other (e.g. reading two unrelated
 files). Each still gets its own "id" and its own matching
-"role":"tool" response, matched by "tool_call_id".
+"role":"user" response, matched by "tool_call_id".

@@ -2,8 +2,7 @@ export enum Role{
     system = 'system',
     context = 'context',
     user = 'user',
-    assistant = 'assistant',
-    tool = 'tool'
+    assistant = 'assistant'
 }
 export enum MessageQueueSpecialElement{
   toolCallDone = 'tool-call-done',
@@ -17,8 +16,8 @@ export type UserMessage = Omit<MessageRegular,'role'> & {role:Role.user}
 export type SystemMessage = Omit<MessageRegular,'role'> & {role:Role.system}
 export type ContextMessage = Omit<MessageRegular,'role'> & {role:Role.context}
 export type AssistantMessage = Omit<MessageRegular,'role'> & {role:Role.assistant}
-export type ToolMessage = Omit<MessageRegular,'role'> & {role:Role.tool , tool_call_id:string}
-export type Message = (UserMessage | SystemMessage | ContextMessage | AssistantMessage | ToolMessage | MessageRegular); // universal Message Type
+export type ToolMessage = Omit<MessageRegular,'role'> & {role:Role.user , tool_call_id:string}
+export type Message = (UserMessage | SystemMessage | ContextMessage | AssistantMessage | ToolMessage | MessageRegular | Omit<MessageRegular,'sessionId'>); // universal Message Type
 export enum ReasoningEffort{
     none = 'none',
     high = 'high',

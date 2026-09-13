@@ -67,17 +67,18 @@ export class BabyPandaAgent extends EventEmitter {
     // this.messagesHistory = await getMessages(this.sessionId) as Message[];
     console.log("agent:MessageHistory")
     return messageHistoryFromDb.map((msg) => {
-      const msgApi: Message = { role: msg.role!, sessionId: msg.sessionId!, content: msg.content! }
+      const msgApi: Message = { role: msg.role!, content: msg.content! }
       return msgApi;
     })
   }
 
   private async loop() {
+    const systemMessage = { role: Role.system, content: (this.instructions + `user current working directory: "${this.cwd}"`)}
     while (this.messageQueue.length !== 0) {
       console.log("in the loop")
       this.isRunning = true;
-      const messages: Message[] = [{ role: Role.system, content: (this.instructions + `user current working directory: "${this.cwd}"`), sessionId: this.sessionId }, ...this.messagesHistory]// need optimization
-      if (!this.messageQueue[0]) { // if the first message of messageQueue is undefined then skip this iteration (but atleast tell the user later)
+      const messages: Message[] = [systemMessage, ...this.messagesHistory]// need optimization
+      if (!this.messageQueue[0]) {
         this.messageQueue.splice(0, 1);
         console.error("message undefined")
         continue;
@@ -200,7 +201,7 @@ export class BabyPandaAgent extends EventEmitter {
                     arguments: tool.arguments
                   }
                 });
-                console.log('Toolcall-message-array', toolCallsT);
+                // console.log('Toolcall-message-array', toolCallsT);
                 const toolResults = await this.mcpClient.callTools(toolCallsT);
                 console.log('agent:tool result from mcp', toolResults)
                 // const lastToolResult = toolResults.pop()
@@ -211,13 +212,11 @@ export class BabyPandaAgent extends EventEmitter {
                   }
                   else {
                     try {
-                      await createMessage(this.sessionId, JSON.stringify(toolResults.at(i)), Role.tool);
+                      await createMessage(this.sessionId, JSON.stringify(toolResults.at(i)), Role.user);
                       this.numberOfMessages += 1;
                       this.messagesHistory.push({
-                        role: Role.tool,
-                        tool_call_id: toolResults.at(i)!.id,
-                        content: toolResults.at(i)!.result,
-                        sessionId: this.sessionId
+                        role: Role.user,
+                        content: `${toolResults.at(i)!}`
                       }
                       )
                     } catch (err) {

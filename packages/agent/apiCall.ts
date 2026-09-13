@@ -36,8 +36,16 @@ class BabyPandaClient {
             const response = await axios(options);
             return { response, systemError: false };
         }
-        catch (error) {
-            return { systemError: true, error }
+        catch (error:any) {
+            if (error.response?.data && typeof error.response.data.on === 'function') {
+                const errorBody = await new Promise<string>((resolve) => {
+                    let chunkBuffer = '';
+                    error.response.data.on('data', (chunk: Buffer) => { chunkBuffer += chunk.toString(); });
+                    error.response.data.on('end', () => resolve(chunkBuffer));
+                });
+                console.error("🔴 API Gateway Validation Error Details:", errorBody);
+            }
+            return { systemError: true, error };
         }
     }
 }
