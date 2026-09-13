@@ -6,6 +6,7 @@ export enum Role{
 }
 export enum MessageQueueSpecialElement{
   toolCallDone = 'tool-call-done',
+  errorInLastIteration = 'error-in-last-iteration'
 }
 export interface MessageRegular{
     role:Role,

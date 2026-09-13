@@ -63,8 +63,6 @@ export class BabyPandaAgent extends EventEmitter {
 
   private async getMessageHistory() {
     const messageHistoryFromDb = await getMessages(this.sessionId);
-
-    // this.messagesHistory = await getMessages(this.sessionId) as Message[];
     console.log("agent:MessageHistory")
     return messageHistoryFromDb.map((msg) => {
       const msgApi: Message = { role: msg.role!, content: msg.content! }
@@ -77,21 +75,28 @@ export class BabyPandaAgent extends EventEmitter {
     while (this.messageQueue.length !== 0) {
       console.log("in the loop")
       this.isRunning = true;
-      const messages: Message[] = [systemMessage, ...this.messagesHistory]// need optimization
+      const messages: Message[] = [systemMessage, ...this.messagesHistory]
+
       if (!this.messageQueue[0]) {
         this.messageQueue.splice(0, 1);
-        console.error("message undefined")
+        console.error("message undefined");
         continue;
       }
+
       const userInput = this.messageQueue[0];
-      if (userInput !== MessageQueueSpecialElement.toolCallDone) {
+      
+      if (userInput !== MessageQueueSpecialElement.toolCallDone &&  userInput !== MessageQueueSpecialElement.errorInLastIteration) {
         messages.push(userInput)
+        await createMessage(this.sessionId, userInput.content as string, Role.user);
       }
+
       const response = await this.client.chatCompletion(messages, this.model, this.reasoningEffect);
-      console.log("first reply")
+      console.log("first reply");
       if (response.systemError) {
         console.error('Request failed:', response.error);
         // retry;
+        this.isRunning = false;
+        continue;
         throw response.error;
       }
       const getContent = (encoded: string) => {
@@ -257,13 +262,14 @@ export class BabyPandaAgent extends EventEmitter {
           this.isRunning=false})
         .catch((err)=>{
           this.isRunning=false;
+          this.messageQueue.push(MessageQueueSpecialElement.errorInLastIteration);
           throw err});
     }
     console.log('loop has ended')
   }
 
   async message(msg: Message) {
-    await createMessage(this.sessionId, msg.content as string, msg.role);
+    // await createMessage(this.sessionId, msg.content as string, msg.role);
     this.messageQueue.push(msg);
     if (this.isRunning) {
       return;
