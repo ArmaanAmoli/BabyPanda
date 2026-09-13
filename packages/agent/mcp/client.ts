@@ -27,9 +27,8 @@ export class MCPClient {
             });
             console.log("StdioClientTreansportCreated")
             await this.mcp.connect(this.transport);
-            console.log("connected")
+            console.log("[MCP CLIENT]: connected")
             const toolsResult = await this.mcp.listTools();
-            console.log(toolsResult)
             this.tools = toolsResult.tools.map((tool) => {
                 console.log(tool)
                 return {
@@ -38,7 +37,6 @@ export class MCPClient {
                     input_schema: tool.inputSchema
                 };
             });
-            console.log("Connected to server with tools: ", this.tools.map( ({ name }: any) => { name } ) )
         } catch (err) {
             console.log("[ERROR] packages/agent/mcp/client.ts Failed to connect to MCP server: ", err);
             throw err;
@@ -48,7 +46,7 @@ export class MCPClient {
         const finalResult: ToolResult[] = [];
         for (const tool of tools) {
             try {
-                console.log("MCP client", tool);
+                console.log("[MCP CLIENT]:", tool);
                 const result = await this.mcp.callTool(tool);
 
                 finalResult.push({ id: tool.id, name: tool.name, arguments: tool.arguments, result: result });

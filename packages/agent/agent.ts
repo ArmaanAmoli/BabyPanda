@@ -94,10 +94,9 @@ export class BabyPandaAgent extends EventEmitter {
       console.log("first reply");
       if (response.systemError) {
         console.error('Request failed:', response.error);
-        // retry;
         this.isRunning = false;
+        this.messageQueue.push(MessageQueueSpecialElement.errorInLastIteration);
         continue;
-        throw response.error;
       }
       const getContent = (encoded: string) => {
         try {
@@ -210,10 +209,8 @@ export class BabyPandaAgent extends EventEmitter {
                     arguments: tool.arguments
                   }
                 });
-                // console.log('Toolcall-message-array', toolCallsT);
                 const toolResults = await this.mcpClient.callTools(toolCallsT);
                 console.log('agent:tool result from mcp', toolResults)
-                // const lastToolResult = toolResults.pop()
                 let i = 0;
                 while (i < toolResults.length) {
                   if (toolResults.at(i) === undefined) {
@@ -239,6 +236,7 @@ export class BabyPandaAgent extends EventEmitter {
                 i = 0;
                 this.messageQueue.push(MessageQueueSpecialElement.toolCallDone);
               }
+              // save messages code below this
             }
             catch (err) {
               console.log(`An error occured while resolving tool call at agent.ts: ${err}`);
