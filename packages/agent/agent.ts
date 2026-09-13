@@ -184,6 +184,7 @@ export class BabyPandaAgent extends EventEmitter {
 
         response.response?.data.on('end', async () => {
           console.log("full reply: \n", fullReply);
+          if(lineChecked < MAX_LINE_THRESHOLD_FOR_TOOL_CALL && !toolCall){this.emit('data' , fullReply)};
           try {
             await createMessage(this.sessionId, fullReply, Role.assistant);
             this.messagesHistory.push({ role: Role.assistant, content: fullReply })
