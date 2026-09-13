@@ -73,7 +73,7 @@ export class BabyPandaAgent extends EventEmitter {
   }
 
   private async loop() {
-    const systemMessage = { role: Role.system, content: (this.instructions + `user current working directory: "${this.cwd}"`)}
+    const systemMessage = { role: Role.system, content: (this.instructions + `user current working directory: "${this.cwd}"`) }
     while (this.messageQueue.length !== 0) {
       console.log("in the loop")
       this.isRunning = true;
@@ -91,7 +91,8 @@ export class BabyPandaAgent extends EventEmitter {
       console.log("first reply")
       if (response.systemError) {
         console.error('Request failed:', response.error);
-        process.exit(1);
+        // retry;
+        throw response.error;
       }
       const getContent = (encoded: string) => {
         try {
@@ -163,31 +164,33 @@ export class BabyPandaAgent extends EventEmitter {
           }
         });
 
+        const ReplyJsonSchema = z.object({
+          role: z.string(),
+          tool_call: z.array(z.object(
+            {
+              id: z.string(),
+              type: z.string(),
+              function: z.string(),
+              arguments: z.record(z.string(), z.unknown())
+            }
+          ))
+        });
+        type ReplyJson = z.infer<typeof ReplyJsonSchema>
+
         response.response?.data.on('end', async () => {
           console.log("full reply: \n", fullReply);
           try {
             await createMessage(this.sessionId, fullReply, Role.assistant);
+            this.messagesHistory.push({ role: Role.assistant, content: fullReply })
             this.numberOfMessages += 1;
           } catch (err) {
             reject(new Error(`Unable to store assistant message to database: ${err}`));
           }
           if (toolCall) {
-            const ReplyJsonSchema = z.object({
-              role: z.string(),
-              tool_call: z.array(z.object(
-                {
-                  id: z.string(),
-                  type: z.string(),
-                  function: z.string(),
-                  arguments: z.record(z.string(), z.unknown())
-                }
-              ))
-            });
-            type ReplyJson = z.infer<typeof ReplyJsonSchema>
-            let replyJson = JSON.parse(fullReply) as ReplyJson
-            console.log('reply-json', replyJson)
-            console.log(replyJson.tool_call[0]!.arguments)
             try {
+              let replyJson = JSON.parse(fullReply) as ReplyJson
+              console.log('reply-json', replyJson)
+              console.log(replyJson.tool_call[0]!.arguments)
               console.log('Try:execute tool call')
               const parsed = ReplyJsonSchema.parse(replyJson)
               if (parsed) {
@@ -208,6 +211,7 @@ export class BabyPandaAgent extends EventEmitter {
                 let i = 0;
                 while (i < toolResults.length) {
                   if (toolResults.at(i) === undefined) {
+                    i++;
                     continue;
                   }
                   else {
@@ -231,19 +235,29 @@ export class BabyPandaAgent extends EventEmitter {
               }
             }
             catch (err) {
-              console.log(`An error occured while resolving tool call at agent.ts: ${err}`)
+              console.log(`An error occured while resolving tool call at agent.ts: ${err}`);
+              reject(err);
             }
-          } else { this.isRunning = false; }
+          } 
+          
           lineChecked = 0;
           toolCall = false;
           fullReply = '';
           this.emit('end');
-          resolve("single iteration of loop done.")
-        })
-        response.response?.data.on('error', (err: Error) => { console.error('Stream error:', err); reject(err) });
-
-      })
-      this.messageQueue.splice(0, 1);
+          resolve("single iteration of loop done.");
+        });
+        response.response?.data.on('error', (err: Error) => { console.error(
+          'Stream error:', err); 
+          this.isRunning=false;
+          reject(err);
+         });
+      }).then(
+        ()=>{
+          this.messageQueue.splice(0, 1);
+          this.isRunning=false})
+        .catch((err)=>{
+          this.isRunning=false;
+          throw err});
     }
     console.log('loop has ended')
   }
