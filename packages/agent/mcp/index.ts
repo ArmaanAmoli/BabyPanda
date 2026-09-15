@@ -1,13 +1,12 @@
 import {McpServer} from "@modelcontextprotocol/server";
 import {StdioServerTransport} from "@modelcontextprotocol/server/stdio";
-import {read , grep , edit , glob , del} from './tools/filesystem'
+import {read , grep , edit , glob , del , list} from './tools/filesystem'
 import {array, string, z} from "zod";
 
-const cwd = process.env.CLIENT_CWD || process.cwd();
 const server = new McpServer({
     name:"baby-panda/mcp",
     version:"1.0.0",
-})
+});
 
 server.registerTool(
     "read",
@@ -69,7 +68,7 @@ server.registerTool(
             ]
         }
     }
-)
+);
 
 server.registerTool(
     "glob",
@@ -88,7 +87,7 @@ server.registerTool(
             ]
         }
     }
-)
+);
 
 server.registerTool(
     "delete",
@@ -97,10 +96,10 @@ server.registerTool(
         inputSchema:z.object({
             path:string().describe("path of the file"),
             options:z.object({
-                force:z.boolean().or(z.undefined()).optional().default(false),
-                maxRetries:z.number().or(z.undefined()).optional().default(0),
-                recursive:z.boolean().or(z.undefined()).optional().default(false),
-                retryDelay:z.number().or(z.undefined()).default(100),
+                force:z.boolean().optional().default(false),
+                maxRetries:z.number().optional().default(0),
+                recursive:z.boolean().optional().default(false),
+                retryDelay:z.number().default(100),
             }).optional()
         }),
     },
@@ -112,7 +111,25 @@ server.registerTool(
             ]
         }
     }
-)
+);
+
+server.registerTool(
+    "list",
+    {
+        description:"List all the files in a folder",
+        inputSchema:z.object({
+            path:z.string()
+        }),
+    },
+    async (args)=>{
+        const result = await list(args.path);
+        return {
+            content:[
+                {type:"text" , text:`${result.stdout?result.stdout:result.stderr}`}
+            ]
+        };
+    }
+);
 
 async function main(){
     const transport = new StdioServerTransport();
