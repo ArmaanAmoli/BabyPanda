@@ -75,6 +75,7 @@ export class BabyPandaAgent extends EventEmitter {
     while (this.messageQueue.length !== 0) {
       console.log("in the loop")
       this.isRunning = true;
+      this.messagesHistory = await this.getMessageHistory();
       const messages: MessageAPI[] = [systemMessage, ...this.messagesHistory]
 
       if (!this.messageQueue[0]) {
@@ -89,11 +90,10 @@ export class BabyPandaAgent extends EventEmitter {
         userInput !== MessageQueueSpecialElement.errorInLastIteration &&
         userInput !== MessageQueueSpecialElement.lastReplyFromLLMWasEmpty &&
         userInput !== MessageQueueSpecialElement.lastReplyFromLLMWasThought) {
-        messages.push(userInput)
+        messages.push(userInput);
         await createMessage(this.sessionId, userInput.content as string, Role.user);
-      }else{
-        this.messageQueue.splice(0,1);
       }
+      this.messageQueue.splice(0,1);
       // console.log('MESSAGES' , messages)
       const response = await this.client.chatCompletion(messages, this.model, this.reasoningEffect);
       console.log("first reply");
@@ -223,7 +223,6 @@ export class BabyPandaAgent extends EventEmitter {
           console.log("full reply: \n", fullReply);
           try {
             await createMessage(this.sessionId, fullReply, Role.assistant);
-            this.messagesHistory.push({ role: Role.assistant, content: fullReply })
             this.numberOfMessages += 1;
           } catch (err) {
             reject(new Error(`Unable to store assistant message to database: ${err}`));
@@ -263,11 +262,6 @@ export class BabyPandaAgent extends EventEmitter {
                     try {
                       await createMessage(this.sessionId, JSON.stringify(toolResults.at(i)), Role.user);
                       this.numberOfMessages += 1;
-                      this.messagesHistory.push({
-                        role: Role.user,
-                        content: JSON.stringify(toolResults.at(i))
-                      }
-                      )
                     } catch (err) {
                       reject(new Error(`Unable to store tool message to database: ${err}`));
                     }
@@ -299,7 +293,6 @@ export class BabyPandaAgent extends EventEmitter {
         });
       }).then(
         () => {
-          this.messageQueue.splice(0, 1);
           this.isRunning = false
         })
         .catch((err) => {
