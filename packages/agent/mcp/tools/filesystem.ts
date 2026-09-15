@@ -171,7 +171,11 @@ interface RmOptions {
 }
 
 export async function del(path: string, options?: RmOptions) {
-    fsp.rm(path, options);
+    try{
+        await fsp.rm(path, options);
+    }catch(e){
+        throw new Error(`/packages/agent/mcp/tools/filesystem.ts:173:179 Error occured in delete tool ${e}`);
+    }
 }
 
 export async function glob(pattern:string , ignorePatterns?:string[]):Promise<string[]>{
