@@ -1,6 +1,6 @@
 import {McpServer} from "@modelcontextprotocol/server";
 import {StdioServerTransport} from "@modelcontextprotocol/server/stdio";
-import {read , grep , edit , glob , del , list} from './tools/filesystem'
+import {read , grep , edit , glob , del , list , write} from './tools/filesystem'
 import {array, string, z} from "zod";
 
 const server = new McpServer({
@@ -130,6 +130,25 @@ server.registerTool(
         };
     }
 );
+
+server.registerTool(
+    "write",
+    {
+        description:"Create or overwrite a given file",
+        inputSchema:z.object({
+            path:z.string(),
+            content:z.string()
+        }),
+    },
+    async (args)=>{
+        const result = await write(args.path , args.content);
+        return {
+            content:[
+                {type:"text" , text:`${result}`}
+            ]
+        };
+    }
+)
 
 async function main(){
     const transport = new StdioServerTransport();

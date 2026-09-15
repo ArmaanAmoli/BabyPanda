@@ -87,6 +87,7 @@ name or a nearby comment) to uniquely identify the location you mean.`)
 export async function write(path: string, content: string) { //create new file
     try {
         await fsp.writeFile(path, content);
+        return true;
     } catch (err) {
         throw new Error(`An error occured while writing file: ${err}`);
     }

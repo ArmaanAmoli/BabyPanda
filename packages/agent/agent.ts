@@ -92,7 +92,7 @@ export class BabyPandaAgent extends EventEmitter {
         messages.push(userInput)
         await createMessage(this.sessionId, userInput.content as string, Role.user);
       }
-
+      // console.log('MESSAGES' , messages)
       const response = await this.client.chatCompletion(messages, this.model, this.reasoningEffect);
       console.log("first reply");
       if (response.systemError) {
@@ -231,10 +231,10 @@ export class BabyPandaAgent extends EventEmitter {
               let replyJson = ReplyJsonSchema.parse(JSON.parse(fullReply)) // to-do: try to make it more safe
               console.log('reply-json', replyJson)
               // console.log(replyJson.content.tool_call)
-              console.log('Try:execute tool call')
+              // console.log('Try:execute tool call')
               const parsed = ReplyJsonSchema.parse(replyJson)
               if (parsed) {
-                console.log('parsed')
+                // console.log('parsed')
                 let toolCalls = replyJson.content.tool_call;
                 if(!toolCalls){
                   MessageQueueSpecialElement.toolCallDone;
