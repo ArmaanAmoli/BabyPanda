@@ -91,6 +91,8 @@ export class BabyPandaAgent extends EventEmitter {
         userInput !== MessageQueueSpecialElement.lastReplyFromLLMWasThought) {
         messages.push(userInput)
         await createMessage(this.sessionId, userInput.content as string, Role.user);
+      }else{
+        this.messageQueue.splice(0,1);
       }
       // console.log('MESSAGES' , messages)
       const response = await this.client.chatCompletion(messages, this.model, this.reasoningEffect);
