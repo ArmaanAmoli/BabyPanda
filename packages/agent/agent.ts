@@ -87,7 +87,8 @@ export class BabyPandaAgent extends EventEmitter {
 
       if (userInput !== MessageQueueSpecialElement.toolCallDone &&
         userInput !== MessageQueueSpecialElement.errorInLastIteration &&
-        userInput !== MessageQueueSpecialElement.lastReplyFromLLMWasEmpty) {
+        userInput !== MessageQueueSpecialElement.lastReplyFromLLMWasEmpty &&
+        userInput !== MessageQueueSpecialElement.lastReplyFromLLMWasThought) {
         messages.push(userInput)
         await createMessage(this.sessionId, userInput.content as string, Role.user);
       }
@@ -116,15 +117,28 @@ export class BabyPandaAgent extends EventEmitter {
         }
       }
 
-      await new Promise((resolve, reject) => {
+      enum ContentType {
+        content = 'content',
+        thought = 'thought',
+        tool_call = 'tool_call',
+        unidentified = 'unidentified'
+      }
 
+      await new Promise((resolve, reject) => {
+        let contentType: ContentType = ContentType.unidentified;
+        const parentContentPropertyRegex = /^.*"content":.*$/m;
+        const thoughtRegex = /^.*"thought":.*$/m;
+        const answerRegex = /^.*"answer":.*$/m;
+        const toolCallRegex = /^.*"tool_call":.*$/m;
+        /*
+        While contentType is unidentified we want to save the data in the full Reply
+        we will use the thought , answer , toolCall Regex to identify the stream only in case of toolCall we will not produce event
+        */
         let toolCall = false;
-        let lineChecked = 0;
         let fullReply = "";
         let buffer: string = '';
 
-        const MAX_LINE_THRESHOLD_FOR_TOOL_CALL = 4;
-        const toolCallChecker = /^.*"tool_call":.*$/m;
+        let inParentContentProperty: boolean = false;
         const lineBuffer: string[] = []
         const regex = /^data:\s/;
 
@@ -142,44 +156,58 @@ export class BabyPandaAgent extends EventEmitter {
             const content = getContent(line);
             // console.log(content);
             fullReply += content;
-            if (!toolCall && lineChecked < MAX_LINE_THRESHOLD_FOR_TOOL_CALL) {
-              // console.log("checking tool call")
-              //check for "tool_call"
-              if (toolCallChecker.test(fullReply)) {
-                toolCall = true;
-                console.log("tool called !")
-              }
-              lineBuffer.push(content);
-            }
-            if (lineChecked >= MAX_LINE_THRESHOLD_FOR_TOOL_CALL && !toolCall) {
-              if (lineBuffer.length > 0) {
-                for (const l of lineBuffer) {
-                  this.emit('data', l)
+            if (inParentContentProperty) {
+              if (contentType === ContentType.unidentified) {
+                // console.log("checking tool call")
+                //check for "tool_call"
+                if (toolCallRegex.test(fullReply)) {
+                  toolCall = true;
+                  contentType = ContentType.tool_call;
+                  console.log("tool called !")
                 }
-                lineBuffer.length = 0;
+                else if (answerRegex.test(fullReply)) {
+                  contentType = ContentType.content;
+                }
+                else if (thoughtRegex.test(fullReply)) {
+                  contentType = ContentType.thought
+                }
+                lineBuffer.push(content);
               }
-              this.emit('data', content)
-            }
-            if (content.includes('\n') && lineChecked < MAX_LINE_THRESHOLD_FOR_TOOL_CALL) {
-              for (const char of content) {
-                if (char === '\n') {
-                  lineChecked += 1;
+              else {
+                if (!toolCall) {
+                  if (lineBuffer.length > 0) {
+                    for (const l of lineBuffer) {
+                      this.emit(contentType, l)
+                    }
+                    lineBuffer.length = 0;
+                  }
+                  this.emit(contentType, content)
                 }
               }
             }
+            else {
+              if (parentContentPropertyRegex.test(fullReply)) {
+                inParentContentProperty = true;
+              }
+            }
+
           }
         });
 
         const ReplyJsonSchema = z.object({
           role: z.string(),
-          tool_call: z.array(z.object(
-            {
-              id: z.string(),
-              type: z.string(),
-              function: z.string(),
-              arguments: z.record(z.string(), z.unknown())
-            }
-          ))
+          content: z.object({
+            tool_call: z.array(z.object(
+              {
+                id: z.string(),
+                type: z.string(),
+                function: z.string(),
+                arguments: z.record(z.string(), z.unknown())
+              }
+            )).optional(),
+            thought: z.string().optional(),
+            content: z.string().optional()
+          })
         });
         type ReplyJson = z.infer<typeof ReplyJsonSchema>
 
@@ -190,9 +218,7 @@ export class BabyPandaAgent extends EventEmitter {
             resolve("empty reply");
             return;
           }
-
           console.log("full reply: \n", fullReply);
-          if (lineChecked < MAX_LINE_THRESHOLD_FOR_TOOL_CALL && !toolCall) { this.emit('data', fullReply) };
           try {
             await createMessage(this.sessionId, fullReply, Role.assistant);
             this.messagesHistory.push({ role: Role.assistant, content: fullReply })
@@ -202,15 +228,20 @@ export class BabyPandaAgent extends EventEmitter {
           }
           if (toolCall) {
             try {
-              let replyJson = JSON.parse(fullReply) as ReplyJson
+              let replyJson = ReplyJsonSchema.parse(JSON.parse(fullReply)) // to-do: try to make it more safe
               console.log('reply-json', replyJson)
-              console.log(replyJson.tool_call[0]!.arguments)
+              // console.log(replyJson.content.tool_call)
               console.log('Try:execute tool call')
               const parsed = ReplyJsonSchema.parse(replyJson)
               if (parsed) {
                 console.log('parsed')
-                let toolCalls = (replyJson as ReplyJson).tool_call;
-                console.log('raw-tool-call-message-array', toolCalls);
+                let toolCalls = replyJson.content.tool_call;
+                if(!toolCalls){
+                  MessageQueueSpecialElement.toolCallDone;
+                  resolve('no tool call');
+                  return; // to-do: add proper handelling
+                }
+                // console.log('raw-tool-call-message-array', toolCalls);
                 const toolCallsT: Tool[] = toolCalls.map((tool) => {
                   return {
                     id: tool.id,
@@ -252,7 +283,6 @@ export class BabyPandaAgent extends EventEmitter {
               reject(err);
             }
           }
-          lineChecked = 0;
           toolCall = false;
           fullReply = '';
           this.emit('end');
