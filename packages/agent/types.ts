@@ -6,7 +6,8 @@ export enum Role{
 };
 export enum MessageQueueSpecialElement{
   toolCallDone = 'tool-call-done',
-  errorInLastIteration = 'error-in-last-iteration'
+  errorInLastIteration = 'error-in-last-iteration',
+  lastReplyFromLLMWasEmpty = 'last-reply-from-llm-was-empty'
 };
 export interface MessageRegular{
     role:Role,

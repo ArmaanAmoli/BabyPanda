@@ -84,8 +84,10 @@ export class BabyPandaAgent extends EventEmitter {
       }
 
       const userInput = this.messageQueue[0];
-      
-      if (userInput !== MessageQueueSpecialElement.toolCallDone &&  userInput !== MessageQueueSpecialElement.errorInLastIteration) {
+
+      if (userInput !== MessageQueueSpecialElement.toolCallDone &&
+        userInput !== MessageQueueSpecialElement.errorInLastIteration &&
+        userInput !== MessageQueueSpecialElement.lastReplyFromLLMWasEmpty) {
         messages.push(userInput)
         await createMessage(this.sessionId, userInput.content as string, Role.user);
       }
@@ -182,8 +184,15 @@ export class BabyPandaAgent extends EventEmitter {
         type ReplyJson = z.infer<typeof ReplyJsonSchema>
 
         response.response?.data.on('end', async () => {
+          if (!fullReply.trim()) {
+            console.log("Full reply is empty");
+            this.messageQueue.push(MessageQueueSpecialElement.lastReplyFromLLMWasEmpty);
+            resolve("empty reply");
+            return;
+          }
+
           console.log("full reply: \n", fullReply);
-          if(lineChecked < MAX_LINE_THRESHOLD_FOR_TOOL_CALL && !toolCall){this.emit('data' , fullReply)};
+          if (lineChecked < MAX_LINE_THRESHOLD_FOR_TOOL_CALL && !toolCall) { this.emit('data', fullReply) };
           try {
             await createMessage(this.sessionId, fullReply, Role.assistant);
             this.messagesHistory.push({ role: Role.assistant, content: fullReply })
@@ -242,27 +251,30 @@ export class BabyPandaAgent extends EventEmitter {
               console.log(`An error occured while resolving tool call at agent.ts: ${err}`);
               reject(err);
             }
-          } 
-          
+          }
           lineChecked = 0;
           toolCall = false;
           fullReply = '';
           this.emit('end');
           resolve("single iteration of loop done.");
+
         });
-        response.response?.data.on('error', (err: Error) => { console.error(
-          'Stream error:', err); 
-          this.isRunning=false;
+        response.response?.data.on('error', (err: Error) => {
+          console.error(
+            'Stream error:', err);
+          this.isRunning = false;
           reject(err);
-         });
+        });
       }).then(
-        ()=>{
+        () => {
           this.messageQueue.splice(0, 1);
-          this.isRunning=false})
-        .catch((err)=>{
-          this.isRunning=false;
+          this.isRunning = false
+        })
+        .catch((err) => {
+          this.isRunning = false;
           this.messageQueue.push(MessageQueueSpecialElement.errorInLastIteration);
-          throw err});
+          throw err
+        });
     }
     console.log('loop has ended')
   }
