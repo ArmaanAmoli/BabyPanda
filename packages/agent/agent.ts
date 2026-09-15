@@ -1,5 +1,5 @@
 import { BabyPandaClient } from './apiCall'
-import type { Message, UrlApi, ToolMessage, MessageRegular } from './types'
+import type { Message, UrlApi, MessageAPI } from './types'
 import { ReasoningEffort, Role } from './types'
 import { readFileSync } from "fs"
 import { EventEmitter } from "events"
@@ -17,8 +17,8 @@ const cwd = process.cwd();
 export class BabyPandaAgent extends EventEmitter {
   private client: BabyPandaClient;
   private isRunning = false;
-  private messageQueue: (Message | MessageQueueSpecialElement)[] = [];
-  private messagesHistory: Message[] = [];
+  private messageQueue: (MessageAPI | MessageQueueSpecialElement)[] = [];
+  private messagesHistory: MessageAPI[] = [];
   private mcpClient: MCPClient = new MCPClient();
   private cwd = cwd;
 
@@ -75,7 +75,7 @@ export class BabyPandaAgent extends EventEmitter {
     while (this.messageQueue.length !== 0) {
       console.log("in the loop")
       this.isRunning = true;
-      const messages: Message[] = [systemMessage, ...this.messagesHistory]
+      const messages: MessageAPI[] = [systemMessage, ...this.messagesHistory]
 
       if (!this.messageQueue[0]) {
         this.messageQueue.splice(0, 1);

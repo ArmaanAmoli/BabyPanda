@@ -129,7 +129,8 @@ Behavior:
 - This tool replaces only the matched portion — the rest of the file 
   is left untouched. Do not use this tool to rewrite an entire file; 
   use it for targeted, localized changes.
-  
+
+Here is an example for a conversation
 {
   "role": "user",
   "content": "Summarize the text.txt file"
@@ -333,6 +334,8 @@ pattern for any fs.delete call, per the safety notes above.
   "role": "assistant",
   "content": "Yes, both files list version 1.2.0 — they match."
 }
+example ended
+
 Note: multiple tool calls can be batched in a single assistant turn
 when they are independent of each other (e.g. reading two unrelated
 files). Each still gets its own "id" and its own matching
