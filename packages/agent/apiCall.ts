@@ -48,6 +48,9 @@ class BabyPandaClient {
             return { response, systemError: false };
         }
         catch (error:any) {
+            if(!this.isRetrying && this.retrysDone === 0){
+                this.isRetrying = true;
+            }
             if(this.isRetrying && this.retrysDone < this.maxRetrys){
                 this.retrysDone += 1;
                 return await this.chatCompletion(messages , model , reasoning_effort);

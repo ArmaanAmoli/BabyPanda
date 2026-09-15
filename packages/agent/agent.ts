@@ -42,7 +42,7 @@ export class BabyPandaAgent extends EventEmitter {
   public async init() {
     await this.connectToMCP();
     await this.getNoMessages();
-    await this.getMessageHistory();
+    this.messagesHistory = await this.getMessageHistory();
     console.log("agent:init");
   }
   private async connectToMCP() { await this.mcpClient.connectToServer((__dirname + '/mcp/index.ts'), this.cwd); console.log("agent:MCP") }
