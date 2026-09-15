@@ -170,6 +170,7 @@ export class BabyPandaAgent extends EventEmitter {
                 }
                 else if (thoughtRegex.test(fullReply)) {
                   contentType = ContentType.thought
+                  this.messageQueue.push(MessageQueueSpecialElement.lastReplyFromLLMWasThought);
                 }
                 lineBuffer.push(content);
               }
@@ -209,7 +210,6 @@ export class BabyPandaAgent extends EventEmitter {
             content: z.string().optional()
           })
         });
-        type ReplyJson = z.infer<typeof ReplyJsonSchema>
 
         response.response?.data.on('end', async () => {
           if (!fullReply.trim()) {
@@ -263,7 +263,7 @@ export class BabyPandaAgent extends EventEmitter {
                       this.numberOfMessages += 1;
                       this.messagesHistory.push({
                         role: Role.user,
-                        content: `${toolResults.at(i)!}`
+                        content: JSON.stringify(toolResults.at(i))
                       }
                       )
                     } catch (err) {
@@ -276,7 +276,7 @@ export class BabyPandaAgent extends EventEmitter {
                 i = 0;
                 this.messageQueue.push(MessageQueueSpecialElement.toolCallDone);
               }
-              // save messages code below this
+              // to-do save messages code below this
             }
             catch (err) {
               console.log(`An error occured while resolving tool call at agent.ts: ${err}`);
@@ -310,7 +310,6 @@ export class BabyPandaAgent extends EventEmitter {
   }
 
   async message(msg: Message) {
-    // await createMessage(this.sessionId, msg.content as string, msg.role);
     this.messageQueue.push(msg);
     if (this.isRunning) {
       return;
