@@ -5,7 +5,7 @@ import {Role} from '../types.ts'
 const sessionId = '471582a1-8894-4a58-9800-882f40f86fc2';
 const agent = new BabyPandaAgent({url:'https://integrate.api.nvidia.com/v1/chat/completions' , apikey:process.env['NVIDIA_API_KEY']!} , sessionId);
 await agent.init()
-agent.model="nvidia/nemotron-3-ultra-550b-a55b";
-const content1 = "create a new file in cwd names hello.ts and write a hello world program in typescript";
+agent.model="z-ai/glm-5.3";
+const content1 = "Can fix memory optimizations in the code if they are needed ?";
 const message1:Message = {role:Role.user , content:content1 , sessionId: sessionId};
 await agent.message(message1);

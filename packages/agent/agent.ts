@@ -8,6 +8,7 @@ import * as z from "zod";
 import type { Tool, ToolResult } from './types';
 import { MessageQueueSpecialElement } from './types';
 import { getMessages, getSession, createMessage } from '@baby-panda/db';
+import { extractFirstJSON } from './utils/FirstJsonExtractor';
 import * as path from 'path';
 import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
@@ -71,6 +72,22 @@ export class BabyPandaAgent extends EventEmitter {
   }
 
   private async loop() {
+    const getContent = (encoded: string) => {
+      try {
+        if (encoded) {
+          const json = JSON.parse(encoded);
+          if (!json.choices || json.choices.length === 0) return '';
+          if (!json.choices[0].delta.content) return '';
+          return String(json.choices[0].delta.content);
+        }
+        return '';
+      }
+      catch (err) {
+        console.error('Failed to parse SSE chunk:', encoded, err)
+        return '';
+      }
+    }
+
     const systemMessage = { role: Role.system, content: (this.instructions + `user current working directory: "${this.cwd}"`) }
     while (this.messageQueue.length !== 0) {
       console.log("in the loop")
@@ -93,7 +110,7 @@ export class BabyPandaAgent extends EventEmitter {
         messages.push(userInput);
         await createMessage(this.sessionId, userInput.content as string, Role.user);
       }
-      this.messageQueue.splice(0,1);
+      this.messageQueue.splice(0, 1);
       // console.log('MESSAGES' , messages)
       const response = await this.client.chatCompletion(messages, this.model, this.reasoningEffect);
       console.log("first reply");
@@ -103,29 +120,12 @@ export class BabyPandaAgent extends EventEmitter {
         this.messageQueue.push(MessageQueueSpecialElement.errorInLastIteration);
         continue;
       }
-      const getContent = (encoded: string) => {
-        try {
-          if (encoded) {
-            const json = JSON.parse(encoded);
-            if (!json.choices || json.choices.length === 0) return '';
-            if (!json.choices[0].delta.content) return '';
-            return String(json.choices[0].delta.content);
-          }
-          return '';
-        }
-        catch (err) {
-          console.error('Failed to parse SSE chunk:', encoded, err)
-          return '';
-        }
-      }
-
       enum ContentType {
         content = 'content',
         thought = 'thought',
         tool_call = 'tool_call',
         unidentified = 'unidentified'
       }
-
       await new Promise((resolve, reject) => {
         let contentType: ContentType = ContentType.unidentified;
         const parentContentPropertyRegex = /^.*"content":.*$/m;
@@ -212,9 +212,11 @@ export class BabyPandaAgent extends EventEmitter {
             content: z.string().optional()
           })
         });
+        type ReplyJson = z.infer<typeof ReplyJsonSchema>;
 
         response.response?.data.on('end', async () => {
-          if (!fullReply.trim()) {
+          fullReply = extractFirstJSON(fullReply) ?? ""
+          if (!fullReply) {
             console.log("Full reply is empty");
             this.messageQueue.push(MessageQueueSpecialElement.lastReplyFromLLMWasEmpty);
             resolve("empty reply");
@@ -229,7 +231,15 @@ export class BabyPandaAgent extends EventEmitter {
           }
           if (toolCall) {
             try {
-              let replyJson = ReplyJsonSchema.parse(JSON.parse(fullReply)) // to-do: try to make it more safe
+              let replyJson: ReplyJson | undefined;
+              try {
+                replyJson = ReplyJsonSchema.parse(JSON.parse(fullReply)) // to-do: try to make it more safe
+              } catch (err) {
+                reject("parsing error");
+                this.messageQueue.push(MessageQueueSpecialElement.errorInLastIteration)
+                createMessage(this.sessionId, `Their is an issue in the reply structure that you gave ${err}`, Role.user)
+                return;
+              }
               console.log('reply-json', replyJson)
               // console.log(replyJson.content.tool_call)
               // console.log('Try:execute tool call')
@@ -237,7 +247,7 @@ export class BabyPandaAgent extends EventEmitter {
               if (parsed) {
                 // console.log('parsed')
                 let toolCalls = replyJson.content.tool_call;
-                if(!toolCalls){
+                if (!toolCalls) {
                   MessageQueueSpecialElement.toolCallDone;
                   resolve('no tool call');
                   return; // to-do: add proper handelling
@@ -275,7 +285,10 @@ export class BabyPandaAgent extends EventEmitter {
               // to-do save messages code below this
             }
             catch (err) {
-              console.log(`An error occured while resolving tool call at agent.ts: ${err}`);
+              const fullErrMessage = `An error occured while resolving tool call at agent.ts: ${err}`
+              console.log(fullErrMessage, "Sending error to llm");
+              createMessage(this.sessionId, fullErrMessage, Role.user)
+              this.messageQueue.push(MessageQueueSpecialElement.errorInLastIteration)
               reject(err);
             }
           }
@@ -297,8 +310,8 @@ export class BabyPandaAgent extends EventEmitter {
         })
         .catch((err) => {
           this.isRunning = false;
+          console.log("[ERROR]: ", err)
           this.messageQueue.push(MessageQueueSpecialElement.errorInLastIteration);
-          throw err
         });
     }
     console.log('loop has ended')
