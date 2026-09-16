@@ -240,19 +240,13 @@ export class BabyPandaAgent extends EventEmitter {
                 createMessage(this.sessionId, `Their is an issue in the reply structure that you gave ${err}`, Role.user)
                 return;
               }
-              console.log('reply-json', replyJson)
-              // console.log(replyJson.content.tool_call)
-              // console.log('Try:execute tool call')
-              const parsed = ReplyJsonSchema.parse(replyJson)
-              if (parsed) {
-                // console.log('parsed')
+              if (replyJson) {
                 let toolCalls = replyJson.content.tool_call;
                 if (!toolCalls) {
                   MessageQueueSpecialElement.toolCallDone;
                   resolve('no tool call');
-                  return; // to-do: add proper handelling
+                  return;
                 }
-                // console.log('raw-tool-call-message-array', toolCalls);
                 const toolCallsT: Tool[] = toolCalls.map((tool) => {
                   return {
                     id: tool.id,
