@@ -126,8 +126,10 @@ export class BabyPandaAgent extends EventEmitter {
         tool_call = 'tool_call',
         unidentified = 'unidentified'
       }
+      let contentType: ContentType = ContentType.unidentified;
+      let toBreak:boolean = false;
+
       await new Promise((resolve, reject) => {
-        let contentType: ContentType = ContentType.unidentified;
         const parentContentPropertyRegex = /^.*"content":.*$/m;
         const thoughtRegex = /^.*"thought":.*$/m;
         const answerRegex = /^.*"answer":.*$/m;
@@ -169,6 +171,7 @@ export class BabyPandaAgent extends EventEmitter {
                 }
                 else if (answerRegex.test(fullReply)) {
                   contentType = ContentType.content;
+                  toBreak = true;
                 }
                 else if (thoughtRegex.test(fullReply)) {
                   contentType = ContentType.thought
@@ -307,6 +310,7 @@ export class BabyPandaAgent extends EventEmitter {
           console.log("[ERROR]: ", err)
           this.messageQueue.push(MessageQueueSpecialElement.errorInLastIteration);
         });
+        if(toBreak) break;
     }
     console.log('loop has ended')
   }
