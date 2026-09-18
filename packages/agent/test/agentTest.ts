@@ -5,7 +5,7 @@ import {Role} from '../types.ts'
 const sessionId = '471582a1-8894-4a58-9800-882f40f86fc2';
 const agent = new BabyPandaAgent({url:'https://integrate.api.nvidia.com/v1/chat/completions' , apikey:process.env['NVIDIA_API_KEY']!} , sessionId);
 await agent.init()
-agent.model="z-ai/glm-5.3";
-const content1 = "Can fix memory optimizations in the code if they are needed ?";
+agent.model="z-ai/glm-5.3-flash";
+const content1 = "Summarize this web page https://en.wikipedia.org/wiki/Supernova";
 const message1:Message = {role:Role.user , content:content1 , sessionId: sessionId};
 await agent.message(message1);
