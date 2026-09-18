@@ -10,6 +10,8 @@ const server = new McpServer({
     version:"1.0.0",
 });
 
+// file system
+
 server.registerTool(
     "read",
     {
@@ -152,6 +154,8 @@ server.registerTool(
     }
 );
 
+// Web
+
 server.registerTool(
     "web_search",
     {
@@ -187,6 +191,8 @@ server.registerTool(
         }
     }
 );
+
+// Memory
 
 async function main(){
     const transport = new StdioServerTransport();
