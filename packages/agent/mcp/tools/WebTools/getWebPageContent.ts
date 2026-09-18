@@ -21,5 +21,3 @@ export async function getWebPage(url:string[]) {
     );
     return result.results;
 }
-
-await getWebPage(["https://nextjs.org/docs" ,"https://github.com/searxng/searxng/" ])

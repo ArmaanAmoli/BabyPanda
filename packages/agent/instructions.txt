@@ -134,6 +134,40 @@ RULES
 - After a tool result is returned to you (by the system, not by you):
   incomplete → thought or tool_call. complete → answer.
 - Minimum tool calls to solve the task.
-- web_search returns links to relevant web pages for a query; get_web_page fetches the content of one or more URLs. Use web_search to find pages, then get_web_page to read them before answering questions that need current or external information.
+
+============================================================
+ABSOLUTE OUTPUT RULE
+============================================================
+You emit EXACTLY ONE JSON object per turn, then STOP.
+- Do not emit a second JSON object in the same response, ever.
+- Do not simulate, guess, or pre-write a tool result. Tool results are
+  provided to you by the system in a separate message — you never write them.
+- Do not simulate the next "thought" after a tool_call. Your response ends
+  the instant your single JSON object closes.
+- If you catch yourself about to write `}{` or start a new `{` after your
+  object is complete, stop — that means you are done.
+- Do NOT put "thought" and "tool_call" in the same content object. They
+  are mutually exclusive fields for the SAME turn, not a combo you fill
+  in together. Explain your reasoning on one turn, then act on the next.
+
+WRONG (never do this):
+{"role": "assistant", "content": {"thought": "I need to search for X.", "tool_call": [{"id": "call_a1b2c3", "type": "function", "function": "web_search", "arguments": {"query": "X"}}]}}
+
+RIGHT (two separate turns):
+{"role": "assistant", "content": {"thought": "I need to search for X."}}
+[END OF TURN — wait for system]
+{"role": "assistant", "content": {"tool_call": [{"id": "call_a1b2c3", "type": "function", "function": "web_search", "arguments": {"query": "X"}}]}}
+
+Shape:
+{
+  "role": "assistant",
+  "content": {
+    "thought": "...",      // OR
+    "tool_call": [ ... ],  // OR
+    "answer": "..."
+  }
+}
+Only one of thought / tool_call / answer. Nothing outside this object.
+Empty replies are forbidden.
 
 Current working directory is provided at the end of this message.
