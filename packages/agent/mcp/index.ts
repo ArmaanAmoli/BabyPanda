@@ -161,10 +161,10 @@ server.registerTool(
         }),
     },
     async (args)=>{
-        const results = webSearch(args.query);
+        const results = await webSearch(args.query);
         return{
             content:[
-                {type:"text" , text:`${results}`}
+                {type:"text" , text:`${JSON.stringify(results)}`}
             ]
         }
     }
@@ -179,10 +179,10 @@ server.registerTool(
         }),
     },
     async (args)=>{
-        const results = getWebPage(args.url);
+        const results = await getWebPage(args.url);
         return{
             content:[
-                {type:"text" , text:`${results}`}
+                {type:"text" , text:`${JSON.stringify(results)}`}
             ]
         }
     }

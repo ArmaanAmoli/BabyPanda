@@ -1,6 +1,12 @@
 import Exa from "exa-js";
 import * as dotenv from 'dotenv';
-dotenv.config({ path: "../../../.env" });
+import * as path from 'path';
+import { fileURLToPath } from 'url';
+//to be removed
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+dotenv.config({path:path.resolve(__dirname , '../../../.env')})
+//
 
 const exa = new Exa();
 

@@ -1,10 +1,15 @@
 import Exa from "exa-js";
 import * as dotenv from 'dotenv';
 import { z } from "zod";
-dotenv.config({ path: "../../../.env" });
+import { fileURLToPath } from 'url';
+import * as path from 'path';
+//to be removed
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+dotenv.config({path:path.resolve(__dirname , '../../../.env')})
+//
 
 const exa = new Exa();
-
 const WebSearchResultsSchema = z.array(
   z.object({
     id: z.string(),
