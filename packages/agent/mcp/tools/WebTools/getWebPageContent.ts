@@ -13,11 +13,7 @@ export async function getWebPage(url:string[]) {
         },
     }
     );
-    result.results.forEach((r) => {
-        console.log(r.text);
-        console.log(r.extras)
-    })
-    return result;
+    return result.results;
 }
 
 await getWebPage(["https://nextjs.org/docs" ,"https://github.com/searxng/searxng/" ])

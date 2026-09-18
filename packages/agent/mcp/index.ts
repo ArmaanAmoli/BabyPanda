@@ -1,6 +1,8 @@
 import {McpServer} from "@modelcontextprotocol/server";
 import {StdioServerTransport} from "@modelcontextprotocol/server/stdio";
 import {read , grep , edit , glob , del , list , write} from './tools/filesystem'
+import {webSearch} from './tools/WebTools/webSearch';
+import {getWebPage} from './tools/WebTools/getWebPageContent';
 import {array, string, z} from "zod";
 
 const server = new McpServer({
@@ -148,7 +150,43 @@ server.registerTool(
             ]
         };
     }
-)
+);
+
+server.registerTool(
+    "web_search",
+    {
+        description:"Takes in a search query and return links to relevant web pages",
+        inputSchema:z.object({
+            query:z.string()
+        }),
+    },
+    async (args)=>{
+        const results = webSearch(args.query);
+        return{
+            content:[
+                {type:"text" , text:`${results}`}
+            ]
+        }
+    }
+);
+
+server.registerTool(
+    "get_web_page",
+    {
+        description:"Takes in a search query and return links to relevant web pages",
+        inputSchema:z.object({
+            url:z.array(z.string())
+        }),
+    },
+    async (args)=>{
+        const results = getWebPage(args.url);
+        return{
+            content:[
+                {type:"text" , text:`${results}`}
+            ]
+        }
+    }
+);
 
 async function main(){
     const transport = new StdioServerTransport();
