@@ -6,6 +6,7 @@
     "@types/bun": "^1.4.2",
     "axios": "^1.19.0",
     "dev": "^0.1.5",
+    "dotenv": "^18.0.0",
     "ink-big-text": "^2.0.0",
     "ink-gradient": "^4.0.1"
   }
