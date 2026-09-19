@@ -1,21 +1,22 @@
-import type { MessageAPI, Message, ReplyJson } from '@/types'
+import type { MessageAPI, Message, ReplyJson } from '@/types';
 import { Role, ReplyJsonSchema } from '@/types'
-import { BabyPandaClient } from '@/client'
-import { readFileSync } from 'fs'
-import { extractFirstJSON } from '@/utils/FirstJsonExtractor'
+import { BabyPandaClient } from '@/client';
+import {BabyPandaAgent} from '@/agent';
+import { readFileSync } from 'fs';
+import { extractFirstJSON } from '@/utils/FirstJsonExtractor';
 
 import path from 'path';
 import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-const compactionInstructionFilePath = path.join(__dirname, 'memory', 'BabyPanda', 'Compaction.md');
-var maxRetries = 2;
+const __dirname = path.dirname(path.dirname(__filename));
+const compactionInstructionFilePath = path.join(__dirname,'BabyPanda', 'Compaction.md');
+const maxRetries = 2;
 
-export async function compaction(messages: MessageAPI[], client: BabyPandaClient, sessionId: string, model: string) {
+export async function compaction(messages: MessageAPI[], agent:BabyPandaAgent) {
     const content = `<message>${JSON.stringify(messages)}</message>`;
     const systemMessage: Message = { role: Role.system, content: readFileSync(compactionInstructionFilePath) }
     const transcript: Message = { role: Role.user, content: content };
-    const response = await client.chatCompletion([systemMessage, transcript], model);
+    const response = await agent.client.chatCompletion([systemMessage, transcript], agent.model);
     let fullReply = '';
     let isRetrying: boolean = false;
     let retriesDone = 0;
@@ -40,6 +41,7 @@ export async function compaction(messages: MessageAPI[], client: BabyPandaClient
             catch (err) {
                 if (!isRetrying) {
                     isRetrying = true;
+                    console.log("retrying")
                 }
                 else if (isRetrying && (retriesDone < maxRetries)) {
                     retriesDone += 1;

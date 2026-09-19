@@ -24,7 +24,7 @@ const babyPandaDir = path.join(home , '.babypanda' , 'projects');
 const instructionsFilePath = path.join(__dirname , 'memory' , 'BabyPanda' , 'BabyPanda.md');
 
 export class BabyPandaAgent extends EventEmitter {
-  private client: BabyPandaClient;
+  client: BabyPandaClient;
   private isRunning = false;
   private messageQueue: (MessageAPI | MessageQueueSpecialElement)[] = [];
   private messagesHistory: MessageAPI[] = [];
@@ -35,7 +35,7 @@ export class BabyPandaAgent extends EventEmitter {
   public contextWindowUsed:number = 0;
 
   instructions: string;
-  model: string;
+  model: ModelsEnum;
   sessionId: string;
   reasoningEffect: ReasoningEffort;
   numberOfMessages: number = 0;
@@ -45,13 +45,13 @@ export class BabyPandaAgent extends EventEmitter {
     console.log("agent cwd ", this.cwd);
     console.log(sessionId, "in agent constructor")
     this.client = new BabyPandaClient({ url, apikey });
-    this.model = 'nvidia/nemotron-3-ultra-550b-a55b'; // This will be our default model
+    this.model = ModelsEnum["nvidia/nemotron-3.5-lightning-30b-a3b"]; // This will be our default model
     this.instructions = readFileSync(instructionsFilePath, { encoding: 'utf-8' });
     this.reasoningEffect = ReasoningEffort.none;
     this.sessionId = sessionId
     this.projectDirectoryName = formatPath(this.cwd);
     const projectDirectoryPath = path.join(babyPandaDir , this.projectDirectoryName)
-    this.contextWindow = Models['Nvidia'].models['nvidia/nemotron-3-ultra-550b-a55b'].contextLength; // default model
+    this.contextWindow = Models['Nvidia'].models[this.model].contextLength; // default model
     if(!(existsSync(projectDirectoryPath) && lstatSync(projectDirectoryPath).isDirectory())){
       mkdirSync(projectDirectoryPath , {recursive:true});
     }
@@ -100,10 +100,13 @@ export class BabyPandaAgent extends EventEmitter {
       if(this.contextWindowUsed >= (this.contextWindow * 0.75)){
         try{
           console.log("started compacting...");
-          const summary = await compaction(this.messagesHistory, this.client , this.sessionId ,this.model);
+          const summary = await compaction(this.messagesHistory, this);
+          console.log(summary)
           console.log("stopped compacting...");
-        }catch(err){
-          continue;
+        }
+        catch(err){
+          console.log(err)
+          break;
         }
       }
 
@@ -170,6 +173,7 @@ export class BabyPandaAgent extends EventEmitter {
             line = line.slice(6);
             if (line === '[DONE]') continue;
             const content = getContent(line ,this);
+            console.log(this.contextWindowUsed)
             // console.log(content);
             fullReply += content;
             if (inParentContentProperty) {
