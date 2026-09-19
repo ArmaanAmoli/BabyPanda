@@ -194,6 +194,12 @@ server.registerTool(
 
 // Memory
 
+// server.registerTool(
+//     "write_memory",{
+
+//     }
+// )
+
 async function main(){
     const transport = new StdioServerTransport();
     await server.connect(transport);

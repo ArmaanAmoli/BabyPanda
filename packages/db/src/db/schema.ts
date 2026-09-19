@@ -7,7 +7,8 @@ export const Session = sqliteTable("session" , {
     createdAt: text("created_at").default(sql`CURRENT_TIMESTAMP`),
     parentSessionId: text("parent_session_id"),
     messagesCount:integer("messages_count").default(0),
-    tokensInContextWindow:integer("tokens_in_context_window").default(0)
+    tokensInContextWindow:integer("tokens_in_context_window").default(0),
+    projectDirectory:text("project_directory")
 })
 
 export const Message = sqliteTable("message" , {

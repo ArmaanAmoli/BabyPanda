@@ -9,7 +9,8 @@ interface APIProvider {
 }
 export async function createSession(parentSessionId?: string) {
     const id: string = crypto.randomUUID()
-    await db.insert(Session).values(parentSessionId ? { id, parentSessionId } : { id });
+    const cwd = process.cwd();
+    await db.insert(Session).values((parentSessionId ? { id, parentSessionId , projectDirectory:cwd} : { id , projectDirectory:cwd}));
     return id;
 }
 export async function createMessage(sessionId: string, content: string, role: Role) {
@@ -57,4 +58,7 @@ export async function updateSession(sessionId: string, updatedValue: { messagesC
 export async function getSession(sessionId: string) {
     const session = await db.select().from(Session).where(eq(Session.id, sessionId));
     return session;
+}
+export async function getSessionsByProjectDirectory(projectDirectory:string){
+    const sessions = await db.select().from(Session).where(eq(Session.projectDirectory , projectDirectory));
 }

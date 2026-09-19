@@ -39,7 +39,8 @@ class BabyPandaClient {
                 // reasoning_effort: reasoning_effort ? reasoning_effort : 'none',
                 seed: 42,
                 stream: true,
-                messages: messages
+                messages: messages,
+                stream_options:{"include_usage":true},
             },
         };
         try {

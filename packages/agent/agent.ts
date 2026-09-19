@@ -1,4 +1,4 @@
-import { BabyPandaClient } from './apiCall'
+import { BabyPandaClient } from './client'
 import type { Message, UrlApi, MessageAPI } from './types'
 import { ReasoningEffort, Role } from './types'
 import { readFileSync } from "fs"

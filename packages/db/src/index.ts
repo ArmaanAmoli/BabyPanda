@@ -5,7 +5,7 @@ import {addProvider} from './methods'
 import {getSessions} from './methods'
 import {updateSession} from './methods';
 import {getSession} from './methods';
-
+import {getSessionsByProjectDirectory} from './methods'
 
 export {createSession};
 export {createMessage};
@@ -14,3 +14,4 @@ export {addProvider};
 export {getSessions};
 export {updateSession};
 export {getSession};
+export {getSessionsByProjectDirectory};
