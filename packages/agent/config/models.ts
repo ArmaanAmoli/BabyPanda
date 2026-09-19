@@ -1,21 +1,42 @@
 import {z} from 'zod';
+/*
+{
+provider: provider_details : url , models: model:model_details
+}
+*/
+export enum ProvidersEnum{
+  Nvidia = "Nvidia",
+}
 
+const ProvidersEnumSchema = z.enum(ProvidersEnum);
+
+export enum ModelsEnum {
+  "z-ai/glm-5.3-flash" = "z-ai/glm-5.3-flash",
+  "z-ai/glm-5.3" = "z-ai/glm-5.3",
+  "nvidia/nemotron-3-ultra-550b-a55b" = "nvidia/nemotron-3-ultra-550b-a55b",
+  "moonshotai/kimi-k3" = "moonshotai/kimi-k3",
+  "nvidia/nemotron-3.5-lightning-30b-a3b" = "nvidia/nemotron-3.5-lightning-30b-a3b" ,
+}
+
+
+const ModelsEnumSchema = z.enum(ModelsEnum);
 
 const ModelDetailSchema = z.object({
     contextLength:z.number(),
 });
 
-type ModelDetails = z.infer<typeof ModelDetailSchema>;
+export type ModelDetails = z.infer<typeof ModelDetailSchema>;
 
 const ProviderDetailsSchema = z.object({
     url: z.string(),
-    models:z.record(z.string() , ModelDetailSchema)
+    models:z.record(ModelsEnumSchema , ModelDetailSchema)
 });
 
 type ProviderDetails = z.infer<typeof ProviderDetailsSchema>;
 
-const ModelSchema = z.record(z.string() , ProviderDetailsSchema)
-type ModelsType = z.infer<typeof ModelSchema>
+export const ModelsSchema = z.record(ProvidersEnumSchema , ProviderDetailsSchema);
+
+type ModelsType = z.infer<typeof ModelsSchema>
 
 export const Models:ModelsType = {
   "Nvidia":{

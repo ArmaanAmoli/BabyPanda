@@ -35,7 +35,7 @@ export class BabyPandaAgent extends EventEmitter {
     console.log(sessionId, "in agent constructor")
     this.client = new BabyPandaClient({ url, apikey });
     this.model = 'nvidia/nemotron-3.5-lightning-30b-a3b'; // This will be our default model
-    this.instructions = readFileSync((__dirname + '/instructions.txt'), { encoding: 'utf-8' });
+    this.instructions = readFileSync((__dirname + '/memory/BabyPanda/BabyPanda.md'), { encoding: 'utf-8' });
     this.reasoningEffect = ReasoningEffort.none;
     this.sessionId = sessionId
   }
