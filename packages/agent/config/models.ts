@@ -16,6 +16,7 @@ export enum ModelsEnum {
   "nvidia/nemotron-3-ultra-550b-a55b" = "nvidia/nemotron-3-ultra-550b-a55b",
   "moonshotai/kimi-k3" = "moonshotai/kimi-k3",
   "nvidia/nemotron-3.5-lightning-30b-a3b" = "nvidia/nemotron-3.5-lightning-30b-a3b" ,
+  "meta/muse-glimmer-30b" = "meta/muse-glimmer-30b"
 }
 
 
@@ -56,6 +57,9 @@ export const Models:ModelsType = {
       },
       "nvidia/nemotron-3.5-lightning-30b-a3b":{
         contextLength:1000000,
+      },
+      "meta/muse-glimmer-30b":{
+        contextLength:131000
       }
     }
   }

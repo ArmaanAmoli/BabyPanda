@@ -1,8 +1,8 @@
-import axios from 'axios'
+import axios, { type AxiosResponse } from 'axios'
 import type { Message, ReasoningEffort, UrlApi } from './types' // verbatimModuleSyntax
 
 interface ChatCompletionArgs{
-    response?:any;
+    response?:AxiosResponse;
     systemError?:boolean;
     error?:any;
 }

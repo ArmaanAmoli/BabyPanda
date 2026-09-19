@@ -1,14 +1,17 @@
 // Get content from raw json of llm
-export const getContent = (encoded: string , contextWindowUsed:number) => {
+import {BabyPandaAgent} from "@/agent";
+
+export const getContent = (encoded: string , agent:BabyPandaAgent) => {
       try {
         if (encoded) {
           const json = JSON.parse(encoded);
-          if (!json.choices || json.choices.length === 0) return '';
-          if (!json.choices[0].delta.content) return '';
           if(json.usage){
             console.log("Toke Usage: ", json.usage )//temporary;
-            contextWindowUsed = json.usage.total_tokens;
+            agent.contextWindowUsed = json.usage.total_tokens;
           }
+          if (!json.choices || json.choices.length === 0) return '';
+          if (!json.choices[0].delta.content) return '';
+          
           return String(json.choices[0].delta.content);
         }
         return '';

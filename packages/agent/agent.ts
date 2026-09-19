@@ -1,12 +1,10 @@
 import { BabyPandaClient } from './client'
-import type { Message, UrlApi, MessageAPI } from './types'
-import { ReasoningEffort, Role } from './types'
+import type { Message, UrlApi, MessageAPI ,Tool , ReplyJson } from './types'
+import { MessageQueueSpecialElement , ReplyJsonSchema , ReasoningEffort, Role } from './types';
 import { readFileSync , existsSync , lstatSync , mkdirSync} from "fs"
 import { EventEmitter } from "events"
 import { MCPClient } from "./mcp/client"
 import * as z from "zod";
-import type { Tool, ToolResult } from './types';
-import { MessageQueueSpecialElement } from './types';
 import { getMessages, getSession, createMessage } from '@baby-panda/db';
 import { extractFirstJSON } from './utils/FirstJsonExtractor';
 import path from 'path';
@@ -15,6 +13,7 @@ import formatPath from '@/utils/formatPath';
 import os from 'node:os';
 import {ModelsEnum , Models , ProvidersEnum} from '@/config/models'
 import {getContent} from '@/utils/getContent';
+import {compaction} from '@/memory/services/compaction';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -23,6 +22,7 @@ const cwd = process.cwd();
 const home = os.homedir();
 const babyPandaDir = path.join(home , '.babypanda' , 'projects');
 const instructionsFilePath = path.join(__dirname , 'memory' , 'BabyPanda' , 'BabyPanda.md');
+
 export class BabyPandaAgent extends EventEmitter {
   private client: BabyPandaClient;
   private isRunning = false;
@@ -32,7 +32,7 @@ export class BabyPandaAgent extends EventEmitter {
   private cwd = cwd;
   private projectDirectoryName = '';
   private contextWindow:number = 0;
-  private contextWindowUsed:number = 0;
+  public contextWindowUsed:number = 0;
 
   instructions: string;
   model: string;
@@ -45,12 +45,13 @@ export class BabyPandaAgent extends EventEmitter {
     console.log("agent cwd ", this.cwd);
     console.log(sessionId, "in agent constructor")
     this.client = new BabyPandaClient({ url, apikey });
-    this.model = 'nvidia/nemotron-3.5-lightning-30b-a3b'; // This will be our default model
+    this.model = 'nvidia/nemotron-3-ultra-550b-a55b'; // This will be our default model
     this.instructions = readFileSync(instructionsFilePath, { encoding: 'utf-8' });
     this.reasoningEffect = ReasoningEffort.none;
     this.sessionId = sessionId
     this.projectDirectoryName = formatPath(this.cwd);
     const projectDirectoryPath = path.join(babyPandaDir , this.projectDirectoryName)
+    this.contextWindow = Models['Nvidia'].models['nvidia/nemotron-3-ultra-550b-a55b'].contextLength; // default model
     if(!(existsSync(projectDirectoryPath) && lstatSync(projectDirectoryPath).isDirectory())){
       mkdirSync(projectDirectoryPath , {recursive:true});
     }
@@ -95,6 +96,16 @@ export class BabyPandaAgent extends EventEmitter {
       this.isRunning = true;
       this.messagesHistory = await this.getMessageHistory();
       const messages: MessageAPI[] = [systemMessage, ...this.messagesHistory]
+
+      if(this.contextWindowUsed >= (this.contextWindow * 0.75)){
+        try{
+          console.log("started compacting...");
+          const summary = await compaction(this.messagesHistory, this.client , this.sessionId ,this.model);
+          console.log("stopped compacting...");
+        }catch(err){
+          continue;
+        }
+      }
 
       if (!this.messageQueue[0]) {
         this.messageQueue.splice(0, 1);
@@ -158,7 +169,7 @@ export class BabyPandaAgent extends EventEmitter {
             if (!regex.test(line)) continue;
             line = line.slice(6);
             if (line === '[DONE]') continue;
-            const content = getContent(line ,this.contextWindowUsed);
+            const content = getContent(line ,this);
             // console.log(content);
             fullReply += content;
             if (inParentContentProperty) {
@@ -200,24 +211,6 @@ export class BabyPandaAgent extends EventEmitter {
 
           }
         });
-
-        const ReplyJsonSchema = z.object({
-          role: z.string(),
-          content: z.object({
-            tool_call: z.array(z.object(
-              {
-                id: z.string(),
-                type: z.string(),
-                function: z.string(),
-                arguments: z.record(z.string(), z.unknown())
-              }
-            )).optional(),
-            thought: z.string().optional(),
-            content: z.string().optional()
-          })
-        });
-        type ReplyJson = z.infer<typeof ReplyJsonSchema>;
-
         response.response?.data.on('end', async () => {
           fullReply = extractFirstJSON(fullReply) ?? ""
           if (!fullReply) {
