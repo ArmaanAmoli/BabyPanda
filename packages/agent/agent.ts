@@ -1,7 +1,7 @@
 import { BabyPandaClient } from './client'
 import type { Message, UrlApi, MessageAPI } from './types'
 import { ReasoningEffort, Role } from './types'
-import { readFileSync } from "fs"
+import { readFileSync , existsSync , lstatSync , mkdirSync} from "fs"
 import { EventEmitter } from "events"
 import { MCPClient } from "./mcp/client"
 import * as z from "zod";
@@ -9,12 +9,20 @@ import type { Tool, ToolResult } from './types';
 import { MessageQueueSpecialElement } from './types';
 import { getMessages, getSession, createMessage } from '@baby-panda/db';
 import { extractFirstJSON } from './utils/FirstJsonExtractor';
-import * as path from 'path';
+import path from 'path';
 import { fileURLToPath } from 'url';
+import formatPath from '@/utils/formatPath';
+import os from 'node:os';
+import {ModelsEnum , Models , ProvidersEnum} from '@/config/models'
+import {getContent} from '@/utils/getContent';
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-const cwd = process.cwd();
 
+const cwd = process.cwd();
+const home = os.homedir();
+const babyPandaDir = path.join(home , '.babypanda' , 'projects');
+const instructionsFilePath = path.join(__dirname , 'memory' , 'BabyPanda' , 'BabyPanda.md');
 export class BabyPandaAgent extends EventEmitter {
   private client: BabyPandaClient;
   private isRunning = false;
@@ -22,6 +30,9 @@ export class BabyPandaAgent extends EventEmitter {
   private messagesHistory: MessageAPI[] = [];
   private mcpClient: MCPClient = new MCPClient();
   private cwd = cwd;
+  private projectDirectoryName = '';
+  private contextWindow:number = 0;
+  private contextWindowUsed:number = 0;
 
   instructions: string;
   model: string;
@@ -35,9 +46,14 @@ export class BabyPandaAgent extends EventEmitter {
     console.log(sessionId, "in agent constructor")
     this.client = new BabyPandaClient({ url, apikey });
     this.model = 'nvidia/nemotron-3.5-lightning-30b-a3b'; // This will be our default model
-    this.instructions = readFileSync((__dirname + '/memory/BabyPanda/BabyPanda.md'), { encoding: 'utf-8' });
+    this.instructions = readFileSync(instructionsFilePath, { encoding: 'utf-8' });
     this.reasoningEffect = ReasoningEffort.none;
     this.sessionId = sessionId
+    this.projectDirectoryName = formatPath(this.cwd);
+    const projectDirectoryPath = path.join(babyPandaDir , this.projectDirectoryName)
+    if(!(existsSync(projectDirectoryPath) && lstatSync(projectDirectoryPath).isDirectory())){
+      mkdirSync(projectDirectoryPath , {recursive:true});
+    }
   }
 
   public async init() {
@@ -72,23 +88,8 @@ export class BabyPandaAgent extends EventEmitter {
   }
 
   private async loop() {
-    const getContent = (encoded: string) => {
-      try {
-        if (encoded) {
-          const json = JSON.parse(encoded);
-          if (!json.choices || json.choices.length === 0) return '';
-          if (!json.choices[0].delta.content) return '';
-          return String(json.choices[0].delta.content);
-        }
-        return '';
-      }
-      catch (err) {
-        console.error('Failed to parse SSE chunk:', encoded, err)
-        return '';
-      }
-    }
-
     const systemMessage = { role: Role.system, content: (this.instructions + `user current working directory: "${this.cwd}"`) }
+
     while (this.messageQueue.length !== 0) {
       console.log("in the loop")
       this.isRunning = true;
@@ -157,7 +158,7 @@ export class BabyPandaAgent extends EventEmitter {
             if (!regex.test(line)) continue;
             line = line.slice(6);
             if (line === '[DONE]') continue;
-            const content = getContent(line);
+            const content = getContent(line ,this.contextWindowUsed);
             // console.log(content);
             fullReply += content;
             if (inParentContentProperty) {
@@ -324,5 +325,10 @@ export class BabyPandaAgent extends EventEmitter {
       console.log('called loop')
       await this.loop();
     }
+  }
+
+  async setModel(model:ModelsEnum , provider:ProvidersEnum){
+    this.model = model;
+    this.contextWindow = Models[provider].models[model].contextLength;
   }
 }
