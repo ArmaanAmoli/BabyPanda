@@ -49,7 +49,7 @@ class BabyPandaClient {
             const response = await axios(options);
             return { response, systemError: false };
         }
-        catch (error: any) {
+        catch (error: unknown) {
             if (axios.isAxiosError(error)) {
                 if (error.status === 429) {
                     await setTimeout(60000);
@@ -59,7 +59,7 @@ class BabyPandaClient {
                     //bad request stop the client 
                     console.log("BAD REQUEST")
                     const errorBody = await fetchError(error);
-                    return { systemError: true, error:errorBody };
+                    return { systemError: true, error: errorBody };
                 }
             }
             if (!this.isRetrying && this.retrysDone === 0) {
@@ -82,25 +82,25 @@ class BabyPandaClient {
     }
 };
 
-const fetchError = async (error: any) => {
-    if (axios.isAxiosError(error)) {
-        if (error.response?.data && typeof error.response.data.on === 'function') {
-            return new Promise<string>((resolve) => {
-                let chunkBuffer = '';
-                const res = error.response;
-                if(res === undefined){
-                    resolve("error");
-                    return;
-                }
-                res.data.on('data', (chunk: Buffer) => { chunkBuffer += chunk.toString(); });
-                res.data.on('end', () =>{
-                    resolve(chunkBuffer);
-                    console.log("[AXIOS ERROR]: ",error.status , ' ' , error.message);
-                });
-            });
-        }
-    }
+const fetchError = async (error: unknown) => {
+    if (!axios.isAxiosError(error)) return String(error);
 
+    const { response } = error;
+    if (!response) return error.message;
+
+    if (error.response?.data && typeof error.response.data.on === 'function') {
+        return new Promise<string>((resolve) => {
+            let chunks:Buffer[] = [];
+            response.data.on('data', (chunk: Buffer) => { chunks.push(chunk) });
+            response.data.on('end', () => {
+                resolve(Buffer.concat(chunks).toString('utf-8'));
+                console.log("[AXIOS ERROR]: ", response.status, ' ', response.statusText);
+            });
+            response.data.on('error', (e: any) => {
+                resolve(`Cant collect error stream failed with error: ${e}`);
+            })
+        });
+    }
 }
 
 export { BabyPandaClient }
