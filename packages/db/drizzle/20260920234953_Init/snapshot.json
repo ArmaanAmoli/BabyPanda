@@ -1,13 +1,17 @@
 {
   "version": "7",
   "dialect": "sqlite",
-  "id": "51e99aef-f432-4f25-a09d-30169b409bdf",
+  "id": "8ee205da-ce18-4257-bdde-7d6601a41011",
   "prevIds": [
-    "e0975d13-478c-413a-8670-6de250518061"
+    "00000000-0000-0000-0000-000000000000"
   ],
   "ddl": [
     {
       "name": "api_keys",
+      "entityType": "tables"
+    },
+    {
+      "name": "compaction_results",
       "entityType": "tables"
     },
     {
@@ -47,6 +51,36 @@
       "name": "key",
       "entityType": "columns",
       "table": "api_keys"
+    },
+    {
+      "type": "text",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "session_id",
+      "entityType": "columns",
+      "table": "compaction_results"
+    },
+    {
+      "type": "integer",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "created_at",
+      "entityType": "columns",
+      "table": "compaction_results"
+    },
+    {
+      "type": "text",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "content",
+      "entityType": "columns",
+      "table": "compaction_results"
     },
     {
       "type": "integer",
@@ -149,6 +183,16 @@
       "table": "session"
     },
     {
+      "type": "text",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "project_directory",
+      "entityType": "columns",
+      "table": "session"
+    },
+    {
       "columns": [
         "session_id"
       ],
@@ -159,9 +203,34 @@
       "onUpdate": "NO ACTION",
       "onDelete": "NO ACTION",
       "nameExplicit": false,
-      "name": "fk_message_session_id_session_id_fk",
+      "name": "fk_compaction_results_session_id_session_session_id_fk",
+      "entityType": "fks",
+      "table": "compaction_results"
+    },
+    {
+      "columns": [
+        "session_id"
+      ],
+      "tableTo": "session",
+      "columnsTo": [
+        "session_id"
+      ],
+      "onUpdate": "NO ACTION",
+      "onDelete": "NO ACTION",
+      "nameExplicit": false,
+      "name": "fk_message_session_id_session_session_id_fk",
       "entityType": "fks",
       "table": "message"
+    },
+    {
+      "columns": [
+        "session_id",
+        "created_at"
+      ],
+      "nameExplicit": false,
+      "name": "compaction_results_pk",
+      "entityType": "pks",
+      "table": "compaction_results"
     },
     {
       "columns": [

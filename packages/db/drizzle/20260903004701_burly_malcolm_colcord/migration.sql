@@ -1,1 +1,0 @@
-ALTER TABLE `api_keys` RENAME COLUMN `provider_name` TO `provider`;

@@ -1,1 +1,0 @@
-ALTER TABLE `session` ADD `tokens_in_context_window` integer DEFAULT 0;

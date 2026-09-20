@@ -102,6 +102,8 @@ export class BabyPandaAgent extends EventEmitter {
         try{
           console.log("started compacting...");
           const summary = await compaction(this.messagesHistory, this);
+          // save this to db
+          
           console.log(summary)
           compact = false
           console.log("stopped compacting...");
