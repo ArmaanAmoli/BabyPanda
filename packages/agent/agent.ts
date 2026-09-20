@@ -98,8 +98,7 @@ export class BabyPandaAgent extends EventEmitter {
       this.isRunning = true;
       this.messagesHistory = await this.getMessageHistory();
       const messages: MessageAPI[] = [systemMessage, ...this.messagesHistory]
-//(this.contextWindowUsed >= (this.contextWindow * 0.75))
-      if(compact){
+      if((this.contextWindowUsed >= (this.contextWindow * 0.75))){
         try{
           console.log("started compacting...");
           const summary = await compaction(this.messagesHistory, this);
@@ -130,7 +129,7 @@ export class BabyPandaAgent extends EventEmitter {
       }
       this.messageQueue.splice(0, 1);
       // console.log('MESSAGES' , messages)
-      const response = await this.client.chatCompletion(messages, this.model, this.reasoningEffect);
+      const response = await this.client.chatCompletion(messages, this.model);
       console.log("first reply");
       if (response.systemError) {
         console.error('Request failed:', response.error);
