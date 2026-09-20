@@ -14,7 +14,7 @@ export enum MessageQueueSpecialElement{
 };
 export interface MessageRegular{
     role:Role,
-    content:unknown,
+    content:string,
     sessionId:string
 };
 export type UserMessage = Omit<MessageRegular,'role'> & {role:Role.user};
@@ -41,7 +41,7 @@ export interface Tool{
 };
 export type ToolResult = Tool & {result?:unknown , error?:string};
 
-export const ReplyJsonSchema = z.object({
+export const MessageContentSchema = z.object({
           role: z.string(),
           content: z.object({
             tool_call: z.array(z.object(
@@ -53,8 +53,8 @@ export const ReplyJsonSchema = z.object({
               }
             )).optional(),
             thought: z.string().optional(),
-            content: z.string().optional()
+            answer: z.string().optional()
           })
         });
 
-export type ReplyJson = z.infer<typeof ReplyJsonSchema>;
+export type MessageContent = z.infer<typeof MessageContentSchema>;

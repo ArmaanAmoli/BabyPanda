@@ -1,5 +1,5 @@
-import type { MessageAPI, Message, ReplyJson } from '@/types';
-import { Role, ReplyJsonSchema } from '@/types'
+import type { MessageAPI, Message, MessageContent } from '@/types';
+import { Role, MessageContentSchema } from '@/types'
 import { BabyPandaClient } from '@/client';
 import { BabyPandaAgent } from '@/agent';
 import { readFileSync } from 'fs';
@@ -8,14 +8,31 @@ import { getContent } from '@/utils/getContent'
 
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { parse } from 'dotenv';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(path.dirname(__filename));
 const compactionInstructionFilePath = path.join(__dirname, 'BabyPanda', 'Compaction.md');
 const maxRetries = 2;
 
+function cleanMessageArray(messages: Message[]) {
+    let result:string = ``;
+    messages.forEach((msg) => {
+        try {
+            console.log(msg)
+            const parsed = MessageContentSchema.parse(JSON.parse(msg.content));
+            const { role, content: { tool_call, answer , thought } } = parsed;
+            if (!tool_call) {
+                console.log("in loop")
+                result.concat(`${role.toUpperCase}: ${answer ?? thought}`);
+            }
+        } catch (err) {
+            console.log("[parsing error]: " , err)
+        }
+    });
+    return result;
+}
+
 export async function compaction(messages: MessageAPI[], agent: BabyPandaAgent) {
-    const content = `<message>${JSON.stringify(messages)}</message>   YOU HAVE TO SUMMARIZE THE TEXT GIVEN INSIDE <message> </message> tags as per the instrutions`;
+    const content = `<messages>${cleanMessageArray(messages)}</messages>`;
     // console.log(content);
     const systemInstructions = readFileSync(compactionInstructionFilePath).toString()
     const systemMessage: Message = { role: Role.system, content: systemInstructions }
@@ -61,8 +78,8 @@ export async function compaction(messages: MessageAPI[], agent: BabyPandaAgent) 
                 console.log("COMPACTION RESULT:", fullReply)
                 const json = JSON.parse(fullReply);
                 console.log("COMPACTION JSON:", json);
-                const parsed = ReplyJsonSchema.parse(json);
-                console.log("COMPACTION Parsed:", parse);
+                const parsed = MessageContentSchema.parse(json);
+                console.log("COMPACTION Parsed:", parsed);
                 // return parsed;
             }
             catch (err) {

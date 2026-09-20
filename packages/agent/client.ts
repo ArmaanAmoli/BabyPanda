@@ -11,18 +11,15 @@ class BabyPandaClient {
     url: string;
     apikey: string;
     token: string;
-    isRetrying: boolean;
     private maxRetrys: number;
-    private retrysDone: number;
+    private options = {}
     constructor({ url, apikey }: UrlApi) {
         this.url = url;
         this.apikey = apikey;
         this.token = 'Bearer ' + apikey;
-        this.isRetrying = false;
         this.maxRetrys = 3;
-        this.retrysDone = 0;
     }
-    async chatCompletion(messages: Message[], model: string, reasoning_effort?: ReasoningEffort): Promise<ChatCompletionArgs> {
+    private async _attempt(messages: Message[], model: string, isRetrying:boolean ,retrysDone:number ):Promise<ChatCompletionArgs>{
         let options = {
             method: 'POST' as const,
             url: this.url,
@@ -46,6 +43,7 @@ class BabyPandaClient {
         };
         try {
             console.log("in baby panda client trying ....")
+            if(isRetrying)retrysDone+=1;
             const response = await axios(options);
             return { response, systemError: false };
         }
@@ -63,23 +61,26 @@ class BabyPandaClient {
                     return { systemError: true, error: errorBody };
                 }
             }
-            if (!this.isRetrying && this.retrysDone === 0) {
-                this.isRetrying = true;
+            if (!isRetrying && retrysDone === 0) {
+                isRetrying = true;
             }
-            if (this.isRetrying && this.retrysDone < this.maxRetrys) {
-                this.retrysDone += 1;
-                return await this.chatCompletion(messages, model, reasoning_effort);
+            if (isRetrying && retrysDone < this.maxRetrys) {
+                return await this.chatCompletion(messages, model );
             }
             else {
-                if (this.retrysDone >= this.maxRetrys) {
-                    this.isRetrying = false;
-                    this.retrysDone = 0;
+                if (retrysDone >= this.maxRetrys) {
+                    isRetrying = false;
+                    retrysDone = 0;
                 }
                 const errorBody = await fetchError(error);
                 console.error("🔴 API Gateway Validation Error Details:", errorBody);
             }
             return { systemError: true, error };
         }
+    }
+
+    async chatCompletion(messages: Message[], model: string): Promise<ChatCompletionArgs> {
+        return await this._attempt(messages , model , false , 0);
     }
 };
 

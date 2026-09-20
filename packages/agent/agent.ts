@@ -1,6 +1,6 @@
 import { BabyPandaClient } from './client'
-import type { Message, UrlApi, MessageAPI ,Tool , ReplyJson } from './types'
-import { MessageQueueSpecialElement , ReplyJsonSchema , ReasoningEffort, Role } from './types';
+import type { Message, UrlApi, MessageAPI ,Tool , MessageContent } from './types'
+import { MessageQueueSpecialElement , MessageContentSchema , ReasoningEffort, Role } from './types';
 import { readFileSync , existsSync , lstatSync , mkdirSync} from "fs"
 import { EventEmitter } from "events"
 import { MCPClient } from "./mcp/client"
@@ -235,9 +235,9 @@ export class BabyPandaAgent extends EventEmitter {
           }
           if (toolCall) {
             try {
-              let replyJson: ReplyJson | undefined;
+              let replyJson: MessageContent | undefined;
               try {
-                replyJson = ReplyJsonSchema.parse(JSON.parse(fullReply)) // to-do: try to make it more safe
+                replyJson = MessageContentSchema.parse(JSON.parse(fullReply)) // to-do: try to make it more safe
               } catch (err) {
                 reject("parsing error");
                 this.messageQueue.push(MessageQueueSpecialElement.errorInLastIteration)
