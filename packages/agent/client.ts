@@ -50,6 +50,7 @@ class BabyPandaClient {
             return { response, systemError: false };
         }
         catch (error: unknown) {
+            console.log(error);
             if (axios.isAxiosError(error)) {
                 if (error.status === 429) {
                     await setTimeout(60000);

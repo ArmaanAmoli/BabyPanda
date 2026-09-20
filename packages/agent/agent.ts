@@ -23,6 +23,8 @@ const home = os.homedir();
 const babyPandaDir = path.join(home , '.babypanda' , 'projects');
 const instructionsFilePath = path.join(__dirname , 'memory' , 'BabyPanda' , 'BabyPanda.md');
 
+let compact = true;
+
 export class BabyPandaAgent extends EventEmitter {
   client: BabyPandaClient;
   private isRunning = false;
@@ -96,12 +98,13 @@ export class BabyPandaAgent extends EventEmitter {
       this.isRunning = true;
       this.messagesHistory = await this.getMessageHistory();
       const messages: MessageAPI[] = [systemMessage, ...this.messagesHistory]
-
-      if(this.contextWindowUsed >= (this.contextWindow * 0.75)){
+//(this.contextWindowUsed >= (this.contextWindow * 0.75))
+      if(compact){
         try{
           console.log("started compacting...");
           const summary = await compaction(this.messagesHistory, this);
           console.log(summary)
+          compact = false
           console.log("stopped compacting...");
         }
         catch(err){
