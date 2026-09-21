@@ -1,9 +1,10 @@
-import {Models} from "@/config/models";
+import {Models , ModelsSchema , ProvidersEnum , ModelsEnum } from "@/config/models";
+import type {  ModelDetails} from "@/config/models";
+
 import { z } from "zod";
 
-
-
-export default function getModelDetails(provider:string , modelName:string){
-    // z.parse(Models[provider][modelName])
-    // const details = Models[provider][modelName]
+export default function getModelDetails(provider:ProvidersEnum , modelName:ModelsEnum):ModelDetails{
+    const parsed = ModelsSchema.parse(Models);
+    const modelDetails = parsed[provider].models[modelName]
+    return modelDetails;
 }

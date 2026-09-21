@@ -1,13 +1,17 @@
 {
   "version": "7",
   "dialect": "sqlite",
-  "id": "e0975d13-478c-413a-8670-6de250518061",
+  "id": "6c8d901e-1d62-4f74-93d4-cdc9d1ada57d",
   "prevIds": [
-    "cb118d6a-3ade-4714-bf91-b0e8ef0f06fe"
+    "8ee205da-ce18-4257-bdde-7d6601a41011"
   ],
   "ddl": [
     {
       "name": "api_keys",
+      "entityType": "tables"
+    },
+    {
+      "name": "compaction_results",
       "entityType": "tables"
     },
     {
@@ -49,6 +53,36 @@
       "table": "api_keys"
     },
     {
+      "type": "text",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "session_id",
+      "entityType": "columns",
+      "table": "compaction_results"
+    },
+    {
+      "type": "integer",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "created_at",
+      "entityType": "columns",
+      "table": "compaction_results"
+    },
+    {
+      "type": "text",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "content",
+      "entityType": "columns",
+      "table": "compaction_results"
+    },
+    {
       "type": "integer",
       "notNull": false,
       "autoincrement": false,
@@ -69,10 +103,10 @@
       "table": "message"
     },
     {
-      "type": "text",
+      "type": "integer",
       "notNull": false,
       "autoincrement": false,
-      "default": "(CURRENT_TIMESTAMP)",
+      "default": "1789950520329",
       "generated": null,
       "name": "created_at",
       "entityType": "columns",
@@ -109,10 +143,10 @@
       "table": "session"
     },
     {
-      "type": "text",
+      "type": "integer",
       "notNull": false,
       "autoincrement": false,
-      "default": "(CURRENT_TIMESTAMP)",
+      "default": "1789950520329",
       "generated": null,
       "name": "created_at",
       "entityType": "columns",
@@ -139,6 +173,26 @@
       "table": "session"
     },
     {
+      "type": "integer",
+      "notNull": false,
+      "autoincrement": false,
+      "default": "0",
+      "generated": null,
+      "name": "tokens_in_context_window",
+      "entityType": "columns",
+      "table": "session"
+    },
+    {
+      "type": "text",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "project_directory",
+      "entityType": "columns",
+      "table": "session"
+    },
+    {
       "columns": [
         "session_id"
       ],
@@ -149,9 +203,34 @@
       "onUpdate": "NO ACTION",
       "onDelete": "NO ACTION",
       "nameExplicit": false,
-      "name": "fk_message_session_id_session_id_fk",
+      "name": "fk_compaction_results_session_id_session_session_id_fk",
+      "entityType": "fks",
+      "table": "compaction_results"
+    },
+    {
+      "columns": [
+        "session_id"
+      ],
+      "tableTo": "session",
+      "columnsTo": [
+        "session_id"
+      ],
+      "onUpdate": "NO ACTION",
+      "onDelete": "NO ACTION",
+      "nameExplicit": false,
+      "name": "fk_message_session_id_session_session_id_fk",
       "entityType": "fks",
       "table": "message"
+    },
+    {
+      "columns": [
+        "session_id",
+        "created_at"
+      ],
+      "nameExplicit": false,
+      "name": "compaction_results_pk",
+      "entityType": "pks",
+      "table": "compaction_results"
     },
     {
       "columns": [
@@ -182,7 +261,5 @@
       "entityType": "pks"
     }
   ],
-  "renames": [
-    "api_keys.provider_name->api_keys.provider"
-  ]
+  "renames": []
 }

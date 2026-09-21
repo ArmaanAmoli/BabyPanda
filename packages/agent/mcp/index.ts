@@ -1,6 +1,6 @@
 import {McpServer} from "@modelcontextprotocol/server";
 import {StdioServerTransport} from "@modelcontextprotocol/server/stdio";
-import {read , grep , edit , glob , del , list , write} from './tools/filesystem'
+import {read , grep , edit , glob , del , list , write} from './tools/FileSystem/filesystem'
 import {webSearch} from './tools/WebTools/webSearch';
 import {getWebPage} from './tools/WebTools/getWebPageContent';
 import {array, string, z} from "zod";
@@ -193,6 +193,12 @@ server.registerTool(
 );
 
 // Memory
+
+// server.registerTool(
+//     "write_memory",{
+
+//     }
+// )
 
 async function main(){
     const transport = new StdioServerTransport();

@@ -1,30 +1,44 @@
-import { BabyPandaClient } from './apiCall'
-import type { Message, UrlApi, MessageAPI } from './types'
-import { ReasoningEffort, Role } from './types'
-import { readFileSync } from "fs"
+import { BabyPandaClient } from './client'
+import type { Message, UrlApi, MessageAPI, Tool, MessageContent } from './types'
+import { MessageQueueSpecialElement, MessageContentSchema, ReasoningEffort, Role } from './types';
+import { readFileSync, existsSync, lstatSync, mkdirSync } from "fs"
 import { EventEmitter } from "events"
 import { MCPClient } from "./mcp/client"
 import * as z from "zod";
-import type { Tool, ToolResult } from './types';
-import { MessageQueueSpecialElement } from './types';
-import { getMessages, getSession, createMessage } from '@baby-panda/db';
+import { getMessages, getSession, createMessage, getMostRecentCompactionSummary, addCompactionSummary, getMessagesAfterTimestamp } from '@baby-panda/db';
 import { extractFirstJSON } from './utils/FirstJsonExtractor';
-import * as path from 'path';
+import path from 'path';
 import { fileURLToPath } from 'url';
+import formatPath from '@/utils/formatPath';
+import os from 'node:os';
+import { ModelsEnum, Models, ProvidersEnum } from '@/config/models'
+import { getContent } from '@/utils/getContent';
+import { compaction } from '@/memory/services/compaction';
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+
 const cwd = process.cwd();
+const home = os.homedir();
+const babyPandaDir = path.join(home, '.babypanda', 'projects');
+const instructionsFilePath = path.join(__dirname, 'memory', 'BabyPanda', 'BabyPanda.md');
+
+let compact = true;
 
 export class BabyPandaAgent extends EventEmitter {
-  private client: BabyPandaClient;
+  client: BabyPandaClient;
   private isRunning = false;
   private messageQueue: (MessageAPI | MessageQueueSpecialElement)[] = [];
   private messagesHistory: MessageAPI[] = [];
   private mcpClient: MCPClient = new MCPClient();
   private cwd = cwd;
+  private projectDirectoryName = '';
+  private contextWindow: number = 0;
+  public contextWindowUsed: number = 0;
+  private systemInstructions;
 
   instructions: string;
-  model: string;
+  model: ModelsEnum;
   sessionId: string;
   reasoningEffect: ReasoningEffort;
   numberOfMessages: number = 0;
@@ -34,10 +48,17 @@ export class BabyPandaAgent extends EventEmitter {
     console.log("agent cwd ", this.cwd);
     console.log(sessionId, "in agent constructor")
     this.client = new BabyPandaClient({ url, apikey });
-    this.model = 'nvidia/nemotron-3.5-lightning-30b-a3b'; // This will be our default model
-    this.instructions = readFileSync((__dirname + '/instructions.txt'), { encoding: 'utf-8' });
+    this.model = ModelsEnum["nvidia/nemotron-3.5-lightning-30b-a3b"]; // This will be our default model
+    this.instructions = readFileSync(instructionsFilePath, { encoding: 'utf-8' });
     this.reasoningEffect = ReasoningEffort.none;
     this.sessionId = sessionId
+    this.projectDirectoryName = formatPath(this.cwd);
+    const projectDirectoryPath = path.join(babyPandaDir, this.projectDirectoryName)
+    this.contextWindow = Models['Nvidia'].models[this.model].contextLength; // default model
+    if (!(existsSync(projectDirectoryPath) && lstatSync(projectDirectoryPath).isDirectory())) {
+      mkdirSync(projectDirectoryPath, { recursive: true });
+    }
+    this.systemInstructions = { role: Role.system, content: (this.instructions + `user current working directory: "${this.cwd}"`) }
   }
 
   public async init() {
@@ -62,8 +83,8 @@ export class BabyPandaAgent extends EventEmitter {
     }
   }
 
-  private async getMessageHistory() {
-    const messageHistoryFromDb = await getMessages(this.sessionId);
+  private async getMessageHistory(createdAt?: number) {
+    const messageHistoryFromDb = createdAt ? await getMessagesAfterTimestamp(this.sessionId, createdAt) : await getMessages(this.sessionId);
     console.log("agent:MessageHistory")
     return messageHistoryFromDb.map((msg) => {
       const msgApi: Message = { role: msg.role!, content: msg.content! }
@@ -71,29 +92,41 @@ export class BabyPandaAgent extends EventEmitter {
     })
   }
 
-  private async loop() {
-    const getContent = (encoded: string) => {
-      try {
-        if (encoded) {
-          const json = JSON.parse(encoded);
-          if (!json.choices || json.choices.length === 0) return '';
-          if (!json.choices[0].delta.content) return '';
-          return String(json.choices[0].delta.content);
-        }
-        return '';
-      }
-      catch (err) {
-        console.error('Failed to parse SSE chunk:', encoded, err)
-        return '';
-      }
+  private async createContext() {
+    const summary = await getMostRecentCompactionSummary(this.sessionId);
+    let messages: MessageAPI[] = [];
+    if (summary) {
+      const { content, createdAt } = summary;
+      const messageHistory = await this.getMessageHistory(createdAt!);
+      return [this.systemInstructions, { role: Role.user, content:content! }, ...messageHistory];
     }
+    else {
+      const messageHistory = await this.getMessageHistory();
+      return [this.systemInstructions, ...messageHistory];
+    }
+  }
 
-    const systemMessage = { role: Role.system, content: (this.instructions + `user current working directory: "${this.cwd}"`) }
+  private async loop() {
     while (this.messageQueue.length !== 0) {
       console.log("in the loop")
       this.isRunning = true;
-      this.messagesHistory = await this.getMessageHistory();
-      const messages: MessageAPI[] = [systemMessage, ...this.messagesHistory]
+      const messages: MessageAPI[] = await this.createContext();
+      // console.log(messages)
+      if ((this.contextWindowUsed >= (this.contextWindow * 0.75))) {
+        try {
+          console.log("started compacting...");
+          const summary = await compaction(this.messagesHistory, this);
+          if (summary) await addCompactionSummary(this.sessionId, summary);
+          console.log(summary)
+          compact = false
+          console.log("stopped compacting...");
+          continue;
+        }
+        catch (err) {
+          console.log(err)
+          break;
+        }
+      }
 
       if (!this.messageQueue[0]) {
         this.messageQueue.splice(0, 1);
@@ -112,7 +145,7 @@ export class BabyPandaAgent extends EventEmitter {
       }
       this.messageQueue.splice(0, 1);
       // console.log('MESSAGES' , messages)
-      const response = await this.client.chatCompletion(messages, this.model, this.reasoningEffect);
+      const response = await this.client.chatCompletion(messages, this.model);
       console.log("first reply");
       if (response.systemError) {
         console.error('Request failed:', response.error);
@@ -127,7 +160,7 @@ export class BabyPandaAgent extends EventEmitter {
         unidentified = 'unidentified'
       }
       let contentType: ContentType = ContentType.unidentified;
-      let toBreak:boolean = false;
+      let toBreak: boolean = false;
 
       await new Promise((resolve, reject) => {
         const parentContentPropertyRegex = /^.*"content":.*$/m;
@@ -157,7 +190,8 @@ export class BabyPandaAgent extends EventEmitter {
             if (!regex.test(line)) continue;
             line = line.slice(6);
             if (line === '[DONE]') continue;
-            const content = getContent(line);
+            const content = getContent(line, this);
+            // console.log(this.contextWindowUsed)
             // console.log(content);
             fullReply += content;
             if (inParentContentProperty) {
@@ -199,25 +233,8 @@ export class BabyPandaAgent extends EventEmitter {
 
           }
         });
-
-        const ReplyJsonSchema = z.object({
-          role: z.string(),
-          content: z.object({
-            tool_call: z.array(z.object(
-              {
-                id: z.string(),
-                type: z.string(),
-                function: z.string(),
-                arguments: z.record(z.string(), z.unknown())
-              }
-            )).optional(),
-            thought: z.string().optional(),
-            content: z.string().optional()
-          })
-        });
-        type ReplyJson = z.infer<typeof ReplyJsonSchema>;
-
         response.response?.data.on('end', async () => {
+          console.log("[CONTEXT WINDOW]: " ,  this.contextWindowUsed)
           fullReply = extractFirstJSON(fullReply) ?? ""
           if (!fullReply) {
             console.log("Full reply is empty");
@@ -234,9 +251,9 @@ export class BabyPandaAgent extends EventEmitter {
           }
           if (toolCall) {
             try {
-              let replyJson: ReplyJson | undefined;
+              let replyJson: MessageContent | undefined;
               try {
-                replyJson = ReplyJsonSchema.parse(JSON.parse(fullReply)) // to-do: try to make it more safe
+                replyJson = MessageContentSchema.parse(JSON.parse(fullReply)) // to-do: try to make it more safe
               } catch (err) {
                 reject("parsing error");
                 this.messageQueue.push(MessageQueueSpecialElement.errorInLastIteration)
@@ -310,7 +327,7 @@ export class BabyPandaAgent extends EventEmitter {
           console.log("[ERROR]: ", err)
           this.messageQueue.push(MessageQueueSpecialElement.errorInLastIteration);
         });
-        if(toBreak) break;
+      if (toBreak) break;
     }
     console.log('loop has ended')
   }
@@ -324,5 +341,10 @@ export class BabyPandaAgent extends EventEmitter {
       console.log('called loop')
       await this.loop();
     }
+  }
+
+  async setModel(model: ModelsEnum, provider: ProvidersEnum) {
+    this.model = model;
+    this.contextWindow = Models[provider].models[model].contextLength;
   }
 }
