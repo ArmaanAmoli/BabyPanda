@@ -4,7 +4,7 @@ import {sql} from "drizzle-orm"
 
 export const Session = sqliteTable("session" , {
     id: text("session_id").primaryKey(),
-    createdAt: text("created_at").default(sql`CURRENT_TIMESTAMP`),
+    createdAt: integer("created_at").default(Date.now()),
     parentSessionId: text("parent_session_id"),
     messagesCount:integer("messages_count").default(0),
     tokensInContextWindow:integer("tokens_in_context_window").default(0),
@@ -14,7 +14,7 @@ export const Session = sqliteTable("session" , {
 export const Message = sqliteTable("message" , {
     messageIndex: integer("message_index"),
     sessionId: text("session_id").references(()=>Session.id),
-    createdAt: text("created_at").default(sql`CURRENT_TIMESTAMP`),
+    createdAt: integer("created_at").default(Date.now()),
     content:text("content"),
     role:text("role").$type<Role>(),
 },(table)=>[primaryKey({columns:[table.messageIndex , table.sessionId]})]);

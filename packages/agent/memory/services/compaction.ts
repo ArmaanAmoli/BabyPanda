@@ -76,11 +76,7 @@ export async function compaction(messages: MessageAPI[], agent: BabyPandaAgent) 
                     });
                 });
                 console.log("COMPACTION RESULT:", fullReply)
-                const json = JSON.parse(fullReply);
-                console.log("COMPACTION JSON:", json);
-                const parsed = MessageContentSchema.parse(json);
-                console.log("COMPACTION Parsed:", parsed);
-                // return parsed;
+                return fullReply
             }
             catch (err) {
                 console.log(err)

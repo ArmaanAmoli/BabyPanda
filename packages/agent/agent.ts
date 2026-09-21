@@ -1,27 +1,27 @@
 import { BabyPandaClient } from './client'
-import type { Message, UrlApi, MessageAPI ,Tool , MessageContent } from './types'
-import { MessageQueueSpecialElement , MessageContentSchema , ReasoningEffort, Role } from './types';
-import { readFileSync , existsSync , lstatSync , mkdirSync} from "fs"
+import type { Message, UrlApi, MessageAPI, Tool, MessageContent } from './types'
+import { MessageQueueSpecialElement, MessageContentSchema, ReasoningEffort, Role } from './types';
+import { readFileSync, existsSync, lstatSync, mkdirSync } from "fs"
 import { EventEmitter } from "events"
 import { MCPClient } from "./mcp/client"
 import * as z from "zod";
-import { getMessages, getSession, createMessage } from '@baby-panda/db';
+import { getMessages, getSession, createMessage, getMostRecentCompactionSummary, addCompactionSummary, getMessagesAfterTimestamp } from '@baby-panda/db';
 import { extractFirstJSON } from './utils/FirstJsonExtractor';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import formatPath from '@/utils/formatPath';
 import os from 'node:os';
-import {ModelsEnum , Models , ProvidersEnum} from '@/config/models'
-import {getContent} from '@/utils/getContent';
-import {compaction} from '@/memory/services/compaction';
+import { ModelsEnum, Models, ProvidersEnum } from '@/config/models'
+import { getContent } from '@/utils/getContent';
+import { compaction } from '@/memory/services/compaction';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const cwd = process.cwd();
 const home = os.homedir();
-const babyPandaDir = path.join(home , '.babypanda' , 'projects');
-const instructionsFilePath = path.join(__dirname , 'memory' , 'BabyPanda' , 'BabyPanda.md');
+const babyPandaDir = path.join(home, '.babypanda', 'projects');
+const instructionsFilePath = path.join(__dirname, 'memory', 'BabyPanda', 'BabyPanda.md');
 
 let compact = true;
 
@@ -33,8 +33,9 @@ export class BabyPandaAgent extends EventEmitter {
   private mcpClient: MCPClient = new MCPClient();
   private cwd = cwd;
   private projectDirectoryName = '';
-  private contextWindow:number = 0;
-  public contextWindowUsed:number = 0;
+  private contextWindow: number = 0;
+  public contextWindowUsed: number = 0;
+  private systemInstructions;
 
   instructions: string;
   model: ModelsEnum;
@@ -52,11 +53,12 @@ export class BabyPandaAgent extends EventEmitter {
     this.reasoningEffect = ReasoningEffort.none;
     this.sessionId = sessionId
     this.projectDirectoryName = formatPath(this.cwd);
-    const projectDirectoryPath = path.join(babyPandaDir , this.projectDirectoryName)
+    const projectDirectoryPath = path.join(babyPandaDir, this.projectDirectoryName)
     this.contextWindow = Models['Nvidia'].models[this.model].contextLength; // default model
-    if(!(existsSync(projectDirectoryPath) && lstatSync(projectDirectoryPath).isDirectory())){
-      mkdirSync(projectDirectoryPath , {recursive:true});
+    if (!(existsSync(projectDirectoryPath) && lstatSync(projectDirectoryPath).isDirectory())) {
+      mkdirSync(projectDirectoryPath, { recursive: true });
     }
+    this.systemInstructions = { role: Role.system, content: (this.instructions + `user current working directory: "${this.cwd}"`) }
   }
 
   public async init() {
@@ -81,8 +83,8 @@ export class BabyPandaAgent extends EventEmitter {
     }
   }
 
-  private async getMessageHistory() {
-    const messageHistoryFromDb = await getMessages(this.sessionId);
+  private async getMessageHistory(createdAt?: number) {
+    const messageHistoryFromDb = createdAt ? await getMessagesAfterTimestamp(this.sessionId, createdAt) : await getMessages(this.sessionId);
     console.log("agent:MessageHistory")
     return messageHistoryFromDb.map((msg) => {
       const msgApi: Message = { role: msg.role!, content: msg.content! }
@@ -90,25 +92,36 @@ export class BabyPandaAgent extends EventEmitter {
     })
   }
 
+  private async createContext() {
+    const summary = await getMostRecentCompactionSummary(this.sessionId);
+    let messages: MessageAPI[] = [];
+    if (summary) {
+      const { content, createdAt } = summary;
+      const messageHistory = await this.getMessageHistory(createdAt!);
+      return [this.systemInstructions, ...messageHistory];
+    }
+    else {
+      const messageHistory = await this.getMessageHistory();
+      return [this.systemInstructions, ...messageHistory];
+    }
+  }
+
   private async loop() {
-    const systemMessage = { role: Role.system, content: (this.instructions + `user current working directory: "${this.cwd}"`) }
 
     while (this.messageQueue.length !== 0) {
       console.log("in the loop")
       this.isRunning = true;
-      this.messagesHistory = await this.getMessageHistory();
-      const messages: MessageAPI[] = [systemMessage, ...this.messagesHistory]
-      if((this.contextWindowUsed >= (this.contextWindow * 0.75))){
-        try{
+      const messages: MessageAPI[] = await this.createContext();
+      if ((this.contextWindowUsed >= (this.contextWindow * 0.75))) {
+        try {
           console.log("started compacting...");
           const summary = await compaction(this.messagesHistory, this);
-          // save this to db
-          
+          if (summary) await addCompactionSummary(this.sessionId, summary);
           console.log(summary)
           compact = false
           console.log("stopped compacting...");
         }
-        catch(err){
+        catch (err) {
           console.log(err)
           break;
         }
@@ -146,7 +159,7 @@ export class BabyPandaAgent extends EventEmitter {
         unidentified = 'unidentified'
       }
       let contentType: ContentType = ContentType.unidentified;
-      let toBreak:boolean = false;
+      let toBreak: boolean = false;
 
       await new Promise((resolve, reject) => {
         const parentContentPropertyRegex = /^.*"content":.*$/m;
@@ -176,7 +189,7 @@ export class BabyPandaAgent extends EventEmitter {
             if (!regex.test(line)) continue;
             line = line.slice(6);
             if (line === '[DONE]') continue;
-            const content = getContent(line ,this);
+            const content = getContent(line, this);
             console.log(this.contextWindowUsed)
             // console.log(content);
             fullReply += content;
@@ -312,7 +325,7 @@ export class BabyPandaAgent extends EventEmitter {
           console.log("[ERROR]: ", err)
           this.messageQueue.push(MessageQueueSpecialElement.errorInLastIteration);
         });
-        if(toBreak) break;
+      if (toBreak) break;
     }
     console.log('loop has ended')
   }
@@ -328,7 +341,7 @@ export class BabyPandaAgent extends EventEmitter {
     }
   }
 
-  async setModel(model:ModelsEnum , provider:ProvidersEnum){
+  async setModel(model: ModelsEnum, provider: ProvidersEnum) {
     this.model = model;
     this.contextWindow = Models[provider].models[model].contextLength;
   }

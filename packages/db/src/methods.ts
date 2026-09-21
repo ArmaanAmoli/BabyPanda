@@ -1,7 +1,7 @@
 import { db } from './index.db'
 import { Session, Message, ApiKeys , CompactionResults} from './db/schema'
 import type { Role } from '@baby-panda/agent';
-import { asc, desc, eq, sql } from 'drizzle-orm'
+import { asc, desc, eq, gt } from 'drizzle-orm'
 interface APIProvider {
     provider: string;
     endpoint: string;
@@ -27,7 +27,7 @@ export async function createMessage(sessionId: string, content: string, role: Ro
         await tx.insert(Message).values({
             messageIndex: messageIndex,
             sessionId: sessionId,
-            createdAt: new Date().toISOString(), // Fixes the database driver positioning crash
+            createdAt: Date.now(), // Fixes the database driver positioning crash
             content: content,
             role: role as any
         } as typeof Message.$inferInsert);
@@ -61,6 +61,7 @@ export async function getSession(sessionId: string) {
 }
 export async function getSessionsByProjectDirectory(projectDirectory:string){
     const sessions = await db.select().from(Session).where(eq(Session.projectDirectory , projectDirectory));
+    return sessions;
 }
 export async function addCompactionSummary(sessionId:string , summary:string){
     const timestamp = Date.now();
@@ -68,8 +69,13 @@ export async function addCompactionSummary(sessionId:string , summary:string){
 }
 export async function getCompactionSummaries(sessionId:string){
     const summaries = await db.select().from(CompactionResults).where(eq(CompactionResults.sessionId , sessionId)).orderBy(asc(CompactionResults.createdAt));
+    return summaries;
 }
 export async function getMostRecentCompactionSummary(sessionId:string){
     const summary = (await db.select().from(CompactionResults).where(eq(CompactionResults.sessionId , sessionId)).orderBy(desc(CompactionResults.createdAt)))[0];
     return summary;
+}
+export async function getMessagesAfterTimestamp(sessionId:string , timestamp:number){
+    const messages = await db.select().from(Message).where(gt(Message.createdAt , timestamp));
+    return messages;
 }
