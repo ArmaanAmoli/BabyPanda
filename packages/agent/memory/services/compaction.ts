@@ -26,7 +26,7 @@ function cleanMessageArray(messages: MessageAPI[]) {
                 result+=`${parsed.role.toUpperCase}: ${pContent.answer ?? pContent.thought}`;
             }
         } catch (err) {
-            console.log("[parsing error]: " , err)
+            // ignore the message and move on to the next message because it means its a tool result
         }
     });
     return result;
