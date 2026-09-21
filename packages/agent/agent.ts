@@ -112,7 +112,7 @@ export class BabyPandaAgent extends EventEmitter {
       this.isRunning = true;
       const messages: MessageAPI[] = await this.createContext();
       console.log(messages)
-      if ((this.contextWindowUsed >= (this.contextWindow * 0.1))) {
+      if ((this.contextWindowUsed >= (this.contextWindow * 0.75))) {
         try {
           console.log("started compacting...");
           const summary = await compaction(this.messagesHistory, this);
