@@ -6,6 +6,7 @@ import {getSessions} from './methods'
 import {updateSession} from './methods';
 import {getSession} from './methods';
 import {getSessionsByProjectDirectory} from './methods'
+import {getCompactionSummaries , getMostRecentCompactionSummary , addCompactionSummary} from './methods'
 
 export {createSession};
 export {createMessage};
@@ -15,3 +16,4 @@ export {getSessions};
 export {updateSession};
 export {getSession};
 export {getSessionsByProjectDirectory};
+export {getCompactionSummaries , getMostRecentCompactionSummary , addCompactionSummary};

@@ -1,7 +1,7 @@
 import { db } from './index.db'
-import { Session, Message, ApiKeys } from './db/schema'
+import { Session, Message, ApiKeys , CompactionResults} from './db/schema'
 import type { Role } from '@baby-panda/agent';
-import { eq, sql } from 'drizzle-orm'
+import { asc, desc, eq, sql } from 'drizzle-orm'
 interface APIProvider {
     provider: string;
     endpoint: string;
@@ -61,4 +61,15 @@ export async function getSession(sessionId: string) {
 }
 export async function getSessionsByProjectDirectory(projectDirectory:string){
     const sessions = await db.select().from(Session).where(eq(Session.projectDirectory , projectDirectory));
+}
+export async function addCompactionSummary(sessionId:string , summary:string){
+    const timestamp = Date.now();
+    await db.insert(CompactionResults).values({ content:summary, sessionId:sessionId , createdAt:timestamp});
+}
+export async function getCompactionSummaries(sessionId:string){
+    const summaries = await db.select().from(CompactionResults).where(eq(CompactionResults.sessionId , sessionId)).orderBy(asc(CompactionResults.createdAt));
+}
+export async function getMostRecentCompactionSummary(sessionId:string){
+    const summary = (await db.select().from(CompactionResults).where(eq(CompactionResults.sessionId , sessionId)).orderBy(desc(CompactionResults.createdAt)))[0];
+    return summary;
 }
