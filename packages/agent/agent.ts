@@ -98,7 +98,7 @@ export class BabyPandaAgent extends EventEmitter {
     if (summary) {
       const { content, createdAt } = summary;
       const messageHistory = await this.getMessageHistory(createdAt!);
-      return [this.systemInstructions, ...messageHistory];
+      return [this.systemInstructions, { role: Role.user, content:content! }, ...messageHistory];
     }
     else {
       const messageHistory = await this.getMessageHistory();
