@@ -101,7 +101,7 @@ interface GrepOutput {
 }
 
 export function grep(path: string, pattern: string, flag?: string): Promise<GrepOutput> {
-    return new Promise((resolve) => {
+    return new Promise((resolve , reject) => {
         const output: GrepOutput = {
             stdout: '',
             stderr: '',
@@ -130,6 +130,10 @@ export function grep(path: string, pattern: string, flag?: string): Promise<Grep
             console.log(output);
             resolve(output);
         });
+
+        grepProcess.on('error' , (error)=>{
+            reject(error);
+        })
     });
 }
 
