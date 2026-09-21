@@ -33,9 +33,10 @@ export async function read(args: ReadArgs) {
         });
         let i = 0;
         let result = ``;
+        const end = args.offset + args.limit - 1;
         for await (const line of rl) {
             i += 1;
-            if (i >= args.offset && (i <= (i + args.limit - 1))) {
+            if (i >= args.offset && (i <= end)) {
                 result += line;
                 if (i === (i + args.limit - 1)) break;
             }
