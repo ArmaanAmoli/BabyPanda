@@ -3,8 +3,8 @@ import { Role, MessageContentSchema } from '@/types'
 import { BabyPandaClient } from '@/client';
 import { BabyPandaAgent } from '@/agent';
 import { readFileSync } from 'fs';
-import { extractFirstJSON } from '@/utils/FirstJsonExtractor';
 import { getContent } from '@/utils/getContent'
+import { jsonrepair } from 'jsonrepair'
 
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -13,16 +13,17 @@ const __dirname = path.dirname(path.dirname(__filename));
 const compactionInstructionFilePath = path.join(__dirname, 'BabyPanda', 'Compaction.md');
 const maxRetries = 2;
 
-function cleanMessageArray(messages: Message[]) {
+function cleanMessageArray(messages: MessageAPI[]) {
     let result:string = ``;
     messages.forEach((msg) => {
         try {
-            console.log(msg)
-            const parsed = MessageContentSchema.parse(JSON.parse(msg.content));
-            const { role, content: { tool_call, answer , thought } } = parsed;
-            if (!tool_call) {
+            // console.log(msg)
+            const content = msg.content;
+            const parsed = MessageContentSchema.parse(JSON.parse(jsonrepair(msg.content)));
+            const pContent = parsed.content;
+            if (!pContent.tool_call) {
                 console.log("in loop")
-                result.concat(`${role.toUpperCase}: ${answer ?? thought}`);
+                result+=`${parsed.role.toUpperCase}: ${pContent.answer ?? pContent.thought}`;
             }
         } catch (err) {
             console.log("[parsing error]: " , err)
@@ -67,7 +68,7 @@ export async function compaction(messages: MessageAPI[], agent: BabyPandaAgent) 
                         }
                     });
                     response.response?.data.on('end', () => {
-                        fullReply = extractFirstJSON(fullReply) ?? ''
+                        // fullReply = extractFirstJSON(fullReply) ?? ''
                         resolve(fullReply);
                     });
                     response.response?.data.on('error', (error: any) => {

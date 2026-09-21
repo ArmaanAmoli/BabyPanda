@@ -107,12 +107,12 @@ export class BabyPandaAgent extends EventEmitter {
   }
 
   private async loop() {
-
     while (this.messageQueue.length !== 0) {
       console.log("in the loop")
       this.isRunning = true;
       const messages: MessageAPI[] = await this.createContext();
-      if ((this.contextWindowUsed >= (this.contextWindow * 0.75))) {
+      console.log(messages)
+      if ((this.contextWindowUsed >= (this.contextWindow * 0.1))) {
         try {
           console.log("started compacting...");
           const summary = await compaction(this.messagesHistory, this);
@@ -120,6 +120,7 @@ export class BabyPandaAgent extends EventEmitter {
           console.log(summary)
           compact = false
           console.log("stopped compacting...");
+          continue;
         }
         catch (err) {
           console.log(err)
@@ -190,7 +191,7 @@ export class BabyPandaAgent extends EventEmitter {
             line = line.slice(6);
             if (line === '[DONE]') continue;
             const content = getContent(line, this);
-            console.log(this.contextWindowUsed)
+            // console.log(this.contextWindowUsed)
             // console.log(content);
             fullReply += content;
             if (inParentContentProperty) {
@@ -233,6 +234,7 @@ export class BabyPandaAgent extends EventEmitter {
           }
         });
         response.response?.data.on('end', async () => {
+          console.log("[CONTEXT WINDOW]: " ,  this.contextWindowUsed)
           fullReply = extractFirstJSON(fullReply) ?? ""
           if (!fullReply) {
             console.log("Full reply is empty");

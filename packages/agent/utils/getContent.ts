@@ -6,7 +6,7 @@ export const getContent = (encoded: string , agent?:BabyPandaAgent) => {
         if (encoded) {
           const json = JSON.parse(encoded);
           if(json.usage){
-            console.log("Toke Usage: ", json.usage )//temporary;
+            // console.log("Toke Usage: ", json.usage )//temporary;
             if(agent)agent.contextWindowUsed = json.usage.total_tokens;
           }
           if (!json.choices || json.choices.length === 0) return '';
