@@ -111,7 +111,7 @@ export class BabyPandaAgent extends EventEmitter {
       console.log("in the loop")
       this.isRunning = true;
       const messages: MessageAPI[] = await this.createContext();
-      console.log(messages)
+      // console.log(messages)
       if ((this.contextWindowUsed >= (this.contextWindow * 0.75))) {
         try {
           console.log("started compacting...");
