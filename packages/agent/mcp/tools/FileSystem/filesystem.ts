@@ -47,29 +47,29 @@ export async function read(args: ReadArgs) {
     }
 }
 
-function getLineNumber(content:string , index:number):number{
-    const before = content.slice(0,index);
+function getLineNumber(content: string, index: number): number {
+    const before = content.slice(0, index);
     const newLineCount = (before.match(/\n/g) || []).length;
-    return newLineCount+1;
+    return newLineCount + 1;
 }
 
 export async function edit(args: EditArgs) {
     try {
         const raw = await fsp.readFile((args.path), { encoding: 'utf8' });
         const usesCRLF = raw.includes('\r\n');
-        const data = usesCRLF ? raw.replace(/\r\n/g , '\n') : raw;
+        const data = usesCRLF ? raw.replace(/\r\n/g, '\n') : raw;
         const oldStr = args.old_str.replace(/\r\n/g, '\n');
         const newStr = args.new_str.replace(/\r\n/g, '\n');
         let count = 0, pos = 0;
         let lines = []
         while ((pos = data.indexOf(oldStr, pos)) !== -1) {
-            lines.push(getLineNumber(data , pos));
+            lines.push(getLineNumber(data, pos));
             pos += args.old_str.length;
             count++;
         }
         if (count > 1) {
             throw new Error(
-`old_str matched ${count} times in ${args.path} at lines ${lines}.
+                `old_str matched ${count} times in ${args.path} at lines ${lines}.
 Include more surrounding context (e.g. the enclosing function 
 name or a nearby comment) to uniquely identify the location you mean.`)
         }
@@ -101,7 +101,7 @@ interface GrepOutput {
 }
 
 export function grep(path: string, pattern: string, flag?: string): Promise<GrepOutput> {
-    return new Promise((resolve , reject) => {
+    return new Promise((resolve, reject) => {
         const output: GrepOutput = {
             stdout: '',
             stderr: '',
@@ -131,20 +131,21 @@ export function grep(path: string, pattern: string, flag?: string): Promise<Grep
             resolve(output);
         });
 
-        grepProcess.on('error' , (error)=>{
+        grepProcess.on('error', (error) => {
             reject(error);
         })
     });
 }
 
-export async function list(path:string) {
-    try{
-        const { stdout, stderr } = await execPromis(`ls -la "${path}"`);
-        return { stdout, stderr };
-    }catch(e){
+export async function list(path: string) {
+    try {
+        const result: string[] = await fs.promises.readdir(path);
+        return result;
+    } catch (e) {
         throw new Error(`/packages/agent/mcp/tools/filesystem.ts:134:142 Error occured in list tool ${e}`);
     }
 }
+console.log(await list("/"));
 
 interface RmOptions {
     /**
@@ -176,18 +177,18 @@ interface RmOptions {
 }
 
 export async function del(path: string, options?: RmOptions) {
-    try{
+    try {
         await fsp.rm(path, options);
-    }catch(e){
+    } catch (e) {
         throw new Error(`/packages/agent/mcp/tools/filesystem.ts:173:179 Error occured in delete tool ${e}`);
     }
 }
 
-export async function glob(pattern:string , ignorePatterns?:string[]):Promise<string[]>{
-    try{
-        const files = await gl.glob(pattern ,{ignore:ignorePatterns , windowsPathsNoEscape:true});
+export async function glob(pattern: string, ignorePatterns?: string[]): Promise<string[]> {
+    try {
+        const files = await gl.glob(pattern, { ignore: ignorePatterns, windowsPathsNoEscape: true });
         return files;
-    }catch(e){
+    } catch (e) {
         throw e;
     }
 }
