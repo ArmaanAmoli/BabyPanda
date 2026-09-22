@@ -84,10 +84,10 @@ server.registerTool(
         }),
     },
     async (args)=>{
-        const edited = await glob(args.pattern , args.ignorePatterns);
+        const result = await glob(args.pattern , args.ignorePatterns);
         return{
             content:[
-                {type:"text" , text:`${edited}`}
+                {type:"text" , text:`${JSON.stringify(result)}`}
             ]
         }
     }
@@ -129,7 +129,7 @@ server.registerTool(
         const result = await list(args.path);
         return {
             content:[
-                {type:"text" , text:`${result.stdout?result.stdout:result.stderr}`}
+                {type:"text" , text:`${JSON.stringify(result)}`}
             ]
         };
     }
