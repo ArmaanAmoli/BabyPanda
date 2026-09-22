@@ -1,4 +1,3 @@
-import * as fsp from 'node:fs/promises';
 import * as fs from 'fs';
 import { exec } from 'node:child_process';
 import { promisify } from 'node:util';
@@ -7,7 +6,6 @@ import * as readline from 'readline';
 import * as gl from 'glob';
 import { file } from 'zod';
 
-const execPromis = promisify(exec);
 
 interface ReadArgs {
     path: string,
@@ -23,7 +21,7 @@ interface EditArgs {
 export async function read(args: ReadArgs) {
     try {
         if (!args.limit || !args.offset) {
-            const data = await fsp.readFile((args.path), { encoding: 'utf8' });
+            const data = await fs.promises.readFile((args.path), { encoding: 'utf8' });
             return data;
         }
         const fileStream = fs.createReadStream(args.path);
@@ -55,7 +53,8 @@ function getLineNumber(content: string, index: number): number {
 
 export async function edit(args: EditArgs) {
     try {
-        const raw = await fsp.readFile((args.path), { encoding: 'utf8' });
+        if(args.old_str.length === 0){return true;}
+        const raw = await fs.promises.readFile((args.path), { encoding: 'utf8' });
         const usesCRLF = raw.includes('\r\n');
         const data = usesCRLF ? raw.replace(/\r\n/g, '\n') : raw;
         const oldStr = args.old_str.replace(/\r\n/g, '\n');
@@ -74,8 +73,9 @@ Include more surrounding context (e.g. the enclosing function
 name or a nearby comment) to uniquely identify the location you mean.`)
         }
         else if (count === 1) {
-            const newData = data.replace(oldStr, newStr);
-            await fsp.writeFile(args.path, newData);
+            let newData = data.replace(oldStr, newStr);
+            newData = usesCRLF ? newData.replace(/\n/g , '\r\n'):newData;
+            await fs.promises.writeFile(args.path, newData);
             return true;
         }
         throw new Error(`string not found`)
@@ -87,7 +87,7 @@ name or a nearby comment) to uniquely identify the location you mean.`)
 
 export async function write(path: string, content: string) { //create new file
     try {
-        await fsp.writeFile(path, content);
+        await fs.promises.writeFile(path, content);
         return true;
     } catch (err) {
         throw new Error(`An error occured while writing file: ${err}`);
@@ -145,7 +145,6 @@ export async function list(path: string) {
         throw new Error(`/packages/agent/mcp/tools/filesystem.ts:134:142 Error occured in list tool ${e}`);
     }
 }
-console.log(await list("/"));
 
 interface RmOptions {
     /**
@@ -178,7 +177,7 @@ interface RmOptions {
 
 export async function del(path: string, options?: RmOptions) {
     try {
-        await fsp.rm(path, options);
+        await fs.promises.rm(path, options);
     } catch (e) {
         throw new Error(`/packages/agent/mcp/tools/filesystem.ts:173:179 Error occured in delete tool ${e}`);
     }
