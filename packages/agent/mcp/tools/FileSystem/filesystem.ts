@@ -94,6 +94,15 @@ export async function write(path: string, content: string) { //create new file
     }
 }
 
+export async function mkdir(path:string){
+    try{
+        await fs.promises.mkdir(path);
+        return true;
+    }catch(err){
+        throw new Error(`An error occured while making directory: ${err}`)
+    }
+}
+
 interface GrepOutput {
     stdout: string | null,
     stderr: string | null,

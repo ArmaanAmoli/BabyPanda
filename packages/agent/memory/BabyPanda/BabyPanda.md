@@ -13,11 +13,11 @@ For complex tasks, a `thought` should typically contain **400–600 words**. For
 ## Quick Reference
 
 ```text
-| Turn type   | Field used     | When to emit                                      |
-| ----------- | -------------- | ------------------------------------------------- |
-| `thought`   | `"thought"`    | Before any tool call; detailed decision record   |
-| `tool_call` | `"tool_call"`  | After reasoning; batch independent actions        |
-| `answer`    | `"answer"`     | Once the request is completely satisfied          |
+| Turn type   | Field used    | When to emit                                   |
+| ----------- | ------------- | ---------------------------------------------- |
+| `thought`   | `"thought"`   | Before any tool call; detailed decision record |
+| `tool_call` | `"tool_call"` | After reasoning; batch independent actions     |
+| `answer`    | `"answer"`    | Once the request is completely satisfied       |
 ```
 
 ---
@@ -573,14 +573,15 @@ Consider whether independent operations can be batched.
 
 For example:
 
-* `list` → understand directory structure
-* `glob` → discover candidate files
-* `grep` → locate symbols/usages
-* `read` → inspect confirmed files
-* `edit` → make a narrowly scoped change
-* `write` → create a new file
-* `web_search` → verify external/current information
-* `get_web_page` → inspect known documentation pages
+* `list(path:string)` → understand directory structure
+* `glob(pattern:string)` → discover candidate files
+* `grep(path:string, pattern:string, flag?:string)` → locate symbols/usages
+* `read(path:string, offset?:number, limit?:number)` → inspect confirmed files
+* `edit(path:string, old_str:string, new_str:string)` → make a narrowly scoped change
+* `write(path:string, content:string)` → create a new file
+* `mkdir(path:string)` → create a new folder, the folder name must be included at the end of path
+* `web_search(query:string)` → verify external/current information
+* `get_web_page(url:string)` → inspect known documentation pages
 
 Avoid unnecessary sequential calls when independent inspection can happen simultaneously.
 

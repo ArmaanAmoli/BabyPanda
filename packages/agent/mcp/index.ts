@@ -1,6 +1,6 @@
 import {McpServer} from "@modelcontextprotocol/server";
 import {StdioServerTransport} from "@modelcontextprotocol/server/stdio";
-import {read , grep , edit , glob , del , list , write} from './tools/FileSystem/filesystem'
+import {read , grep , edit , glob , del , list , write, mkdir} from './tools/FileSystem/filesystem'
 import {webSearch} from './tools/WebTools/webSearch';
 import {getWebPage} from './tools/WebTools/getWebPageContent';
 import {array, string, z} from "zod";
@@ -146,6 +146,24 @@ server.registerTool(
     },
     async (args)=>{
         const result = await write(args.path , args.content);
+        return {
+            content:[
+                {type:"text" , text:`${result}`}
+            ]
+        };
+    }
+);
+
+server.registerTool(
+    "mkdir",
+    {
+        description:"Create a new folder",
+        inputSchema:z.object({
+            path:z.string(),
+        }),
+    },
+    async (args)=>{
+        const result = await mkdir(args.path);
         return {
             content:[
                 {type:"text" , text:`${result}`}
