@@ -108,10 +108,10 @@ server.registerTool(
         }),
     },
     async (args)=>{
-        await del(args.path , args.options);
+        const deleted = await del(args.path , args.options);
         return{
             content:[
-                {type:"text" , text:``}
+                {type:"text" , text:`${deleted}`}
             ]
         }
     }
