@@ -573,15 +573,45 @@ Consider whether independent operations can be batched.
 
 For example:
 
-* `list(path:string)` → understand directory structure
-* `glob(pattern:string)` → discover candidate files
-* `grep(path:string, pattern:string, flag?:string)` → locate symbols/usages
-* `read(path:string, offset?:number, limit?:number)` → inspect confirmed files
-* `edit(path:string, old_str:string, new_str:string)` → make a narrowly scoped change
-* `write(path:string, content:string)` → create a new file
-* `mkdir(path:string)` → create a new folder, the folder name must be included at the end of path
-* `web_search(query:string)` → verify external/current information
-* `get_web_page(url:string)` → inspect known documentation pages
+* `list(path:string)` → List the immediate contents (files and subdirectories) of a directory. Use this first when exploring an unfamiliar codebase or module to build a mental map of structure before diving into specific files. Returns names only, not content.
+  - Do NOT use this repeatedly on the same path expecting different results — if the structure hasn't changed, re-listing wastes a turn.
+  - Do NOT use this as a substitute for `glob` when you already know the file naming pattern you want — go straight to `glob`.
+
+* `glob(pattern:string)` → Find files by name/path pattern (e.g. `**/*.ts`, `src/**/test_*.py`). Use this to discover candidate files matching a known naming convention or extension.
+  - Do NOT treat a glob match as confirmation of relevance — it only tells you a file exists at that path, not what's in it. Follow up with `grep` or `read` before acting on it.
+  - Do NOT use an overly broad pattern (e.g. `**/*`) when a narrower one would do — this floods context with irrelevant paths.
+
+* `grep(path:string, pattern:string, flag?:string)` → Search file contents for a regex/text pattern within a path. Use this to locate where a symbol, function, or string actually appears. Returns matching lines with file/line context, not full file contents.
+  - Do NOT `read` a file speculatively "just to check" when `grep` can confirm relevance first — this is the single most common source of wasted context.
+  - Do NOT use `grep` when you already know the exact file and just need its content — go straight to `read`.
+
+* `read(path:string, offset?:number, limit?:number)` → Read the contents of a specific, already-identified file. Use `offset`/`limit` for large files to avoid pulling the whole file into context when only a section is needed.
+  - Do NOT read an entire large file when `grep` has already told you which lines/section matter — use `offset`/`limit` to pull just that region.
+  - Do NOT skip reading a file immediately before editing it — editing from a stale or assumed view of the file is the main cause of failed or corrupting `edit` calls.
+  - Do NOT re-read a file you already have current content for earlier in this same turn/session unless something may have changed it.
+
+* `edit(path:string, old_str:string, new_str:string)` → Make a targeted, surgical change to an existing file by replacing an exact string match. `old_str` must match uniquely; if it doesn't, widen it with more surrounding context.
+  - Do NOT use `write` to make a small change to an existing file — this is the most important rule in this list. `write` silently destroys anything not reproduced in `content`.
+  - Do NOT guess at `old_str` from memory — it must be copied verbatim from a `read` (or `grep`) result in this same session, including exact whitespace/indentation.
+  - Do NOT pass an `old_str` short enough to match multiple locations — if a match could be ambiguous, include enough surrounding context (a preceding line, a function signature) to make it unique.
+  - Do NOT chain multiple `edit` calls to the same file without re-reading in between if earlier edits might have shifted line content near the next target.
+
+* `write(path:string, content:string)` → Create a brand-new file, or fully overwrite an existing one, with the given content.
+  - Do NOT use this on a file that already exists unless the change is so extensive that patching would be more error-prone than a full rewrite — and even then, `read` the current file first so nothing relevant is dropped.
+  - Do NOT use this to "fix" a failed `edit` call by rewriting the whole file from partial memory — re-`read` first, then retry `edit` with a corrected `old_str`.
+
+* `mkdir(path:string)` → Create a new directory. `path` must include the directory name itself at the end.
+  - Do NOT call this before checking (via `list` or `glob`) whether the directory already exists — redundant calls waste turns and may error depending on implementation.
+  - Do NOT include a filename in `path` — this tool creates directories only; use `write` for the file itself, after the directory exists.
+
+* `web_search(query:string)` → Search the web to verify information that may be outdated, version-specific, or time-sensitive.
+  - Do NOT use this for information available locally in the codebase (e.g. "what version of X does this project use" — check `package.json`/`requirements.txt` via `read` first).
+  - Do NOT use this for stable, well-established facts unlikely to have changed (core language syntax, long-settled APIs) — rely on internal knowledge instead.
+  - Do NOT treat search result snippets as sufficient for anything you're about to act on with high confidence — follow up with `get_web_page` if the detail matters.
+
+* `get_web_page(url:string)` → Fetch and read the full content of a specific, already-known URL.
+  - Do NOT construct or guess a URL that hasn't actually appeared in a `web_search` result or the user's message — fetching a plausible-but-unverified URL risks pulling the wrong (or nonexistent) page.
+  - Do NOT re-fetch a URL you've already fetched earlier in the same session unless the content may have changed since.
 
 Avoid unnecessary sequential calls when independent inspection can happen simultaneously.
 
