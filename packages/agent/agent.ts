@@ -14,13 +14,12 @@ import os from 'node:os';
 import { ModelsEnum, Models, ProvidersEnum } from '@/config/models'
 import { getContent } from '@/utils/getContent';
 import { compaction } from '@/memory/services/compaction';
+import {projectName , babyPandaDir , projectDir} from '@/memory/constants';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const cwd = process.cwd();
-const home = os.homedir();
-const babyPandaDir = path.join(home, '.babypanda', 'projects');
 const instructionsFilePath = path.join(__dirname, 'memory', 'BabyPanda', 'BabyPanda.md');
 
 let compact = true;
