@@ -5,6 +5,8 @@ import { webSearch } from './tools/WebTools/webSearch';
 import { getWebPage } from './tools/WebTools/getWebPageContent';
 import { array, string, z } from "zod";
 import { addToMemory} from '../memory/utils/memory';
+import { listNotes , readNotes , writeNotes , editNotes} from '../memory/utils/notes';
+
 const server = new McpServer({
     name: "baby-panda/mcp",
     version: "1.0.0",
@@ -227,6 +229,80 @@ server.registerTool(
             ]
         }
     }
+);
+
+server.registerTool(
+    "write_notes",
+    {
+        description:"create a new notes file",
+        inputSchema:z.object({
+            fileName:z.string(),
+            content:z.string().default(''),
+        })
+    },
+    async (args) => {
+        const result = await writeNotes(args.fileName , args.content);
+        return {
+            content: [
+                { type: "text", text: `${JSON.stringify(result)}` }
+            ]
+        }
+    }
+);
+
+server.registerTool(
+    "list_notes",
+    {
+        description:"list all the notes files in the current working project"
+    },
+    async ()=>{
+        const result = await listNotes();
+        return {
+            content: [
+                { type: "text", text: `${JSON.stringify(result)}` }
+            ]
+        }
+    }
+);
+
+server.registerTool(
+    "read_notes",
+    {
+        description:"read notes file",
+        inputSchema:z.object({
+            fileName:z.string(),
+            offset:z.number(),
+            limit:z.number()
+        })
+    },
+    async (args)=>{
+        const result = await readNotes(args.fileName , args.offset , args.limit);
+        return {
+            content:[
+                {type:"text" , text:result}
+            ]
+        };
+    }  
+);
+
+server.registerTool(
+    "edit_notes",
+    {
+        description:"edit notes file",
+        inputSchema:z.object({
+            fileName:z.string(),
+            old_str:z.string(),
+            new_str:z.string()
+        })
+    },
+    async (args)=>{
+        const result = await editNotes(args.fileName , args.old_str , args.new_str);
+        return {
+            content:[
+                {type:"text" , text:`${result}`}
+            ]
+        };
+    }  
 );
 
 async function main() {
