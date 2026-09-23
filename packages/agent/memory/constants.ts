@@ -1,6 +1,6 @@
 import path from 'path';
 import os from 'os';
-import formatPath from '@/utils/formatPath';
+import formatPath from '../utils/formatPath';
 
 const cwd = process.cwd();
 const projectName = formatPath(cwd);

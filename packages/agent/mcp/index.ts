@@ -4,7 +4,7 @@ import { read, grep, edit, glob, del, list, write, mkdir } from './tools/FileSys
 import { webSearch } from './tools/WebTools/webSearch';
 import { getWebPage } from './tools/WebTools/getWebPageContent';
 import { array, string, z } from "zod";
-import { addToMemory, readFromMemory } from '@/memory/utils/memory';
+import { addToMemory} from '../memory/utils/memory';
 const server = new McpServer({
     name: "baby-panda/mcp",
     version: "1.0.0",

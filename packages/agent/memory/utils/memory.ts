@@ -1,4 +1,4 @@
-import {read , edit} from '@/mcp/tools/FileSystem/filesystem';
+import {read , edit} from '../../mcp/tools/FileSystem/filesystem';
 import { memoryFile } from '../constants'
 
 //write memory
@@ -15,7 +15,7 @@ export async function addToMemory( content:string ){
 //read memory (200 lines)
 export async function readFromMemory(){
     try{
-        const content = await read({path:memoryFile});
+        const content = await read({path:memoryFile , offset: 1 , limit:200});
         return content;
     }catch(err){
         throw err;
