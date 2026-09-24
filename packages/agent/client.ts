@@ -20,7 +20,7 @@ class BabyPandaClient {
         this.maxRetrys = 3;
     }
     private async _attempt(messages: Message[], model: string, isRetrying:boolean ,retrysDone:number ):Promise<ChatCompletionArgs>{
-        let options = {
+        const options = {
             method: 'POST' as const,
             url: this.url,
             responseType: 'stream' as const,
@@ -92,7 +92,7 @@ const fetchError = async (error: unknown) => {
 
     if (error.response?.data && typeof error.response.data.on === 'function') {
         return new Promise<string>((resolve) => {
-            let chunks:Buffer[] = [];
+            const chunks:Buffer[] = [];
             response.data.on('data', (chunk: Buffer) => { chunks.push(chunk) });
             response.data.on('end', () => {
                 resolve(Buffer.concat(chunks).toString('utf-8'));

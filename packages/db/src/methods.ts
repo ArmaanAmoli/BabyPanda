@@ -13,7 +13,7 @@ export async function createSession(parentSessionId?: string) {
     await db.insert(Session).values((parentSessionId ? { id, parentSessionId , projectDirectory:cwd} : { id , projectDirectory:cwd}));
     return id;
 }
-export async function createMessage(sessionId: string, content: string, role: Role) {
+export async function createMessage(sessionId: string, content: string, role: Role , isToolResult?:boolean) {
     await db.transaction(async (tx) => {
         const session = await tx.select({
             messageCount: Session.messagesCount,
@@ -29,7 +29,8 @@ export async function createMessage(sessionId: string, content: string, role: Ro
             sessionId: sessionId,
             createdAt: Date.now(), // Fixes the database driver positioning crash
             content: content,
-            role: role as any
+            role: role,
+            isToolResult:isToolResult
         } as typeof Message.$inferInsert);
         await tx.update(Session).set({ messagesCount: messageIndex + 1 }).where(eq(Session.id, sessionId));
     })
@@ -41,7 +42,7 @@ export async function addProvider(details: APIProvider) {
         return true;
     } catch (err) {
         console.log(`Error occred while adding provider, ${err}`);
-        throw new Error(`Error occred while adding provider, ${err}`);
+        throw new Error(`Error occred while adding provider` , {cause:err});
     }
 }
 export async function getMessages(sessionId: string) {

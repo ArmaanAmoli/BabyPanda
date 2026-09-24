@@ -13,7 +13,8 @@
     "paths": {
       "*": ["./*"],
       "@/*": ["./*"]
-    }
+    },
+    "noUnusedParameters": true,
   },
   "include": ["**/*"]
 }

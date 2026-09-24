@@ -4,7 +4,9 @@
   "module": "./src/index.ts",
   "private": true,
   "scripts": {
-    "dev": "bun run --hot src/index.ts"
+    "dev": "bun run --hot src/index.ts",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix"
   },
   "dependencies": {
     "hono": "^4.13.4",

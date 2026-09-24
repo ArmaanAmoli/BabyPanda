@@ -1,12 +1,11 @@
 import { Hono } from 'hono'
-import { getMessages, createSession, createMessage, addProvider, getSessions , getSessionsByProjectDirectory} from '@baby-panda/db';
-import { stream, streamText } from 'hono/streaming';
+import { getMessages, createSession, addProvider, getSessionsByProjectDirectory} from '@baby-panda/db';
+import { streamText } from 'hono/streaming';
 import { BabyPandaAgent, type Message } from '@baby-panda/agent'
-import { create } from 'axios';
 const app = new Hono()
 
 const agentStore = new Map<string, BabyPandaAgent>(); // sessionID - agent
-let cwd = process.cwd();
+const cwd = process.cwd();
 
 app.post('/get-messages', async (c) => {
   const body = await c.req.json()
@@ -18,12 +17,12 @@ app.post('/get-messages', async (c) => {
   return new Response(JSON.stringify(messages), { status: 200, statusText: "OK" });
 });
 
-app.post('/start-session', async (c) => {
+app.post('/start-session', async () => {
   const session = await createSession();
   return new Response(session, { status: 201, statusText: "Created" })
 });
 
-app.post('/get-session', async (c) => {
+app.post('/get-session', async () => {
   const sessions = await getSessionsByProjectDirectory(cwd);
   return new Response(JSON.stringify(sessions), { status: 201, statusText: "Created" })
 });
@@ -60,6 +59,7 @@ app.post('/message', async (c) => {
         }
         const onError = (err: Error) => {
           isDone = true;
+          console.error("[AGENT:STREAM ERROR] ",err)
         }
         const cleanup = () => {
           babyPanda.off('data', onData);
@@ -106,7 +106,7 @@ app.post('/add-provider', async (c) => {
     return new Response("Provider Added", { status: 201, statusText: "Created" })
   }
   catch (err) {
-    return new Response("Unable to add provider", { status: 500, statusText: "Internal Server Error" });
+    return new Response(`Unable to add provider ${err}`, { status: 500, statusText: "Internal Server Error" });
   }
 });
 

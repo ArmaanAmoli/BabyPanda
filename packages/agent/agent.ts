@@ -94,7 +94,7 @@ export class BabyPandaAgent extends EventEmitter {
 
   private async createContext() {
     const summary = await getMostRecentCompactionSummary(this.sessionId);
-    let messages: MessageAPI[] = [];
+    const messages: MessageAPI[] = [];
     if (summary) {
       const { content, createdAt } = summary;
       const messageHistory = await this.getMessageHistory(createdAt!);
@@ -265,7 +265,7 @@ export class BabyPandaAgent extends EventEmitter {
                 return;
               }
               if (replyJson) {
-                let toolCalls = replyJson.content.tool_call;
+                const toolCalls = replyJson.content.tool_call;
                 if (!toolCalls) {
                   MessageQueueSpecialElement.toolCallDone;
                   resolve('no tool call');
@@ -288,7 +288,7 @@ export class BabyPandaAgent extends EventEmitter {
                   }
                   else {
                     try {
-                      await createMessage(this.sessionId, JSON.stringify(toolResults.at(i)), Role.user);
+                      await createMessage(this.sessionId, JSON.stringify(toolResults.at(i)), Role.user , true);
                       this.numberOfMessages += 1;
                     } catch (err) {
                       reject(new Error(`Unable to store tool message to database: ${err}`));

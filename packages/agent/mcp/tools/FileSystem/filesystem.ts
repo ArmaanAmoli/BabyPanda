@@ -60,7 +60,7 @@ export async function edit(args: EditArgs) {
         const oldStr = args.old_str.replace(/\r\n/g, '\n');
         const newStr = args.new_str.replace(/\r\n/g, '\n');
         let count = 0, pos = 0;
-        let lines = []
+        const lines = []
         while ((pos = data.indexOf(oldStr, pos)) !== -1) {
             lines.push(getLineNumber(data, pos));
             pos += args.old_str.length;
