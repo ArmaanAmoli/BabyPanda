@@ -12,6 +12,6 @@ const agent = new BabyPandaAgent({url:'https://integrate.api.nvidia.com/v1/chat/
 await agent.init()
 // agent.model=ModelsEnum["nvidia/nemotron-3-ultra-550b-a55b"];
 agent.setModel(ModelsEnum["nvidia/nemotron-3-ultra-550b-a55b"] , ProvidersEnum["Nvidia"])
-const prompt = `Find bugs in the code and list them (Remember to think before writing to the codebase and make no mistake)`
+const prompt = `Explore the codebase and take notes and feed important info to memory if needed becaude we will start working on it after that`
 const message1:Message = {role:Role.user , content:prompt , sessionId: sessionId};
 await agent.message(message1);
