@@ -1,7 +1,7 @@
 import { BabyPandaClient } from './client'
 import type { Message, UrlApi, MessageAPI, Tool, MessageContent } from './types'
 import { MessageQueueSpecialElement, MessageContentSchema, ReasoningEffort, Role } from './types';
-import { readFileSync, existsSync, lstatSync, mkdirSync } from "fs"
+import { readFileSync, existsSync, lstatSync, mkdirSync , writeFileSync} from "fs"
 import { EventEmitter } from "events"
 import { MCPClient } from "./mcp/client"
 import * as z from "zod";
@@ -14,13 +14,13 @@ import os from 'node:os';
 import { ModelsEnum, Models, ProvidersEnum } from '@/config/models'
 import { getContent } from '@/utils/getContent';
 import { compaction } from '@/memory/services/compaction';
+import { projectDir , memoryFile} from '@/memory/constants';
+import {readFromMemory} from '@/memory/utils/memory'
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const cwd = process.cwd();
-const home = os.homedir();
-const babyPandaDir = path.join(home, '.babypanda', 'projects');
 const instructionsFilePath = path.join(__dirname, 'memory', 'BabyPanda', 'BabyPanda.md');
 
 let compact = true;
@@ -52,12 +52,12 @@ export class BabyPandaAgent extends EventEmitter {
     this.instructions = readFileSync(instructionsFilePath, { encoding: 'utf-8' });
     this.reasoningEffect = ReasoningEffort.none;
     this.sessionId = sessionId
-    this.projectDirectoryName = formatPath(this.cwd);
-    const projectDirectoryPath = path.join(babyPandaDir, this.projectDirectoryName)
     this.contextWindow = Models['Nvidia'].models[this.model].contextLength; // default model
-    if (!(existsSync(projectDirectoryPath) && lstatSync(projectDirectoryPath).isDirectory())) {
-      mkdirSync(projectDirectoryPath, { recursive: true });
+    if (!(existsSync(projectDir) && lstatSync(projectDir).isDirectory())) {
+      mkdirSync(projectDir, { recursive: true });
+      writeFileSync(memoryFile, "");
     }
+    
     this.systemInstructions = { role: Role.system, content: (this.instructions + `user current working directory: "${this.cwd}"`) }
   }
 
@@ -98,6 +98,10 @@ export class BabyPandaAgent extends EventEmitter {
     if (summary) {
       const { content, createdAt } = summary;
       const messageHistory = await this.getMessageHistory(createdAt!);
+      const memory = (await readFromMemory()) ?? null;
+      if(memory){
+        return [this.systemInstructions, {role:Role.user , content:`[MEMORY]: ${memory}`} , { role: Role.user, content:content! }, ...messageHistory];
+      }
       return [this.systemInstructions, { role: Role.user, content:content! }, ...messageHistory];
     }
     else {
