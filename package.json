@@ -1,5 +1,9 @@
 {
   "name": "@baby-panda",
+  "scripts": {
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix"
+  },
   "private": true,
   "workspaces": ["packages/*"],
   "dependencies": {
