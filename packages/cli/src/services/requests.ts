@@ -1,5 +1,5 @@
 import app from '@baby-panda/server';
-import { type APIProvider, type Message, type Session, type MessageDB, Role } from '../types'
+import { type APIProvider, type Message, type Session, type MessageDB } from '../types'
 
 const decoder = new TextDecoder();
 function concatArrayBuffer(chunks: Uint8Array[]) {
@@ -11,6 +11,7 @@ function concatArrayBuffer(chunks: Uint8Array[]) {
     }
     return result;
 }
+
 export async function startSession() {
     const req = new Request('http://localhost:3000/start-session', { method: "POST" });
     const res = await app.fetch(req);
@@ -33,8 +34,7 @@ export async function startSession() {
     const sessionId = decoder.decode(sessionIdUint)
     return sessionId;
 }
-// const session_test = await startSession();
-// console.log(session_test) -> 2d9dc32a-df6c-4685-8936-7be1598de04e
+
 async function registerProvider(details: APIProvider) {
     const req = new Request('http://localhost:3000/add-provider', {
         method: "POST",
@@ -86,6 +86,7 @@ async function getAllSessions(): Promise<Session[]> {
     const sessionsList = JSON.parse(sessions) as Session[]
     return sessionsList;
 }
+
 export async function getMessages(sessionId:string): Promise<MessageDB[]> {
     const req = new Request('http://localhost:3000/get-messages', { method: "POST" , body:JSON.stringify({sessionId}) });
     const res = await app.fetch(req);
@@ -109,7 +110,3 @@ export async function getMessages(sessionId:string): Promise<MessageDB[]> {
     const messagesList = JSON.parse(messages) as MessageDB[]
     return messagesList;
 }
-
-// const message:Message = {role:Role.user , content:"Hi baby panda how are you can plese tell me how to run a loop in javascript ?" , sessionId:'2d9dc32a-df6c-4685-8936-7be1598de04e'};
-// const reply = await sendMessage(message);
-// console.log("CLI:",reply);
