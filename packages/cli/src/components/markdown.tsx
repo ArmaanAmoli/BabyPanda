@@ -52,7 +52,7 @@ export const Markdown: React.FC<MarkdownProps> = ({ children }) => {
 					case 'list':
 						return (
 							<Box key={index} flexDirection="column" marginBottom={1}>
-								{token.items.map((item: any, i: number) => (
+								{token.items.map((item: {text:string}, i: number) => (
 									<Text key={i}>
 										<Text color="magenta">  • </Text>
 										{formatText(item.text)}

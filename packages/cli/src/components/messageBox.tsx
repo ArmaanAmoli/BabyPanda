@@ -1,3 +1,4 @@
+import React from 'react';
 import { Box} from "ink";
 import {Role} from '../types';
 import {Markdown} from './markdown'

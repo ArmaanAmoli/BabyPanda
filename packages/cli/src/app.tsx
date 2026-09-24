@@ -1,27 +1,28 @@
-import { Box, useStdout, Text, useInput } from 'ink';
+import React from 'react';
+import { Box, useStdout,useInput } from 'ink';
 import BigText from 'ink-big-text';
 import { useState, useEffect, useRef } from 'react'
 import PromptBox from './components/promptBox'
 import { MessageBox } from './components/messageBox'
-import { Role, type Message, type MessageDB } from './types';
+import { Role, type MessageDB } from './types';
 import { getMessages, sendMessage, startSession } from './services/requests'
 import { type ScrollViewRef, ScrollView } from 'ink-scroll-view'
 
 const getInitialSessionId = () => {
-  if (typeof process !== 'undefined' && process.argv && process.argv[2]) {
-    return process.argv[2];
-  }
-  return null; 
+	if (typeof process !== 'undefined' && process.argv && process.argv[2]) {
+		return process.argv[2];
+	}
+	return null;
 };
 
 let initialSessionId = getInitialSessionId();
-if(initialSessionId === null){
+if (initialSessionId === null) {
 	initialSessionId = await startSession();
 }
 
 export default function App() {
-	let [messageHistory, setMessageHistory] = useState<MessageDB[]>([]);
-	const sessionId = useRef(initialSessionId?initialSessionId:'');
+	const [messageHistory, setMessageHistory] = useState<MessageDB[]>([]);
+	const sessionId = useRef(initialSessionId ? initialSessionId : '');
 	let i = 0;
 	const [prompt, setPrompt] = useState('');
 	const onChange = (value: string) => setPrompt(value);
@@ -49,7 +50,7 @@ export default function App() {
 					}
 					else {
 						setMessageHistory((prev) => {
-							let current = [...prev];
+							const current = [...prev];
 							const last = current.at(prev.length ? prev.length - 1 : 0);
 							if (last) {
 								last.content += decodedText;
@@ -117,21 +118,21 @@ export default function App() {
 	}, []);
 
 	return (
-				<Box flexDirection='column' width={dimensions.columns} height={dimensions.rows} padding={0} backgroundColor={'black'}>
-					<Box height="100%" width="100%" paddingX={2} flexDirection='column'>
-						<Box flexGrow={1} flexDirection='column'>
-							{messageHistory.length === 0 && <BigText text="BABY PANDA" align='center' font="block" colors={['white']} />}
-							<ScrollView ref={scrollRef} flexGrow={1} flexDirection='column' gap={2}>
-								{messageHistory.length > 0 && messageHistory.map((message) => {
-									return (<MessageBox key={i++} content={message.content as string} sended={true} role={message.role} />);
-								})}
-							</ScrollView>
-						</Box>
-						<Box height={6} minHeight={6} margin={0} width="100%">
-							<PromptBox placeholder={"How can I help you ?"} value={prompt} onChange={onChange} onSubmit={onSubmit} />
-						</Box>
-					</Box>
-
+		<Box flexDirection='column' width={dimensions.columns} height={dimensions.rows} padding={0} backgroundColor={'black'}>
+			<Box height="100%" width="100%" paddingX={2} flexDirection='column'>
+				<Box flexGrow={1} flexDirection='column'>
+					{messageHistory.length === 0 && <BigText text="BABY PANDA" align='center' font="block" colors={['white']} />}
+					<ScrollView ref={scrollRef} flexGrow={1} flexDirection='column' gap={2}>
+						{messageHistory.length > 0 && messageHistory.map((message) => {
+							return (<MessageBox key={i++} content={message.content as string} sended={true} role={message.role} />);
+						})}
+					</ScrollView>
 				</Box>
+				<Box height={6} minHeight={6} margin={0} width="100%">
+					<PromptBox placeholder={"Write a message... "} value={prompt} onChange={onChange} onSubmit={onSubmit} />
+				</Box>
+			</Box>
+
+		</Box>
 	);
 }

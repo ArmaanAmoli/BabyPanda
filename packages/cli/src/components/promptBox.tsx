@@ -1,11 +1,9 @@
-import { Box, useInput , Text} from 'ink'
-// import { TextInput } from '@inkjs/ui'
+import React from 'react';
+import { Box, useInput } from 'ink'
 import TextInput from 'ink-text-input';
-import { useState, useRef , useContext} from 'react'
-import { type PromptBoxArgs , type MessageStatusElement, Role } from '../types'
+import { useRef } from 'react'
+import { type PromptBoxArgs } from '../types'
 import { ScrollView, type ScrollViewRef } from "ink-scroll-view";
-import {PromptContext} from "../context/prompt"
-import {GlobalMessageQueueContext} from '../context/messageQueueContext'
 
 export default function PromptBox({ placeholder, value , onChange , onSubmit}: PromptBoxArgs) {
     const scrollRef = useRef<ScrollViewRef>(null);

@@ -11,7 +11,9 @@
 		"build": "tsc",
 		"dev": "bun src/cli.tsx",
 		"test": "prettier --check . && xo && ava",
-		"start": "node dist/cli.js"
+		"start": "node dist/cli.js",
+    	"lint": "eslint .",
+    	"lint:fix": "eslint . --fix"
 	},
 	"files": ["dist"],
 	"dependencies": {
