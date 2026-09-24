@@ -240,6 +240,7 @@ export class BabyPandaAgent extends EventEmitter {
           if (!fullReply) {
             console.log("Full reply is empty");
             this.messageQueue.push(MessageQueueSpecialElement.lastReplyFromLLMWasEmpty);
+            toBreak=false;
             resolve("empty reply");
             return;
           }

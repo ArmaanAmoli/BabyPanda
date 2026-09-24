@@ -12,6 +12,6 @@ const agent = new BabyPandaAgent({url:'https://integrate.api.nvidia.com/v1/chat/
 await agent.init()
 // agent.model=ModelsEnum["nvidia/nemotron-3-ultra-550b-a55b"];
 agent.setModel(ModelsEnum["nvidia/nemotron-3-ultra-550b-a55b"] , ProvidersEnum["Nvidia"])
-const prompt = `Explore the codebase and take notes and feed important info to memory if needed becaude we will start working on it after that`
+const prompt = `Analyze claude code code base i am interested in knowing how they test their agent loop and which framework they use to test`
 const message1:Message = {role:Role.user , content:prompt , sessionId: sessionId};
 await agent.message(message1);

@@ -1,10 +1,7 @@
 import * as fs from 'fs';
-import { exec } from 'node:child_process';
-import { promisify } from 'node:util';
 import { spawn } from 'child_process';
 import * as readline from 'readline';
 import * as gl from 'glob';
-import { file } from 'zod';
 
 
 interface ReadArgs {
