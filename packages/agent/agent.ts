@@ -4,13 +4,10 @@ import { MessageQueueSpecialElement, MessageContentSchema, ReasoningEffort, Role
 import { readFileSync, existsSync, lstatSync, mkdirSync , writeFileSync} from "fs"
 import { EventEmitter } from "events"
 import { MCPClient } from "./mcp/client"
-import * as z from "zod";
 import { getMessages, getSession, createMessage, getMostRecentCompactionSummary, addCompactionSummary, getMessagesAfterTimestamp } from '@baby-panda/db';
 import { extractFirstJSON } from './utils/FirstJsonExtractor';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import formatPath from '@/utils/formatPath';
-import os from 'node:os';
 import { ModelsEnum, Models, ProvidersEnum } from '@/config/models'
 import { getContent } from '@/utils/getContent';
 import { compaction } from '@/memory/services/compaction';
@@ -267,7 +264,7 @@ export class BabyPandaAgent extends EventEmitter {
               if (replyJson) {
                 const toolCalls = replyJson.content.tool_call;
                 if (!toolCalls) {
-                  MessageQueueSpecialElement.toolCallDone;
+                  // MessageQueueSpecialElement.toolCallDone;
                   resolve('no tool call');
                   return;
                 }

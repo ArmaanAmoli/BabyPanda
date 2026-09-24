@@ -30,7 +30,7 @@ export async function createMessage(sessionId: string, content: string, role: Ro
             createdAt: Date.now(), // Fixes the database driver positioning crash
             content: content,
             role: role,
-            isToolResult:isToolResult
+            isToolResult:isToolResult ?? false
         } as typeof Message.$inferInsert);
         await tx.update(Session).set({ messagesCount: messageIndex + 1 }).where(eq(Session.id, sessionId));
     })

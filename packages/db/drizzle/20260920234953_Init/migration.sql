@@ -1,10 +1,10 @@
-CREATE TABLE `api_keys` (
+CREATE TABLE IF NOT EXISTS `api_keys` (
 	`provider` text,
 	`endpoint` text,
 	`key` text PRIMARY KEY
 );
 --> statement-breakpoint
-CREATE TABLE `compaction_results` (
+CREATE TABLE IF NOT EXISTS `compaction_results` (
 	`session_id` text,
 	`created_at` integer,
 	`content` text,
@@ -12,7 +12,7 @@ CREATE TABLE `compaction_results` (
 	CONSTRAINT `fk_compaction_results_session_id_session_session_id_fk` FOREIGN KEY (`session_id`) REFERENCES `session`(`session_id`)
 );
 --> statement-breakpoint
-CREATE TABLE `message` (
+CREATE TABLE IF NOT EXISTS `message` (
 	`message_index` integer,
 	`session_id` text,
 	`created_at` text DEFAULT CURRENT_TIMESTAMP,
@@ -22,7 +22,7 @@ CREATE TABLE `message` (
 	CONSTRAINT `fk_message_session_id_session_session_id_fk` FOREIGN KEY (`session_id`) REFERENCES `session`(`session_id`)
 );
 --> statement-breakpoint
-CREATE TABLE `session` (
+CREATE TABLE IF NOT EXISTS `session` (
 	`session_id` text PRIMARY KEY,
 	`created_at` text DEFAULT CURRENT_TIMESTAMP,
 	`parent_session_id` text,
