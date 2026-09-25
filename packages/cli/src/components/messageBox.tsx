@@ -1,6 +1,6 @@
 import React from 'react';
 import { Box} from "ink";
-import {Role} from '../types';
+import {Role} from '@baby-panda/types';
 import {Markdown} from './markdown'
 interface MessageBoxProps{
     content:string;

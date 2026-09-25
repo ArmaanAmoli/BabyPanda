@@ -1,9 +1,9 @@
 import type {MessageAPI , Message } from '@baby-panda/types';
 import { Role } from '@baby-panda/types';
-import { MessageContentSchema } from '@/types'
-import { BabyPandaAgent } from '@/agent';
+import { MessageContentSchema } from '@agent/types'
+import { BabyPandaAgent } from '@agent/agent';
 import { readFileSync } from 'fs';
-import { getContent } from '@/utils/getContent'
+import { getContent } from '@agent/utils/getContent'
 import { jsonrepair } from 'jsonrepair'
 
 import path from 'path';

@@ -14,11 +14,11 @@
     "types": [
       "bun"
     ],
-    "paths": {
-      "@/*": [
-        "./*"
-      ]
-    },
+    // "paths": {
+    //   "@agent/*": [
+    //     "./*"
+    //   ]
+    // },
     // Bundler mode
     "moduleResolution": "bundler",
     "allowImportingTsExtensions": true,

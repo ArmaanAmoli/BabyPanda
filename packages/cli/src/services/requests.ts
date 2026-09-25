@@ -1,5 +1,6 @@
 import app from '@baby-panda/server';
-import { type APIProvider, type Message, type Session, type MessageDB } from '../types'
+import type  {APIProvider, Session } from '../types';
+import type { Message, MessageDB } from '@baby-panda/types';
 
 const decoder = new TextDecoder();
 function concatArrayBuffer(chunks: Uint8Array[]) {

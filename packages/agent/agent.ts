@@ -10,11 +10,11 @@ import { getMessages, getSession, createMessage, getMostRecentCompactionSummary,
 import { extractFirstJSON } from './utils/FirstJsonExtractor';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { ModelsEnum, Models, ProvidersEnum } from '@/config/models'
-import { getContent } from '@/utils/getContent';
-import { compaction } from '@/memory/services/compaction';
-import { projectDir , memoryFile} from '@/memory/constants';
-import {readFromMemory} from '@/memory/utils/memory'
+import { ModelsEnum, Models, ProvidersEnum } from '@agent/config/models'
+import { getContent } from '@agent/utils/getContent';
+import { compaction } from '@agent/memory/services/compaction';
+import { projectDir , memoryFile} from '@agent/memory/constants';
+import {readFromMemory} from '@agent/memory/utils/memory'
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);

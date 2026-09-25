@@ -1,7 +1,8 @@
 import { Hono } from 'hono'
 import { getMessages, createSession, addProvider, getSessionsByProjectDirectory} from '@baby-panda/db';
 import { streamText } from 'hono/streaming';
-import { BabyPandaAgent, type Message } from '@baby-panda/agent'
+import { BabyPandaAgent} from '@baby-panda/agent';
+import type {Message} from '@baby-panda/types'
 const app = new Hono()
 
 const agentStore = new Map<string, BabyPandaAgent>(); // sessionID - agent

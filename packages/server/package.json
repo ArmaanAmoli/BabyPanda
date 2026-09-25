@@ -6,12 +6,14 @@
   "scripts": {
     "dev": "bun run --hot src/index.ts",
     "lint": "eslint .",
-    "lint:fix": "eslint . --fix"
+    "lint:fix": "eslint . --fix",
+    "type-check": "tsc --noEmit"
   },
   "dependencies": {
     "hono": "^4.13.4",
     "@baby-panda/db":"workspace:*",
-    "@baby-panda/agent":"workspace:*"
+    "@baby-panda/agent":"workspace:*",
+    "@baby-panda/types":"workspace:*"
   },
   "devDependencies": {
     "@types/bun": "latest"

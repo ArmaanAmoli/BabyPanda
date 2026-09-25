@@ -1,5 +1,5 @@
-import {Models , ModelsSchema , ProvidersEnum , ModelsEnum } from "@/config/models";
-import type {  ModelDetails} from "@/config/models";
+import {Models , ModelsSchema , ProvidersEnum , ModelsEnum } from "@agent/config/models";
+import type {  ModelDetails} from "@agent/config/models";
 
 import { z } from "zod";
 

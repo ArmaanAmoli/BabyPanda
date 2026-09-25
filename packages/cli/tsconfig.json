@@ -9,9 +9,9 @@
     "rootDir": "./src",
     "outDir": "./dist",
     "types": ["node"],
-    "paths": {
-      "@/*": ["./src/*" , "../agent/*"]
-    },
+    // "paths": {
+    //   "@cli/*": ["./src/*"]
+    // },
     "skipLibCheck": true
   },
   "include": ["./src/**/*"],

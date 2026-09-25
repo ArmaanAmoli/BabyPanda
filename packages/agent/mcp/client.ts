@@ -1,6 +1,6 @@
 import { Client } from '@modelcontextprotocol/client';
 import { StdioClientTransport } from '@modelcontextprotocol/client/stdio'
-import type { Tool, ToolResult } from '@/types';
+import type { Tool, ToolResult } from '@agent/types';
 
 export class MCPClient {
     private mcp: Client;

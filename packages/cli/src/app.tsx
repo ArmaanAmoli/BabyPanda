@@ -4,7 +4,7 @@ import BigText from 'ink-big-text';
 import { useState, useEffect, useRef } from 'react'
 import PromptBox from './components/promptBox'
 import { MessageBox } from './components/messageBox'
-import { Role, type MessageDB } from './types';
+import { Role, type MessageDB } from '@baby-panda/types';
 import { getMessages, sendMessage, startSession } from './services/requests'
 import { type ScrollViewRef, ScrollView } from 'ink-scroll-view'
 

@@ -1,5 +1,5 @@
 // Get content from raw json of llm
-import {BabyPandaAgent} from "@/agent";
+import {BabyPandaAgent} from "@agent/agent";
 
 export const getContent = (encoded: string , agent?:BabyPandaAgent) => {
       try {
