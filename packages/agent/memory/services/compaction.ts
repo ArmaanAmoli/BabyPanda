@@ -1,6 +1,6 @@
-import type { MessageAPI, Message, MessageContent } from '@/types';
-import { Role, MessageContentSchema } from '@/types'
-import { BabyPandaClient } from '@/client';
+import type {MessageAPI , Message } from '@baby-panda/types';
+import { Role } from '@baby-panda/types';
+import { MessageContentSchema } from '@/types'
 import { BabyPandaAgent } from '@/agent';
 import { readFileSync } from 'fs';
 import { getContent } from '@/utils/getContent'

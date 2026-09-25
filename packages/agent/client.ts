@@ -1,6 +1,7 @@
-import axios, { AxiosError, type AxiosResponse } from 'axios'
+import axios, {type AxiosResponse } from 'axios'
 import { setTimeout } from 'node:timers/promises';
-import type { Message, ReasoningEffort, UrlApi } from './types' // verbatimModuleSyntax
+import type {Message } from '@baby-panda/types'
+import type {UrlApi } from './types' // verbatimModuleSyntax
 
 interface ChatCompletionArgs {
     response?: AxiosResponse;

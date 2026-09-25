@@ -1,5 +1,5 @@
 import { integer, primaryKey, sqliteTable, text } from "drizzle-orm/sqlite-core"
-import { Role } from "@baby-panda/agent"
+import { Role } from "@baby-panda/types"
 
 export const Session = sqliteTable("session", {
     id: text("session_id").primaryKey(),

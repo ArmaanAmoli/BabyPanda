@@ -1,6 +1,6 @@
 import { db } from './index.db'
 import { Session, Message, ApiKeys , CompactionResults} from './db/schema'
-import type { Role } from '@baby-panda/agent';
+import type { Role } from '@baby-panda/types';
 import { asc, desc, eq, gt } from 'drizzle-orm'
 interface APIProvider {
     provider: string;

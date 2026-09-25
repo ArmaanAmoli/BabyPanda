@@ -1,7 +1,7 @@
 import {BabyPandaAgent} from '../agent.ts'
-import type {Message } from '../types.ts'
-import {Role } from '../types.ts'
-import {ModelsEnum , Models , ProvidersEnum} from '@/config/models'
+import type {Message } from '@baby-panda/types'
+import {Role } from '@baby-panda/types'
+import {ModelsEnum , ProvidersEnum} from '@/config/models'
 import {createSession} from '@baby-panda/db'
 
 
@@ -13,5 +13,5 @@ await agent.init()
 // agent.model=ModelsEnum["nvidia/nemotron-3-ultra-550b-a55b"];
 agent.setModel(ModelsEnum["nvidia/nemotron-3-ultra-550b-a55b"] , ProvidersEnum["Nvidia"])
 const prompt = `Analyze claude code code base i am interested in knowing how they test their agent loop and which framework they use to test`
-const message1:Message = {role:Role.user , content:prompt , sessionId: sessionId};
+const message1:Message = {role:Role.user, content:prompt , sessionId: sessionId};
 await agent.message(message1);

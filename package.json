@@ -2,23 +2,23 @@
   "name": "@baby-panda",
   "scripts": {
     "lint": "eslint .",
-    "lint:fix": "eslint . --fix"
+    "lint:fix": "eslint . --fix",
+    "type-check": "bun run --filter '*' type-check"
   },
   "private": true,
   "workspaces": ["packages/*"],
   "dependencies": {
-    "@types/bun": "^1.4.2",
     "axios": "^1.19.0",
     "dev": "^0.1.5",
-    "dotenv": "^18.0.0",
-    "ink-big-text": "^2.0.0",
-    "ink-gradient": "^4.0.1"
+    "dotenv": "^18.0.0"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
+    "@types/bun": "^1.4.2",
     "eslint": "^10.11.0",
     "eslint-plugin-react": "^7.37.5",
     "globals": "^17.12.0",
+    "typescript": "^6.0.0",
     "typescript-eslint": "^8.70.1"
   }
 }

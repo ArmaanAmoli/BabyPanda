@@ -10,8 +10,10 @@
     "outDir": "./dist",
     "types": ["node"],
     "paths": {
-      "@/*": ["./source/*"]
-    }
+      "@/*": ["./src/*" , "../agent/*"]
+    },
+    "skipLibCheck": true
   },
-  "include": ["source/**/*"]
+  "include": ["./src/**/*"],
+  "exclude": ["node_modules , dist"]
 }
