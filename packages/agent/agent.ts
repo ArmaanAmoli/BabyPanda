@@ -25,6 +25,7 @@ const instructionsFilePath = path.join(__dirname, 'memory', 'BabyPanda', 'BabyPa
 
 let compact = true;
 
+
 export class BabyPandaAgent extends EventEmitter {
   client: BabyPandaClient;
   private isRunning = false;
@@ -170,8 +171,8 @@ export class BabyPandaAgent extends EventEmitter {
         While contentType is unidentified we want to save the data in the full Reply
         we will use the thought , answer , toolCall Regex to identify the stream only in case of toolCall we will not produce event
         */
-        const matchThought = "\"thought\": {";
-        const matchAnswer = "\"answer\": {";
+        const matchThought = "\"thought\":";
+        const matchAnswer = "\"answer\":";
 
         let toolCall = false;
         let fullReply = "";
