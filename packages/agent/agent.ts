@@ -1,11 +1,12 @@
 import { BabyPandaClient } from './client';
-import type { Message, MessageAPI } from "@baby-panda/types"
-import { Role } from "@baby-panda/types"
-import type { UrlApi, Tool, MessageContent } from './types'
+import type { Message, MessageAPI } from "@baby-panda/types";
+import {ContentType} from "@baby-panda/types"
+import { Role } from "@baby-panda/types";
+import type { UrlApi, Tool, MessageContent } from './types';
 import { MessageQueueSpecialElement, MessageContentSchema, ReasoningEffort } from './types';
-import { readFileSync, existsSync, lstatSync, mkdirSync , writeFileSync} from "fs"
-import { EventEmitter } from "events"
-import { MCPClient } from "./mcp/client"
+import { readFileSync, existsSync, lstatSync, mkdirSync , writeFileSync} from "fs";
+import { EventEmitter } from "events";
+import { MCPClient } from "./mcp/client";
 import { getMessages, getSession, createMessage, getMostRecentCompactionSummary, addCompactionSummary, getMessagesAfterTimestamp } from '@baby-panda/db';
 import { extractFirstJSON } from './utils/FirstJsonExtractor';
 import path from 'path';
@@ -156,12 +157,7 @@ export class BabyPandaAgent extends EventEmitter {
         this.messageQueue.push(MessageQueueSpecialElement.errorInLastIteration);
         continue;
       }
-      enum ContentType {
-        content = 'content',
-        thought = 'thought',
-        tool_call = 'tool_call',
-        unidentified = 'unidentified'
-      }
+      
       let contentType: ContentType = ContentType.unidentified;
       let toBreak: boolean = false;
 

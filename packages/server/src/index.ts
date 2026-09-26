@@ -2,7 +2,8 @@ import { Hono } from 'hono'
 import { getMessages, createSession, addProvider, getSessionsByProjectDirectory} from '@baby-panda/db';
 import { streamText } from 'hono/streaming';
 import { BabyPandaAgent} from '@baby-panda/agent';
-import type {Message} from '@baby-panda/types'
+import type {Message} from '@baby-panda/types';
+import {ContentType} from '@baby-panda/types'
 const app = new Hono()
 
 const agentStore = new Map<string, BabyPandaAgent>(); // sessionID - agent
@@ -29,6 +30,7 @@ app.post('/get-session', async () => {
 });
 
 app.post('/message', async (c) => {
+  console.log("[SERVER]: /message")
   const body = await c.req.json()
   if (!body.sessionId || !body.role || !body.content) {
     return new Response("missing data {sessionId , content , role}", { status: 400, statusText: "Bad Request" });
@@ -53,9 +55,11 @@ app.post('/message', async (c) => {
       let isDone = false;
       const queue:string[] = [];
         const onData = (data: string) => {
+          console.log("[SERVER]:received data" , data)
           queue.push(data);
         };
         const onEnd = () => {
+          console.log("[SERVER]:stream ended...")
           isDone = true;
         }
         const onError = (err: Error) => {
@@ -63,12 +67,12 @@ app.post('/message', async (c) => {
           console.error("[AGENT:STREAM ERROR] ",err)
         }
         const cleanup = () => {
-          babyPanda.off('data', onData);
+          [ContentType.content , ContentType.thought].forEach((eventName)=>babyPanda.off(eventName, onData));
           babyPanda.off('end', onEnd);
           babyPanda.off('error', onError);
           stream.abort();
         }
-        babyPanda.on('data', onData);
+        [ContentType.content , ContentType.thought].forEach((eventName)=>babyPanda.on(eventName, onData));
         babyPanda.on('end', onEnd);
         babyPanda.on('error', onError);
 
@@ -77,6 +81,7 @@ app.post('/message', async (c) => {
         })
       while(!isDone || queue.length>0){
         const chunk = queue.shift()
+        console.log("[SERVER: loop] ",chunk) // undefined
         if(chunk === undefined){
           await stream.sleep(10);
           continue;
