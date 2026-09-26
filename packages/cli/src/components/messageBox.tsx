@@ -10,7 +10,14 @@ interface MessageBoxProps{
 
 export function MessageBox({content , role}: MessageBoxProps) {
     return (
-        <Box width="100%" flexDirection='column' borderColor={role===Role.user ? '#82994C':'white'} borderStyle={'classic'} gap={1}>
+        <Box width="100%" flexDirection='column' borderLeftColor={role===Role.user ? 'white':'#82994C'} 
+        justifyContent={"center"}
+        borderTop={false} 
+        borderBottom={false}
+        borderRight={false}
+        padding={1}
+        marginTop={2}
+        borderStyle={'bold'} gap={1}>
             <Markdown>{content}</Markdown>
         </Box>
     );

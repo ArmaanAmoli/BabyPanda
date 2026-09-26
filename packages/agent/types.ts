@@ -24,21 +24,3 @@ export interface Tool{
     arguments:{[x:string]:unknown} | undefined;
 };
 export type ToolResult = Tool & {result?:unknown , error?:string};
-
-export const MessageContentSchema = z.object({
-          role: z.string(),
-          content: z.object({
-            tool_call: z.array(z.object(
-              {
-                id: z.string(),
-                type: z.string(),
-                function: z.string(),
-                arguments: z.record(z.string(), z.unknown())
-              }
-            )).optional(),
-            thought: z.string().optional(),
-            answer: z.string().optional()
-          })
-        });
-
-export type MessageContent = z.infer<typeof MessageContentSchema>;

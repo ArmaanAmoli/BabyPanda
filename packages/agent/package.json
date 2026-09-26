@@ -10,8 +10,7 @@
     "@modelcontextprotocol/client": "^2.0.0",
     "@modelcontextprotocol/server": "^2.0.0",
     "exa-js": "^2.22.0",
-    "glob": "^13.0.6",
-    "zod": "^4.5.4"
+    "glob": "^13.0.6"
   },
   "devDependencies": {
     "@types/bun": "latest",

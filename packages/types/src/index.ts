@@ -1,3 +1,4 @@
+import z from 'zod';
 export enum Role {
     system = 'system',
     context = 'context',
@@ -27,3 +28,30 @@ export enum ContentType {
     tool_call = 'tool_call',
     unidentified = 'unidentified'
 }
+
+export const MessageContentSchema = z.object({
+    role: z.string(),
+    content: z.object({
+        tool_call: z.array(z.object(
+            {
+                id: z.string(),
+                type: z.string(),
+                function: z.string(),
+                arguments: z.record(z.string(), z.unknown())
+            }
+        )).optional(),
+        thought: z.string().optional(),
+        answer: z.string().optional()
+    })
+});
+
+export type MessageContent = z.infer<typeof MessageContentSchema>;
+
+export const ToolRawResultSchema = z.object({
+    id: z.string(),
+    name: z.string(),
+    arguments:z.record(z.string() , z.string()),
+    result: z.object({
+        content:z.array(z.object({type:z.enum(['text']) , text:z.string()}))
+    })
+});
