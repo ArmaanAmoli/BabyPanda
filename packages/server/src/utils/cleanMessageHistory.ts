@@ -7,10 +7,12 @@ interface CleanedMessage {
     role: Role | null,
     content: string,
     createdAt: number | null
+    isThougt?: boolean
 }
 
 export function cleanMessageHistroy(messageHistory: MessageHistory) {
     const result = messageHistory.map((m) => {
+        let isThought = false;
         let content: string = '';
         if (!m.content) return;
         const rawContent = m.content.trim();
@@ -30,6 +32,7 @@ export function cleanMessageHistroy(messageHistory: MessageHistory) {
         else {
             const parsed = MessageContentSchema.parse(JSON.parse(m.content));
             if (parsed.content.answer != undefined || parsed.content.thought != undefined) {
+                if(parsed.content.thought)isThought=true;
                 content = parsed.content.answer ?? parsed.content.thought ?? "";
                 if (content.length === 0) return;
             }
@@ -41,6 +44,7 @@ export function cleanMessageHistroy(messageHistory: MessageHistory) {
             role: isToolResult ? Role.tool : m.role,
             content: content,
             createdAt: m.createdAt,
+            isThought: isThought
         }
     });
 
