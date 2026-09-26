@@ -1,9 +1,10 @@
 import { Hono } from 'hono'
-import { getMessages, createSession, addProvider, getSessionsByProjectDirectory} from '@baby-panda/db';
+import { getMessages, createSession, addProvider, getSessionsByProjectDirectory } from '@baby-panda/db';
 import { streamText } from 'hono/streaming';
-import { BabyPandaAgent} from '@baby-panda/agent';
-import type {Message} from '@baby-panda/types';
-import {ContentType} from '@baby-panda/types'
+import { BabyPandaAgent } from '@baby-panda/agent';
+import type { Message } from '@baby-panda/types';
+import { ContentType } from '@baby-panda/types';
+import {cleanMessageHistroy} from './utils/cleanMessageHistory'
 const app = new Hono()
 
 const agentStore = new Map<string, BabyPandaAgent>(); // sessionID - agent
@@ -16,7 +17,8 @@ app.post('/get-messages', async (c) => {
     return res;
   }
   const messages = await getMessages(body.sessionId)
-  return new Response(JSON.stringify(messages), { status: 200, statusText: "OK" });
+  const result = cleanMessageHistroy(messages);
+  return new Response(JSON.stringify(result), { status: 200, statusText: "OK" });
 });
 
 app.post('/start-session', async () => {
@@ -53,41 +55,41 @@ app.post('/message', async (c) => {
     const babyPanda = agent!;
     return streamText(c, async (stream) => {
       let isDone = false;
-      const queue:string[] = [];
-        const onData = (data: string) => {
-          console.log("[SERVER]:received data" , data)
-          queue.push(data);
-        };
-        const onEnd = () => {
-          console.log("[SERVER]:stream ended...")
-          isDone = true;
-        }
-        const onError = (err: Error) => {
-          isDone = true;
-          console.error("[AGENT:STREAM ERROR] ",err)
-        }
-        const cleanup = () => {
-          [ContentType.answer , ContentType.thought].forEach((eventName)=>babyPanda.off(eventName, onData));
-          babyPanda.off('end', onEnd);
-          babyPanda.off('error', onError);
-          stream.abort();
-        }
-        [ContentType.answer , ContentType.thought].forEach((eventName)=>babyPanda.on(eventName, onData));
-        babyPanda.on('end', onEnd);
-        babyPanda.on('error', onError);
+      const queue: string[] = [];
+      const onData = (data: string) => {
+        console.log("[SERVER]:received data", data)
+        queue.push(data);
+      };
+      const onEnd = () => {
+        console.log("[SERVER]:stream ended...")
+        isDone = true;
+      }
+      const onError = (err: Error) => {
+        isDone = true;
+        console.error("[AGENT:STREAM ERROR] ", err)
+      }
+      const cleanup = () => {
+        [ContentType.answer, ContentType.thought].forEach((eventName) => babyPanda.off(eventName, onData));
+        babyPanda.off('end', onEnd);
+        babyPanda.off('error', onError);
+        stream.abort();
+      }
+      [ContentType.answer, ContentType.thought].forEach((eventName) => babyPanda.on(eventName, onData));
+      babyPanda.on('end', onEnd);
+      babyPanda.on('error', onError);
 
-        babyPanda.message(body as Message).catch((err) => {
-          onError(err);
-        })
-      while(!isDone || queue.length>0){
+      babyPanda.message(body as Message).catch((err) => {
+        onError(err);
+      })
+      while (!isDone || queue.length > 0) {
         const chunk = queue.shift()
-        if(chunk === undefined){
+        if (chunk === undefined) {
           await stream.sleep(10);
           continue;
         }
         await stream.write(chunk);
       }
-      stream.onAbort(()=>{console.log("stream aborted")})
+      stream.onAbort(() => { console.log("stream aborted") })
       cleanup();
     }, async (err, stream) => {
       console.log("stream error", err);
