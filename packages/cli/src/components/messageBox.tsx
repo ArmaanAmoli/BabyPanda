@@ -31,7 +31,7 @@ export function MessageBox(prop: CleanedMessage) {
             padding={1}
             marginTop={2}
             borderStyle={'bold'} gap={1}>
-            <Markdown isThought={prop.isThought ?? false}>{`${prop.content} + ${prop.isThought} + ${color}`}</Markdown>
+            <Markdown isThought={prop.isThought ?? false}>{`${prop.content}`}</Markdown>
         </Box>
     );
 }
