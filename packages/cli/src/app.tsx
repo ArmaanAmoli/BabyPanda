@@ -5,31 +5,23 @@ import { useState, useEffect, useRef } from 'react'
 import PromptBox from './components/promptBox'
 import { MessageBox } from './components/messageBox'
 import { Role, type CleanedMessage } from '@baby-panda/types';
-import { getMessages, sendMessage, startSession } from './services/requests'
+import { getMessages, sendMessage } from './services/requests'
 import { type ScrollViewRef, ScrollView } from 'ink-scroll-view'
 
-const getInitialSessionId = () => {
-	if (typeof process !== 'undefined' && process.argv && process.argv[2]) {
-		return process.argv[2];
-	}
-	return null;
+interface AppArgs{
+	sessionId:string;
 };
 
-let initialSessionId = getInitialSessionId();
-if (initialSessionId === null) {
-	initialSessionId = await startSession();
-}
-
-export default function App() {
+export default function App({sessionId}:AppArgs) {
 	const [messageHistory, setMessageHistory] = useState<CleanedMessage[]>([]);
-	const sessionId = useRef(initialSessionId ? initialSessionId : '');
+	// const sessionId = useRef(initialSessionId ? initialSessionId : '');
 	let i = 0;
 	const [prompt, setPrompt] = useState('');
 	const onChange = (value: string) => setPrompt(value);
 	const onSubmit = async () => {
 		setMessageHistory((prev) => [...prev, { role: Role.user, content: prompt, createdAt: Date.now() , isThougt:false}]);
 		setPrompt('');
-		const reader = await sendMessage({ role: Role.user, content: prompt, sessionId: sessionId.current });
+		const reader = await sendMessage({ role: Role.user, content: prompt, sessionId: sessionId });
 		const textDecoder = new TextDecoder();
 		let reply = "";
 		let pushed = false
@@ -106,7 +98,7 @@ export default function App() {
 
 	useEffect(() => {
 		const getHistory = async () => {
-			setMessageHistory(await getMessages(sessionId.current));
+			setMessageHistory(await getMessages(sessionId));
 		}
 		getHistory()
 	}, []);

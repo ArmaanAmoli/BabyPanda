@@ -3,6 +3,7 @@ import React from 'react';
 import { render } from 'ink';
 import App from './app';
 import Bun from 'bun'
+import { startSession } from './services/requests';
 
 if (typeof Bun !== 'undefined') {
 	process.stdin.resume();
@@ -19,7 +20,18 @@ process.on('exit', () => {
 	process.stdout.write('\x1b[?1049l');
 });
 
-const { waitUntilExit } = render(<App />, {
+const getInitialSessionId = () => {
+	if (typeof process !== 'undefined' && process.argv && process.argv[2]) {
+		return process.argv[2];
+	}
+	return null;
+};
+let initialSessionId = getInitialSessionId();
+if (initialSessionId === null) {
+	initialSessionId = await startSession();
+}
+
+const { waitUntilExit } = render(<App sessionId={initialSessionId} />, {
 	alternateScreen: true,
 	incrementalRendering: true // we dont want ink to erase the entire terminal and repaint it will cause filckering
 });
