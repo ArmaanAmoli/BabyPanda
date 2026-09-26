@@ -27,7 +27,7 @@ export default function App() {
 	const [prompt, setPrompt] = useState('');
 	const onChange = (value: string) => setPrompt(value);
 	const onSubmit = async () => {
-		setMessageHistory((prev) => [...prev, { role: Role.user, content: prompt, createdAt: Date.now() }]);
+		setMessageHistory((prev) => [...prev, { role: Role.user, content: prompt, createdAt: Date.now() , isThougt:false}]);
 		setPrompt('');
 		const reader = await sendMessage({ role: Role.user, content: prompt, sessionId: sessionId.current });
 		const textDecoder = new TextDecoder();
@@ -118,7 +118,7 @@ export default function App() {
 					{messageHistory.length === 0 && <BigText text="BABY PANDA" align='center' font="block" colors={['white']} />}
 					<ScrollView ref={scrollRef} flexGrow={1} flexDirection='column' gap={2}>
 						{messageHistory.length > 0 && messageHistory.map((message) => {
-							return (<MessageBox key={i++} content={message.content as string} isThougt={message.isThougt ?? false} role={message.role} createdAt={message.createdAt}/>);
+							return (<MessageBox key={i++} content={message.content as string} isThought={message.isThought} role={message.role} createdAt={message.createdAt}/>);
 						})}
 					</ScrollView>
 				</Box>

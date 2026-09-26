@@ -1,6 +1,7 @@
 import app from '@baby-panda/server';
 import type  {APIProvider, Session } from '../types';
 import type { Message, CleanedMessage } from '@baby-panda/types';
+import {CleanedMessageArraySchema} from '@baby-panda/types'
 
 const decoder = new TextDecoder();
 function concatArrayBuffer(chunks: Uint8Array[]) {
@@ -108,6 +109,7 @@ export async function getMessages(sessionId:string): Promise<CleanedMessage[]> {
     }
     const messagesUint = concatArrayBuffer(chunks);
     const messages = decoder.decode(messagesUint)
-    const messagesList = JSON.parse(messages) as CleanedMessage[]
-    return messagesList;
+    const messagesList = JSON.parse(messages)
+    const parsed = CleanedMessageArraySchema.parse(messagesList);
+    return parsed;
 }

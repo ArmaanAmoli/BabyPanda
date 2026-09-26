@@ -56,9 +56,20 @@ export const ToolRawResultSchema = z.object({
     })
 });
 
-export interface CleanedMessage {
-    role: Role,
-    content: string,
-    createdAt: number | null
-    isThougt?: boolean
-}
+// export interface CleanedMessage {
+//     role: Role,
+//     content: string,
+//     createdAt: number | null
+//     isThougt?: boolean
+// }
+
+export const CleanedMessageSchema = z.object({
+    role:z.enum(Role),
+    content: z.string(),
+    createdAt: z.number().nullable(),
+    isThought: z.boolean().default(false).optional()
+})
+
+export const CleanedMessageArraySchema = z.array(CleanedMessageSchema);
+
+export type CleanedMessage = z.infer<typeof CleanedMessageSchema>;

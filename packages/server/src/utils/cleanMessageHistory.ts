@@ -37,7 +37,7 @@ export function cleanMessageHistroy(messageHistory: MessageHistory) {
             }
         }
         return {
-            role: isToolResult ? Role.tool : m.role,
+            role: isToolResult ? Role.tool : m.role ?? Role.user,
             content: content,
             createdAt: m.createdAt,
             isThought: isThought
