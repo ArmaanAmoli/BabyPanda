@@ -3,7 +3,7 @@ import { Role } from '@baby-panda/types'
 import { MessageContentSchema, ToolRawResultSchema } from '@baby-panda/types'
 
 type MessageHistory = Awaited<ReturnType<typeof getMessages>>;
-interface CleanedMessage{
+interface CleanedMessage {
     role: Role | null,
     content: string,
     createdAt: number | null
@@ -44,11 +44,39 @@ export function cleanMessageHistroy(messageHistory: MessageHistory) {
         }
     });
 
-    const finalResult:CleanedMessage[] = [];
-    result.forEach((r)=>{
-        if(r){
-            finalResult.push(r);
-        }
-    })
+    const finalResult: CleanedMessage[] = MergeToolCallMessages(result);
     return finalResult;
 }
+
+function MergeToolCallMessages(messages: (CleanedMessage | undefined)[]) {
+    const finalResult: CleanedMessage[] = [];
+    let isAccumulating = false;
+    let accumulatedContent: string = '';
+    let toolCreatedAt: number | null = null;
+    for (const m of messages) {
+        if (m === undefined) continue;
+        if (m.role === Role.tool) {
+            // Start or continue accumulating tool messages
+            if (!isAccumulating) {
+                isAccumulating = true;
+                toolCreatedAt = m.createdAt; // Capture the timestamp of the first tool message
+            }
+            // Combine contents with a newline separator
+            accumulatedContent += (accumulatedContent ? '\n' : '') + m.content;
+        }
+        else {
+            if(isAccumulating){
+                isAccumulating = false;
+                finalResult.push({ role: Role.tool, content: accumulatedContent, createdAt: toolCreatedAt });
+            }
+            finalResult.push(m);
+        }
+    }
+    if(isAccumulating){
+        finalResult.push({ role: Role.tool, content: accumulatedContent, createdAt: toolCreatedAt });
+    }
+    // console.log(finalResult);
+    return finalResult;
+}
+
+// cleanMessageHistroy(await getMessages("14a5444a-466e-49ef-96a1-9b7139d8f42e"));
