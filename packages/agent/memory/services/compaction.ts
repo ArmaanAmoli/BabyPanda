@@ -17,8 +17,6 @@ function cleanMessageArray(messages: MessageAPI[]) {
     let result:string = ``;
     messages.forEach((msg) => {
         try {
-            // console.log(msg)
-            const content = msg.content;
             const parsed = MessageContentSchema.parse(JSON.parse(jsonrepair(msg.content)));
             const pContent = parsed.content;
             if (!pContent.tool_call) {
@@ -47,7 +45,6 @@ export async function compaction(messages: MessageAPI[], agent: BabyPandaAgent) 
         do {
             try {
                 let buffer = '';
-                const lineBuffer: string[] = []
                 const regex = /^data:\s/;
 
                 await new Promise((resolve, reject) => {
@@ -63,12 +60,10 @@ export async function compaction(messages: MessageAPI[], agent: BabyPandaAgent) 
                             line = line.slice(6);
                             if (line === '[DONE]') continue;
                             const content = getContent(line);
-                            // console.log(content);
                             fullReply += content;
                         }
                     });
                     response.response?.data.on('end', () => {
-                        // fullReply = extractFirstJSON(fullReply) ?? ''
                         resolve(fullReply);
                     });
                     response.response?.data.on('error', (error: any) => {
