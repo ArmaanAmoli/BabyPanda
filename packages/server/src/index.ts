@@ -67,12 +67,12 @@ app.post('/message', async (c) => {
           console.error("[AGENT:STREAM ERROR] ",err)
         }
         const cleanup = () => {
-          [ContentType.content , ContentType.thought].forEach((eventName)=>babyPanda.off(eventName, onData));
+          [ContentType.answer , ContentType.thought].forEach((eventName)=>babyPanda.off(eventName, onData));
           babyPanda.off('end', onEnd);
           babyPanda.off('error', onError);
           stream.abort();
         }
-        [ContentType.content , ContentType.thought].forEach((eventName)=>babyPanda.on(eventName, onData));
+        [ContentType.answer , ContentType.thought].forEach((eventName)=>babyPanda.on(eventName, onData));
         babyPanda.on('end', onEnd);
         babyPanda.on('error', onError);
 
@@ -81,7 +81,6 @@ app.post('/message', async (c) => {
         })
       while(!isDone || queue.length>0){
         const chunk = queue.shift()
-        console.log("[SERVER: loop] ",chunk) // undefined
         if(chunk === undefined){
           await stream.sleep(10);
           continue;

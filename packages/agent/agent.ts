@@ -1,10 +1,10 @@
 import { BabyPandaClient } from './client';
 import type { Message, MessageAPI } from "@baby-panda/types";
-import {ContentType} from "@baby-panda/types"
+import { ContentType } from "@baby-panda/types"
 import { Role } from "@baby-panda/types";
 import type { UrlApi, Tool, MessageContent } from './types';
 import { MessageQueueSpecialElement, MessageContentSchema, ReasoningEffort } from './types';
-import { readFileSync, existsSync, lstatSync, mkdirSync , writeFileSync} from "fs";
+import { readFileSync, existsSync, lstatSync, mkdirSync, writeFileSync } from "fs";
 import { EventEmitter } from "events";
 import { MCPClient } from "./mcp/client";
 import { getMessages, getSession, createMessage, getMostRecentCompactionSummary, addCompactionSummary, getMessagesAfterTimestamp } from '@baby-panda/db';
@@ -14,8 +14,8 @@ import { fileURLToPath } from 'url';
 import { ModelsEnum, Models, ProvidersEnum } from '@agent/config/models'
 import { getContent } from '@agent/utils/getContent';
 import { compaction } from '@agent/memory/services/compaction';
-import { projectDir , memoryFile} from '@agent/memory/constants';
-import {readFromMemory} from '@agent/memory/utils/memory'
+import { projectDir, memoryFile } from '@agent/memory/constants';
+import { readFromMemory } from '@agent/memory/utils/memory'
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -57,7 +57,7 @@ export class BabyPandaAgent extends EventEmitter {
       mkdirSync(projectDir, { recursive: true });
       writeFileSync(memoryFile, "");
     }
-    
+
     this.systemInstructions = { role: Role.system, content: (this.instructions + `user current working directory: "${this.cwd}"`) }
   }
 
@@ -99,10 +99,10 @@ export class BabyPandaAgent extends EventEmitter {
       const { content, createdAt } = summary;
       const messageHistory = await this.getMessageHistory(createdAt!);
       const memory = (await readFromMemory()) ?? null;
-      if(memory){
-        return [this.systemInstructions, {role:Role.user , content:`[MEMORY]: ${memory}`} , { role: Role.user, content:content! }, ...messageHistory];
+      if (memory) {
+        return [this.systemInstructions, { role: Role.user, content: `[MEMORY]: ${memory}` }, { role: Role.user, content: content! }, ...messageHistory];
       }
-      return [this.systemInstructions, { role: Role.user, content:content! }, ...messageHistory];
+      return [this.systemInstructions, { role: Role.user, content: content! }, ...messageHistory];
     }
     else {
       const messageHistory = await this.getMessageHistory();
@@ -157,7 +157,7 @@ export class BabyPandaAgent extends EventEmitter {
         this.messageQueue.push(MessageQueueSpecialElement.errorInLastIteration);
         continue;
       }
-      
+
       let contentType: ContentType = ContentType.unidentified;
       let toBreak: boolean = false;
 
@@ -170,8 +170,12 @@ export class BabyPandaAgent extends EventEmitter {
         While contentType is unidentified we want to save the data in the full Reply
         we will use the thought , answer , toolCall Regex to identify the stream only in case of toolCall we will not produce event
         */
+        const matchThought = "\"thought\": {";
+        const matchAnswer = "\"answer\": {";
+
         let toolCall = false;
         let fullReply = "";
+        let cleanedReplyForCLI = "";
         let buffer: string = '';
 
         let inParentContentProperty: boolean = false;
@@ -203,24 +207,24 @@ export class BabyPandaAgent extends EventEmitter {
                   console.log("tool called !")
                 }
                 else if (answerRegex.test(fullReply)) {
-                  contentType = ContentType.content;
+                  contentType = ContentType.answer;
+                  cleanedReplyForCLI = fullReply.substring((fullReply.indexOf(matchAnswer) + matchAnswer.length));
                   toBreak = true;
                 }
                 else if (thoughtRegex.test(fullReply)) {
                   contentType = ContentType.thought
+                  cleanedReplyForCLI = fullReply.substring((fullReply.indexOf(matchThought) + matchThought.length));
                   this.messageQueue.push(MessageQueueSpecialElement.lastReplyFromLLMWasThought);
                 }
                 lineBuffer.push(content);
               }
               else {
-                if (!toolCall) {
-                  if (lineBuffer.length > 0) {
-                    for (const l of lineBuffer) {
-                      this.emit(contentType, l)
-                    }
-                    lineBuffer.length = 0;
+                if (!toolCall) { // later we have to add stack based mechanizm to remove the curly braces
+                  if(cleanedReplyForCLI.length){
+                    this.emit(contentType , cleanedReplyForCLI);
+                    cleanedReplyForCLI = "";
                   }
-                  this.emit(contentType, content)
+                  this.emit(contentType, content);
                 }
               }
             }
@@ -233,12 +237,12 @@ export class BabyPandaAgent extends EventEmitter {
           }
         });
         response.response?.data.on('end', async () => {
-          console.log("[CONTEXT WINDOW]: " ,  this.contextWindowUsed)
+          console.log("[CONTEXT WINDOW]: ", this.contextWindowUsed)
           fullReply = extractFirstJSON(fullReply) ?? ""
           if (!fullReply) {
             console.log("Full reply is empty");
             this.messageQueue.push(MessageQueueSpecialElement.lastReplyFromLLMWasEmpty);
-            toBreak=false;
+            toBreak = false;
             resolve("empty reply");
             return;
           }
@@ -284,7 +288,7 @@ export class BabyPandaAgent extends EventEmitter {
                   }
                   else {
                     try {
-                      await createMessage(this.sessionId, JSON.stringify(toolResults.at(i)), Role.user , true);
+                      await createMessage(this.sessionId, JSON.stringify(toolResults.at(i)), Role.user, true);
                       this.numberOfMessages += 1;
                     } catch (err) {
                       reject(new Error(`Unable to store tool message to database: ${err}`));

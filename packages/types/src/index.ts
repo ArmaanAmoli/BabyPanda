@@ -22,7 +22,7 @@ export type Message = (UserMessage | SystemMessage | ContextMessage | AssistantM
 export type MessageDB = Message & { createdAt: Date };
 
 export enum ContentType {
-    content = 'content',
+    answer = 'answer',
     thought = 'thought',
     tool_call = 'tool_call',
     unidentified = 'unidentified'
