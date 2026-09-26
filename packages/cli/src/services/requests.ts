@@ -1,6 +1,6 @@
 import app from '@baby-panda/server';
 import type  {APIProvider, Session } from '../types';
-import type { Message, MessageDB } from '@baby-panda/types';
+import type { Message, CleanedMessage } from '@baby-panda/types';
 
 const decoder = new TextDecoder();
 function concatArrayBuffer(chunks: Uint8Array[]) {
@@ -88,7 +88,7 @@ async function getAllSessions(): Promise<Session[]> {
     return sessionsList;
 }
 
-export async function getMessages(sessionId:string): Promise<MessageDB[]> {
+export async function getMessages(sessionId:string): Promise<CleanedMessage[]> {
     const req = new Request('http://localhost:3000/get-messages', { method: "POST" , body:JSON.stringify({sessionId}) });
     const res = await app.fetch(req);
     if (!res.ok) { return []; }
@@ -108,6 +108,6 @@ export async function getMessages(sessionId:string): Promise<MessageDB[]> {
     }
     const messagesUint = concatArrayBuffer(chunks);
     const messages = decoder.decode(messagesUint)
-    const messagesList = JSON.parse(messages) as MessageDB[]
+    const messagesList = JSON.parse(messages) as CleanedMessage[]
     return messagesList;
 }

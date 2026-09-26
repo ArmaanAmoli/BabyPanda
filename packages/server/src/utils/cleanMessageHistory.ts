@@ -1,14 +1,10 @@
 import { getMessages } from "@baby-panda/db";
 import { Role } from '@baby-panda/types'
 import { MessageContentSchema, ToolRawResultSchema } from '@baby-panda/types'
+import type { CleanedMessage } from '@baby-panda/types'
+
 
 type MessageHistory = Awaited<ReturnType<typeof getMessages>>;
-interface CleanedMessage {
-    role: Role | null,
-    content: string,
-    createdAt: number | null
-    isThougt?: boolean
-}
 
 export function cleanMessageHistroy(messageHistory: MessageHistory) {
     const result = messageHistory.map((m) => {

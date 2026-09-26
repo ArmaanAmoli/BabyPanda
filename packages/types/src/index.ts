@@ -55,3 +55,10 @@ export const ToolRawResultSchema = z.object({
         content:z.array(z.object({type:z.enum(['text']) , text:z.string()}))
     })
 });
+
+export interface CleanedMessage {
+    role: Role,
+    content: string,
+    createdAt: number | null
+    isThougt?: boolean
+}

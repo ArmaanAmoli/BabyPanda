@@ -1,10 +1,10 @@
 import React from 'react';
-import { Box, useStdout,useInput } from 'ink';
+import { Box, useStdout, useInput } from 'ink';
 import BigText from 'ink-big-text';
 import { useState, useEffect, useRef } from 'react'
 import PromptBox from './components/promptBox'
 import { MessageBox } from './components/messageBox'
-import { Role, type MessageDB } from '@baby-panda/types';
+import { Role, type CleanedMessage } from '@baby-panda/types';
 import { getMessages, sendMessage, startSession } from './services/requests'
 import { type ScrollViewRef, ScrollView } from 'ink-scroll-view'
 
@@ -21,13 +21,13 @@ if (initialSessionId === null) {
 }
 
 export default function App() {
-	const [messageHistory, setMessageHistory] = useState<MessageDB[]>([]);
+	const [messageHistory, setMessageHistory] = useState<CleanedMessage[]>([]);
 	const sessionId = useRef(initialSessionId ? initialSessionId : '');
 	let i = 0;
 	const [prompt, setPrompt] = useState('');
 	const onChange = (value: string) => setPrompt(value);
 	const onSubmit = async () => {
-		setMessageHistory((prev) => [...prev, { role: Role.user, content: prompt, createdAt: new Date, sessionId: sessionId.current }]);
+		setMessageHistory((prev) => [...prev, { role: Role.user, content: prompt, createdAt: Date.now() }]);
 		setPrompt('');
 		const reader = await sendMessage({ role: Role.user, content: prompt, sessionId: sessionId.current });
 		const textDecoder = new TextDecoder();
@@ -45,7 +45,7 @@ export default function App() {
 					const decodedText = textDecoder.decode(value, { stream: true });
 					reply += decodedText
 					if (!pushed) {
-						setMessageHistory((prev) => [...prev, { role: Role.assistant, content: reply, createdAt: new Date, sessionId: sessionId.current }]);
+						setMessageHistory((prev) => [...prev, { role: Role.assistant, content: reply, createdAt: Date.now() }]);
 						pushed = true;
 					}
 					else {
@@ -88,12 +88,6 @@ export default function App() {
 		}
 
 	});
-	// useEffect(() => {
-	// 	if (sessionId.current === '') {
-	// 		const startsession = async () => { sessionId.current = await startSession() };
-	// 		startsession();
-	// 	}
-	// }, [])
 
 	useEffect(() => { //an Eventlistner to automatically resize the cli in case of user resize their terminal window
 		if (!stdout) return;
@@ -124,7 +118,7 @@ export default function App() {
 					{messageHistory.length === 0 && <BigText text="BABY PANDA" align='center' font="block" colors={['white']} />}
 					<ScrollView ref={scrollRef} flexGrow={1} flexDirection='column' gap={2}>
 						{messageHistory.length > 0 && messageHistory.map((message) => {
-							return (<MessageBox key={i++} content={message.content as string} sended={true} role={message.role} />);
+							return (<MessageBox key={i++} content={message.content as string} isThougt={message.isThougt ?? false} role={message.role} createdAt={message.createdAt}/>);
 						})}
 					</ScrollView>
 				</Box>
