@@ -23,8 +23,8 @@ const __dirname = path.dirname(__filename);
 const cwd = process.cwd();
 const instructionsFilePath = path.join(__dirname, 'memory', 'BabyPanda', 'BabyPanda.md');
 
-let compact = true;
-
+// let compact = true;
+type MessageHistory = Awaited<ReturnType<typeof getMessages>>;
 
 export class BabyPandaAgent extends EventEmitter {
   client: BabyPandaClient;
@@ -95,7 +95,6 @@ export class BabyPandaAgent extends EventEmitter {
 
   private async createContext() {
     const summary = await getMostRecentCompactionSummary(this.sessionId);
-    const messages: MessageAPI[] = [];
     if (summary) {
       const { content, createdAt } = summary;
       const messageHistory = await this.getMessageHistory(createdAt!);
@@ -112,6 +111,8 @@ export class BabyPandaAgent extends EventEmitter {
   }
 
   private async loop() {
+    let isAccumulatingToolCall = false;
+    const accumulatedToolCalls:MessageHistory = [];
     while (this.messageQueue.length !== 0) {
       console.log("in the loop")
       this.isRunning = true;
@@ -123,7 +124,6 @@ export class BabyPandaAgent extends EventEmitter {
           const summary = await compaction(this.messagesHistory, this);
           if (summary) await addCompactionSummary(this.sessionId, summary);
           console.log(summary)
-          compact = false
           console.log("stopped compacting...");
           continue;
         }
@@ -250,11 +250,18 @@ export class BabyPandaAgent extends EventEmitter {
           console.log("full reply: \n", fullReply);
           try {
             await createMessage(this.sessionId, fullReply, Role.assistant);
+            if(!toolCall && isAccumulatingToolCall){
+              // create an event to push the entire array of tool calls to CLI
+              this.emit(ContentType.tool_call , accumulatedToolCalls);
+              accumulatedToolCalls.length = 0;
+              isAccumulatingToolCall = false;
+            }
             this.numberOfMessages += 1;
           } catch (err) {
             reject(new Error(`Unable to store assistant message to database: ${err}`));
           }
           if (toolCall) {
+            if(!isAccumulatingToolCall) isAccumulatingToolCall = true;
             try {
               let replyJson: MessageContent | undefined;
               try {
@@ -289,7 +296,10 @@ export class BabyPandaAgent extends EventEmitter {
                   }
                   else {
                     try {
-                      await createMessage(this.sessionId, JSON.stringify(toolResults.at(i)), Role.user, true);
+                      const content = JSON.stringify(toolResults.at(i))
+                      await createMessage(this.sessionId, content, Role.user, true);
+                      // push into compined tool call array
+                      accumulatedToolCalls.push({sessionId:this.sessionId, content:content, role:Role.user, isToolResult:true , messageIndex:null , createdAt:Date.now()});
                       this.numberOfMessages += 1;
                     } catch (err) {
                       reject(new Error(`Unable to store tool message to database: ${err}`));

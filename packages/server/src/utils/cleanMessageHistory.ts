@@ -4,12 +4,12 @@ import { MessageContentSchema, ToolRawResultSchema } from '@baby-panda/types'
 import type { CleanedMessage } from '@baby-panda/types'
 
 
-type MessageHistory = Awaited<ReturnType<typeof getMessages>>;
+export type MessageHistory = Awaited<ReturnType<typeof getMessages>>;
 
 export function cleanMessageHistroy(messageHistory: MessageHistory) {
     const result = messageHistory.map((m) => {
         let isThought = false;
-        let content: string = '';
+        let content = '';
         if (!m.content) return;
         const rawContent = m.content.trim();
         const isToolResult = m.isToolResult ?? false;

@@ -3,8 +3,8 @@ import { getMessages, createSession, addProvider, getSessionsByProjectDirectory 
 import { streamText } from 'hono/streaming';
 import { BabyPandaAgent } from '@baby-panda/agent';
 import type { Message } from '@baby-panda/types';
-import { ContentType } from '@baby-panda/types';
-import {cleanMessageHistroy} from './utils/cleanMessageHistory'
+import { ContentType, Role } from '@baby-panda/types';
+import {cleanMessageHistroy , type MessageHistory} from './utils/cleanMessageHistory'
 const app = new Hono()
 
 const agentStore = new Map<string, BabyPandaAgent>(); // sessionID - agent
@@ -56,6 +56,16 @@ app.post('/message', async (c) => {
     return streamText(c, async (stream) => {
       let isDone = false;
       const queue: string[] = [];
+      const onToolData = (data:MessageHistory) =>{
+        const cleaned = cleanMessageHistroy(data);
+        const content = "";
+        cleaned.forEach((msg)=>{
+          if(msg.role === Role.tool){
+            content.concat(content?'\n':'',msg.content);
+          }
+        })
+        queue.push(content)
+      }
       const onData = (data: string) => {
         console.log("[SERVER]:received data", data)
         queue.push(data);
@@ -70,11 +80,15 @@ app.post('/message', async (c) => {
       }
       const cleanup = () => {
         [ContentType.answer, ContentType.thought].forEach((eventName) => babyPanda.off(eventName, onData));
+        babyPanda.off(ContentType.tool_call , onToolData);
         babyPanda.off('end', onEnd);
         babyPanda.off('error', onError);
         stream.abort();
       }
       [ContentType.answer, ContentType.thought].forEach((eventName) => babyPanda.on(eventName, onData));
+
+      babyPanda.on(ContentType.tool_call , onToolData)
+
       babyPanda.on('end', onEnd);
       babyPanda.on('error', onError);
 
