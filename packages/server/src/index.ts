@@ -85,8 +85,9 @@ app.post('/message', async (c) => {
       const onEnd = () => {
         // console.log("[SERVER]:stream ended...")
         writeLogs(LogType.server , cwd , body.sessionId , "[/message]: Ended stream");
-        isDone = true;
+        // isDone = true;
       }
+
       const onError = (err: Error) => {
         isDone = true;
         console.error("[AGENT:STREAM ERROR] ", err);
@@ -102,12 +103,14 @@ app.post('/message', async (c) => {
         writeLogs(LogType.server , cwd , body.sessionId , "[/message]: Aborting stream...");
         stream.abort();
       }
+
       [ContentType.answer, ContentType.thought].forEach((eventName) => babyPanda.on(eventName, onData));
 
       babyPanda.on(ContentType.tool_call , onToolData)
 
       babyPanda.on('end', onEnd);
       babyPanda.on('error', onError);
+      babyPanda.on('abort' , ()=>{isDone=true})
 
       babyPanda.message(body as Message).catch((err) => {
         onError(err);
@@ -122,7 +125,8 @@ app.post('/message', async (c) => {
         await stream.write(chunk);
       }
       stream.onAbort(() => { writeLogs(LogType.server , cwd , body.sessionId , "[/message]: Stream aborted");})
-      cleanup();
+
+      if(isDone) cleanup();
     }, async (err, stream) => {
       console.log("stream error", err);
       stream.write("An error occured during streaming");

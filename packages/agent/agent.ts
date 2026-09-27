@@ -351,7 +351,9 @@ export class BabyPandaAgent extends EventEmitter {
         });
       if (toBreak) {
         this.isRunning = false ;
-        break;}
+        this.emit('abort');
+        break;
+      }
     }
     writeLogs(LogType.agent , this.projectDirectoryName, this.sessionId , `Loop has ended` );
   }
