@@ -1,7 +1,9 @@
 import app from '@baby-panda/server';
 import type  {APIProvider, Session } from '../types';
-import type { Message, CleanedMessage } from '@baby-panda/types';
-import {CleanedMessageArraySchema} from '@baby-panda/types'
+import type { Message, CleanedMessage, MessageRegular } from '@baby-panda/types';
+import {CleanedMessageArraySchema, LogType} from '@baby-panda/types'
+import {writeLogs} from '@baby-panda/utils'
+const cwd = process.cwd().replaceAll('/' , '-').replace('-','');
 
 const decoder = new TextDecoder();
 function concatArrayBuffer(chunks: Uint8Array[]) {
@@ -53,12 +55,13 @@ async function registerProvider(details: APIProvider) {
     }
 }
 
-export async function sendMessage(msg: Message) {
+export async function sendMessage(msg: MessageRegular) {
     const req = new Request('http://localhost:3000/message', {
         method: "POST",
         body: JSON.stringify(msg)
     })
     const res = await app.fetch(req);
+    writeLogs(LogType.cli, cwd , msg.sessionId , res.statusText);
     const stream = res.body;
     if(!stream){throw new Error('Got null response from server')}
     const reader = stream.getReader();

@@ -12,6 +12,7 @@ export function writeLogs(type:LogType , projectName:string , sessionId:string ,
     const agentLogFile = path.join(logDirectoryLocation , 'agent.log');
     const dbLogFile = path.join(logDirectoryLocation , 'db.log');
     const cliLogFile = path.join(logDirectoryLocation , 'cli.log');
+    const serverLogFile = path.join(logDirectoryLocation , 'server.log');
 
     if(!(existsSync(logDirectoryLocation) && lstatSync(logDirectoryLocation).isDirectory())){
         mkdirSync(logDirectoryLocation , {recursive:true});
@@ -19,6 +20,7 @@ export function writeLogs(type:LogType , projectName:string , sessionId:string ,
         writeFileSync(agentLogFile , "AGENT LOGS");
         writeFileSync(dbLogFile , "DB LOGS");
         writeFileSync(cliLogFile , "CLI LOGS");
+        writeFileSync(serverLogFile , "SERVER LOGS");
     }
 
     const writePath = path.join(logDirectoryLocation , type);

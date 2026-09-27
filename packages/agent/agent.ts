@@ -1,6 +1,6 @@
 import { BabyPandaClient } from './client';
 import type { Message, MessageAPI, MessageContent } from "@baby-panda/types";
-import { ContentType, MessageContentSchema } from "@baby-panda/types"
+import { ContentType, LogType, MessageContentSchema } from "@baby-panda/types"
 import { Role } from "@baby-panda/types";
 import type { UrlApi, Tool } from './types';
 import { MessageQueueSpecialElement, ReasoningEffort } from './types';
@@ -15,12 +15,14 @@ import { ModelsEnum, Models, ProvidersEnum } from '@agent/config/models'
 import { getContent } from '@agent/utils/getContent';
 import { compaction } from '@agent/memory/services/compaction';
 import { projectDir, memoryFile } from '@agent/memory/constants';
-import { readFromMemory } from '@agent/memory/utils/memory'
+import { readFromMemory } from '@agent/memory/utils/memory';
+import { writeLogs } from '@baby-panda/utils'
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const cwd = process.cwd();
+
 const instructionsFilePath = path.join(__dirname, 'memory', 'BabyPanda', 'BabyPanda.md');
 
 // let compact = true;
@@ -58,6 +60,7 @@ export class BabyPandaAgent extends EventEmitter {
       mkdirSync(projectDir, { recursive: true });
       writeFileSync(memoryFile, "");
     }
+    this.projectDirectoryName = process.cwd().replaceAll('/' , '-').replace('-','');
 
     this.systemInstructions = { role: Role.system, content: (this.instructions + `user current working directory: "${this.cwd}"`) }
   }
@@ -150,10 +153,11 @@ export class BabyPandaAgent extends EventEmitter {
       }
       this.messageQueue.splice(0, 1);
       // console.log('MESSAGES' , messages)
+      writeLogs(LogType.agent , this.projectDirectoryName , this.sessionId , "message sended waiting for response..." )
       const response = await this.client.chatCompletion(messages, this.model);
-      console.log("first reply");
+      writeLogs(LogType.agent , this.projectDirectoryName , this.sessionId , "received first chunk" )
       if (response.systemError) {
-        console.error('Request failed:', response.error);
+        writeLogs(LogType.agent , this.projectDirectoryName , this.sessionId , `Request failed: ${response.error} restarting loop...` )
         this.isRunning = false;
         this.messageQueue.push(MessageQueueSpecialElement.errorInLastIteration);
         continue;
@@ -195,26 +199,25 @@ export class BabyPandaAgent extends EventEmitter {
             line = line.slice(6);
             if (line === '[DONE]') continue;
             const content = getContent(line, this);
-            // console.log(this.contextWindowUsed)
-            // console.log(content);
             fullReply += content;
             if (inParentContentProperty) {
               if (contentType === ContentType.unidentified) {
-                // console.log("checking tool call")
-                //check for "tool_call"
                 if (toolCallRegex.test(fullReply)) {
                   toolCall = true;
                   contentType = ContentType.tool_call;
-                  console.log("tool called !")
+                  // console.log("tool called !")
+                  writeLogs(LogType.agent , this.projectDirectoryName , this.sessionId , "received a tool called" );
                 }
                 else if (answerRegex.test(fullReply)) {
                   contentType = ContentType.answer;
                   cleanedReplyForCLI = fullReply.substring((fullReply.indexOf(matchAnswer) + matchAnswer.length));
+                  writeLogs(LogType.agent , this.projectDirectoryName , this.sessionId , "received an answer" );
                   toBreak = true;
                 }
                 else if (thoughtRegex.test(fullReply)) {
                   contentType = ContentType.thought
                   cleanedReplyForCLI = fullReply.substring((fullReply.indexOf(matchThought) + matchThought.length));
+                  writeLogs(LogType.agent , this.projectDirectoryName, this.sessionId , "received a thought" );
                   this.messageQueue.push(MessageQueueSpecialElement.lastReplyFromLLMWasThought);
                 }
                 lineBuffer.push(content);
@@ -238,16 +241,17 @@ export class BabyPandaAgent extends EventEmitter {
           }
         });
         response.response?.data.on('end', async () => {
-          console.log("[CONTEXT WINDOW]: ", this.contextWindowUsed)
+          writeLogs(LogType.agent , this.projectDirectoryName , this.sessionId , `[Context Window Used]: ${this.contextWindow}` );
           fullReply = extractFirstJSON(fullReply) ?? ""
           if (!fullReply) {
-            console.log("Full reply is empty");
+            writeLogs(LogType.agent , this.projectDirectoryName , this.sessionId , "Reply received was empty retrying..." );
             this.messageQueue.push(MessageQueueSpecialElement.lastReplyFromLLMWasEmpty);
             toBreak = false;
             resolve("empty reply");
             return;
           }
-          console.log("full reply: \n", fullReply);
+          // console.log("full reply: \n", fullReply);
+          writeLogs(LogType.agent , this.projectDirectoryName , this.sessionId , `[REPLY]: ${fullReply}` );
           try {
             await createMessage(this.sessionId, fullReply, Role.assistant);
             if(!toolCall && isAccumulatingToolCall){
@@ -287,7 +291,9 @@ export class BabyPandaAgent extends EventEmitter {
                   }
                 });
                 const toolResults = await this.mcpClient.callTools(toolCallsT);
-                console.log('agent:tool result from mcp', toolResults)
+                // console.log('agent:tool result from mcp', toolResults)
+                writeLogs(LogType.agent , this.projectDirectoryName , this.sessionId , `[TOOL RESULT]: ${toolResults}` );
+
                 let i = 0;
                 while (i < toolResults.length) {
                   if (toolResults.at(i) === undefined) {
@@ -315,7 +321,8 @@ export class BabyPandaAgent extends EventEmitter {
             }
             catch (err) {
               const fullErrMessage = `An error occured while resolving tool call at agent.ts: ${err}`
-              console.log(fullErrMessage, "Sending error to llm");
+              // console.log(fullErrMessage, "Sending error to llm");
+              writeLogs(LogType.agent , this.projectDirectoryName , this.sessionId , `[TOOL CALL ERROR]: Informing LLM about it, \n${fullErrMessage}` );
               createMessage(this.sessionId, fullErrMessage, Role.user)
               this.messageQueue.push(MessageQueueSpecialElement.errorInLastIteration)
               reject(err);
@@ -338,13 +345,15 @@ export class BabyPandaAgent extends EventEmitter {
           this.isRunning = false
         })
         .catch((err) => {
-          this.isRunning = false;
-          console.log("[ERROR]: ", err)
+          // console.log("[ERROR]: ", err);
+          writeLogs(LogType.agent , this.projectDirectoryName , this.sessionId , `[PROMISE ERROR]: ${err}` );
           this.messageQueue.push(MessageQueueSpecialElement.errorInLastIteration);
         });
-      if (toBreak) break;
+      if (toBreak) {
+        this.isRunning = false ;
+        break;}
     }
-    console.log('loop has ended')
+    writeLogs(LogType.agent , this.projectDirectoryName, this.sessionId , `Loop has ended` );
   }
 
   async message(msg: Message) {
@@ -353,7 +362,7 @@ export class BabyPandaAgent extends EventEmitter {
       return;
     }
     else {
-      console.log('called loop')
+      writeLogs(LogType.agent , this.projectDirectoryName , this.sessionId , `Called loop` );
       await this.loop();
     }
   }

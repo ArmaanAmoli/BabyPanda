@@ -1,1 +1,2 @@
-console.log("Hello via Bun!");
+import {writeLogs} from './src/writeLog';
+export {writeLogs};

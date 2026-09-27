@@ -78,5 +78,6 @@ export enum LogType {
     agent = 'agent.log',
     mcp = 'mcp.log',
     db = 'db.log',
-    server = 'server.log'
+    server = 'server.log',
+    cli = 'cli.log'
 }

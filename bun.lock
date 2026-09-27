@@ -24,6 +24,7 @@
       "name": "@baby-panda/agent",
       "dependencies": {
         "@baby-panda/db": "workspace:*",
+        "@baby-panda/utils": "workspace:*",
         "@modelcontextprotocol/client": "^2.0.0",
         "@modelcontextprotocol/server": "^2.0.0",
         "exa-js": "^2.22.0",
@@ -41,6 +42,7 @@
       "bin": "dist/cli.js",
       "dependencies": {
         "@baby-panda/server": "workspace:*",
+        "@baby-panda/utils": "workspace:*",
         "@inkjs/ui": "^2.0.0",
         "ink": "^7.1.1",
         "ink-big-text": "^2.0.0",
@@ -71,6 +73,7 @@
     "packages/db": {
       "name": "@baby-panda/db",
       "dependencies": {
+        "@baby-panda/utils": "workspace:*",
         "@libsql/client": "^0.17.4",
         "dotenv": "^17.4.2",
         "drizzle-orm": "^1.0.0-rc.4",
@@ -86,6 +89,7 @@
       "dependencies": {
         "@baby-panda/agent": "workspace:*",
         "@baby-panda/db": "workspace:*",
+        "@baby-panda/utils": "workspace:*",
         "hono": "^4.13.4",
       },
       "devDependencies": {
