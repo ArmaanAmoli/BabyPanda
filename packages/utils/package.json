@@ -1,0 +1,13 @@
+{
+  "name": "@baby-panda/utils",
+  "module": "index.ts",
+  "scripts": {
+    "type-check": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@baby-panda/types": "workspace:*",
+    "@types/bun": "^1.4.2"
+  },
+  "private": true,
+  "type": "module"
+}

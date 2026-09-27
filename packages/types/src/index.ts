@@ -73,3 +73,11 @@ export const CleanedMessageSchema = z.object({
 export const CleanedMessageArraySchema = z.array(CleanedMessageSchema);
 
 export type CleanedMessage = z.infer<typeof CleanedMessageSchema>;
+
+export enum LogType {
+    agent = 'agent.log',
+    mcp = 'mcp.log',
+    db = 'db.log',
+    server = 'server.log',
+    cli = 'cli.log'
+}

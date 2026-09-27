@@ -24,13 +24,14 @@
       "name": "@baby-panda/agent",
       "dependencies": {
         "@baby-panda/db": "workspace:*",
-        "@baby-panda/types": "workspace:*",
+        "@baby-panda/utils": "workspace:*",
         "@modelcontextprotocol/client": "^2.0.0",
         "@modelcontextprotocol/server": "^2.0.0",
         "exa-js": "^2.22.0",
         "glob": "^13.0.6",
       },
       "devDependencies": {
+        "@baby-panda/types": "workspace:*",
         "@types/bun": "latest",
         "jsonrepair": "^3.15.0",
       },
@@ -41,6 +42,7 @@
       "bin": "dist/cli.js",
       "dependencies": {
         "@baby-panda/server": "workspace:*",
+        "@baby-panda/utils": "workspace:*",
         "@inkjs/ui": "^2.0.0",
         "ink": "^7.1.1",
         "ink-big-text": "^2.0.0",
@@ -71,6 +73,7 @@
     "packages/db": {
       "name": "@baby-panda/db",
       "dependencies": {
+        "@baby-panda/utils": "workspace:*",
         "@libsql/client": "^0.17.4",
         "dotenv": "^17.4.2",
         "drizzle-orm": "^1.0.0-rc.4",
@@ -86,10 +89,11 @@
       "dependencies": {
         "@baby-panda/agent": "workspace:*",
         "@baby-panda/db": "workspace:*",
-        "@baby-panda/types": "workspace:*",
+        "@baby-panda/utils": "workspace:*",
         "hono": "^4.13.4",
       },
       "devDependencies": {
+        "@baby-panda/types": "workspace:*",
         "@types/bun": "latest",
       },
     },
@@ -97,6 +101,13 @@
       "name": "@baby-panda/types",
       "devDependencies": {
         "@types/bun": "latest",
+      },
+    },
+    "packages/utils": {
+      "name": "@baby-panda/utils",
+      "devDependencies": {
+        "@baby-panda/types": "workspace:*",
+        "@types/bun": "^1.4.2",
       },
     },
   },
@@ -116,6 +127,8 @@
     "@baby-panda/server": ["@baby-panda/server@workspace:packages/server"],
 
     "@baby-panda/types": ["@baby-panda/types@workspace:packages/types"],
+
+    "@baby-panda/utils": ["@baby-panda/utils@workspace:packages/utils"],
 
     "@cacheable/memory": ["@cacheable/memory@2.2.0", "", { "dependencies": { "@cacheable/utils": "^2.5.0", "@keyv/bigmap": "^1.3.1", "hookified": "^1.15.1", "keyv": "^5.6.0" } }, "sha512-CTLKqLItRCEixEAewD3/j9DB3/o96gpTPD4eJ1v+DGOlxZRZncRQkGYqqnAGCscYd6RNeXfGeiuCphsPtqyIfQ=="],
 
