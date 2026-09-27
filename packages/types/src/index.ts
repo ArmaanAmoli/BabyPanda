@@ -1,4 +1,4 @@
-import z from 'zod';
+import z, { xid } from 'zod';
 export enum Role {
     system = 'system',
     context = 'context',
@@ -81,3 +81,11 @@ export enum LogType {
     server = 'server.log',
     cli = 'cli.log'
 }
+
+export const ServerStreamChunkSchema = z.object({
+    contentType:z.enum(ContentType),
+    content:z.string(),
+    isStopper:z.boolean().default(false)
+});
+
+export type ServerStreamChunkSchemaType = z.infer<typeof ServerStreamChunkSchema>;

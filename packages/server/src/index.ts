@@ -2,7 +2,7 @@ import { Hono } from 'hono'
 import { getMessages, createSession, addProvider, getSessionsByProjectDirectory } from '@baby-panda/db';
 import { streamText } from 'hono/streaming';
 import { BabyPandaAgent } from '@baby-panda/agent';
-import type { Message } from '@baby-panda/types';
+import type { Message , ServerStreamChunkSchemaType } from '@baby-panda/types';
 import { ContentType, LogType, Role } from '@baby-panda/types';
 import {cleanMessageHistroy , type MessageHistory} from './utils/cleanMessageHistory'
 import {writeLogs} from '@baby-panda/utils'
@@ -77,15 +77,26 @@ app.post('/message', async (c) => {
         writeLogs(LogType.server , cwd , body.sessionId , `[/message]: Final tool content ${content}`);
         queue.push(content)
       }
-      const onData = (data: string) => {
+      const onData = (eventName:ContentType , data: string) => {
         // console.log("[SERVER]:received data", data)
-        writeLogs(LogType.server , cwd , body.sessionId , "[/message]: Received a data chunk")
-        queue.push(data);
+        writeLogs(LogType.server , cwd , body.sessionId , "[/message]: Received a data chunk");
+        const chunk:ServerStreamChunkSchemaType = {
+          contentType:eventName,
+          content:data,
+          isStopper:false,
+        };
+        const stringChunk = JSON.stringify(chunk);
+        queue.push(stringChunk);
       };
-      const onEnd = () => {
-        // console.log("[SERVER]:stream ended...")
+      const onEnd = (contentType:ContentType) => {
+       const stopper:ServerStreamChunkSchemaType = {
+        contentType:contentType,
+        content:'',
+        isStopper:true,
+       }
+       const stringStopper = JSON.stringify(stopper);
         writeLogs(LogType.server , cwd , body.sessionId , "[/message]: Ended stream");
-        // isDone = true;
+        queue.push(stringStopper);
       }
 
       const onError = (err: Error) => {
@@ -96,7 +107,7 @@ app.post('/message', async (c) => {
       const cleanup = () => {
         writeLogs(LogType.server , cwd , body.sessionId , "Cleanup started");
 
-        [ContentType.answer, ContentType.thought].forEach((eventName) => babyPanda.off(eventName, onData));
+        [ContentType.answer, ContentType.thought].forEach((eventName) => babyPanda.off(eventName,(data:string)=>{onData(eventName , data)} ));
         babyPanda.off(ContentType.tool_call , onToolData);
         babyPanda.off('end', onEnd);
         babyPanda.off('error', onError);

@@ -35,6 +35,7 @@ export default function App({sessionId}:AppArgs) {
 			else {
 				if (value) {
 					const decodedText = textDecoder.decode(value, { stream: true });
+					// do the parsing , if stopper then create a new message box
 					reply += decodedText
 					if (!pushed) {
 						setMessageHistory((prev) => [...prev, { role: Role.assistant, content: reply, createdAt: Date.now() }]);

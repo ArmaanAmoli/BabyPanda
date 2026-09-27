@@ -330,7 +330,7 @@ export class BabyPandaAgent extends EventEmitter {
           }
           toolCall = false;
           fullReply = '';
-          this.emit('end');
+          this.emit('end' , contentType);
           resolve("single iteration of loop done.");
 
         });
