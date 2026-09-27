@@ -1,0 +1,9 @@
+{
+  "name": "@baby-panda/utils",
+  "module": "index.ts",
+  "scripts": {
+    "type-check":"tsc --noEmit"
+  },
+  "private": true,
+  "type": "module"
+}
