@@ -7,7 +7,7 @@ import { MessageBox } from './components/messageBox'
 import { LogType, Role, type CleanedMessage, ServerStreamChunkSchema, ContentType } from '@baby-panda/types';
 import { getMessages, sendMessage } from './services/requests'
 import { type ScrollViewRef, ScrollView } from 'ink-scroll-view'
-import { writeLogs , getProjectName } from '@baby-panda/utils'
+import { writeLogs, getProjectName } from '@baby-panda/utils'
 
 interface AppArgs {
 	sessionId: string;
@@ -37,33 +37,42 @@ export default function App({ sessionId }: AppArgs) {
 			}
 			else {
 				if (value) {
-					const decodedText = textDecoder.decode(value, { stream: true });
-					writeLogs(LogType.cli, projectName, sessionId, `Chunk recieved trying to parse... ${decodedText}`);
-					const parsed = ServerStreamChunkSchema.parse(JSON.parse(decodedText));
-					writeLogs(LogType.cli, projectName, sessionId, `Chunk parsed`);
-					const currentContentType = parsed.contentType
-					const role = (currentContentType === ContentType.tool_call) ? Role.tool : Role.assistant;
-					const isThought = (parsed.contentType === ContentType.thought);
-					// reply += parsed.content
+					try {
+						const decodedText = textDecoder.decode(value, { stream: true });
+						writeLogs(LogType.cli, projectName, sessionId, `Chunk recieved trying to parse... ${decodedText}`);
+						const parsed = ServerStreamChunkSchema.safeParse(JSON.parse(decodedText));
+						if (!parsed.success) {
+							writeLogs(LogType.cli, projectName, sessionId, `[PARSING ERROR]: ${parsed.error.issues}`);
+							continue;
+						}
+						writeLogs(LogType.cli, projectName, sessionId, `Chunk parsed`);
+						const currentContentType = parsed.data?.contentType
+						const role = (currentContentType === ContentType.tool_call) ? Role.tool : Role.assistant;
+						const isThought = (parsed.data?.contentType === ContentType.thought);
 
-					if (parsed.isStopper) {
-						pushed = false;
+						if (parsed.data?.isStopper) {
+							pushed = false;
+						}
+
+						if (!pushed) {
+							setMessageHistory((prev) => [...prev, { role: role, content: parsed.data!.content, createdAt: Date.now(), isThought }]);
+							pushed = true;
+						}
+						else {
+							setMessageHistory((prev) => {
+								const current = [...prev];
+								const last = current.at(prev.length ? prev.length - 1 : 0);
+								if (last) {
+									last.content += parsed.data!.content;
+								}
+								return current;
+							});
+						}
+					} catch (err) {
+						writeLogs(LogType.cli, projectName, sessionId, `[STREAM PROCESSING ERROR]: ${err}`);
+						continue;
 					}
 
-					if (!pushed) {
-						setMessageHistory((prev) => [...prev, { role: role, content: parsed.content, createdAt: Date.now(), isThought }]);
-						pushed = true;
-					}
-					else {
-						setMessageHistory((prev) => {
-							const current = [...prev];
-							const last = current.at(prev.length ? prev.length - 1 : 0);
-							if (last) {
-								last.content += parsed.content;
-							}
-							return current;
-						});
-					}
 				}
 			}
 		}
