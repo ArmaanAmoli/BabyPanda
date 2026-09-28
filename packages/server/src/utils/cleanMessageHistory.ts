@@ -19,12 +19,15 @@ export function cleanMessageHistroy(messageHistory: MessageHistory) {
             content = rawContent;
         }
         else if (isToolResult) {
-            const parsed = ToolRawResultSchema.parse(JSON.parse(rawContent));
+            const parsed = ToolRawResultSchema.safeParse(JSON.parse(rawContent));
+            if(!parsed.success){
+                return;
+            }
             let argsString = '';
-            Object.entries(parsed.arguments).forEach(([key, value]) => {
+            Object.entries(parsed.data.arguments).forEach(([key, value]) => {
                 argsString += ` | ${key} : ${value}`;
             })
-            content = `${parsed.name}: ${argsString} \n`;
+            content = `${parsed.data.name}: ${argsString} \n`;
         }
         else {
             try {
