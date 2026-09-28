@@ -74,10 +74,10 @@ app.post('/message', async (c) => {
         writeLogs(LogType.server, cwd, body.sessionId, `[/message]: Received a tool chunk`);
         writeLogs(LogType.server, cwd, body.sessionId, `[/message]: Raw tool chunk ${data}`);
         const cleaned = cleanMessageHistroy(data);
-        const content = "";
+        let content = "";
         cleaned.forEach((msg) => {
           if (msg.role === Role.tool) {
-            content.concat(content ? '\n' : '', msg.content);
+            content = content.concat(content ? '\n' : '', msg.content);
           }
         })
         writeLogs(LogType.server, cwd, body.sessionId, `[/message]: Final tool content ${content}`);

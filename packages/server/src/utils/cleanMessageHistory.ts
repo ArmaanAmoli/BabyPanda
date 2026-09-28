@@ -86,5 +86,3 @@ function MergeToolCallMessages(messages: (CleanedMessage | undefined)[]) {
     // console.log(finalResult);
     return finalResult;
 }
-
-// cleanMessageHistroy(await getMessages("14a5444a-466e-49ef-96a1-9b7139d8f42e"));

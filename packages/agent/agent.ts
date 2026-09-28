@@ -51,7 +51,7 @@ export class BabyPandaAgent extends EventEmitter {
     console.log("agent cwd ", this.cwd);
     console.log(sessionId, "in agent constructor")
     this.client = new BabyPandaClient({ url, apikey });
-    this.model = ModelsEnum["nvidia/nemotron-3.5-lightning-30b-a3b"]; // This will be our default model
+    this.model = ModelsEnum["z-ai/glm-5.3-flash"]; // This will be our default model
     this.instructions = readFileSync(instructionsFilePath, { encoding: 'utf-8' });
     this.reasoningEffect = ReasoningEffort.none;
     this.sessionId = sessionId
@@ -273,7 +273,7 @@ export class BabyPandaAgent extends EventEmitter {
               } catch (err) {
                 reject("parsing error");
                 this.messageQueue.push(MessageQueueSpecialElement.errorInLastIteration)
-                createMessage(this.sessionId, `Their is an issue in the reply structure that you gave ${err}`, Role.user)
+                createMessage(this.sessionId, `Their is an issue in the reply structure that you gave ${err}`, Role.user) // add new feild isError to prevent this from coming in frontend
                 return;
               }
               if (replyJson) {
@@ -330,7 +330,7 @@ export class BabyPandaAgent extends EventEmitter {
           }
           toolCall = false;
           fullReply = '';
-          this.emit('end' , contentType);
+          if(!isAccumulatingToolCall)this.emit('end' , contentType);
           resolve("single iteration of loop done.");
 
         });
