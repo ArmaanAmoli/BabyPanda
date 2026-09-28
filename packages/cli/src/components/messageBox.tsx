@@ -7,7 +7,7 @@ import { Markdown } from './markdown'
 
 function getColor(prop: CleanedMessage){
     if(prop.isThought){
-        return '#4d3838';
+        return '#863737';
     }
     else if(prop.role === Role.assistant){
         return '#7e7474';

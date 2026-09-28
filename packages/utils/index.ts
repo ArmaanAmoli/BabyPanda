@@ -1,2 +1,3 @@
 import {writeLogs} from './src/writeLog';
-export {writeLogs};
+import getProjectName from './src/getProjectName'
+export {writeLogs , getProjectName};

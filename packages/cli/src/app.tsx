@@ -4,41 +4,54 @@ import BigText from 'ink-big-text';
 import { useState, useEffect, useRef } from 'react'
 import PromptBox from './components/promptBox'
 import { MessageBox } from './components/messageBox'
-import { Role, type CleanedMessage } from '@baby-panda/types';
+import { LogType, Role, type CleanedMessage, ServerStreamChunkSchema, ContentType } from '@baby-panda/types';
 import { getMessages, sendMessage } from './services/requests'
 import { type ScrollViewRef, ScrollView } from 'ink-scroll-view'
+import { writeLogs , getProjectName } from '@baby-panda/utils'
 
-interface AppArgs{
-	sessionId:string;
+interface AppArgs {
+	sessionId: string;
 };
 
-export default function App({sessionId}:AppArgs) {
-	const [messageHistory, setMessageHistory] = useState<CleanedMessage[]>([]);
-	// const sessionId = useRef(initialSessionId ? initialSessionId : '');
+export default function App({ sessionId }: AppArgs) {
+
 	let i = 0;
+	const [messageHistory, setMessageHistory] = useState<CleanedMessage[]>([]);
 	const [prompt, setPrompt] = useState('');
 	const onChange = (value: string) => setPrompt(value);
+	const projectName = getProjectName();
+
 	const onSubmit = async () => {
-		setMessageHistory((prev) => [...prev, { role: Role.user, content: prompt, createdAt: Date.now() , isThougt:false}]);
+		setMessageHistory((prev) => [...prev, { role: Role.user, content: prompt, createdAt: Date.now(), isThougt: false }]);
 		setPrompt('');
 		const reader = await sendMessage({ role: Role.user, content: prompt, sessionId: sessionId });
 		const textDecoder = new TextDecoder();
-		let reply = "";
+		// let reply = "";
 		let pushed = false
 		while (true) {
 			const { done, value } = await reader.read()
 			if (done) {
-				reply += textDecoder.decode();
-				console.log(`CLI got the complete streamed reply`);
+				const reply = textDecoder.decode();
+				writeLogs(LogType.cli, projectName, sessionId, `CLI got the complete stream reply ${reply}`);
 				break;
 			}
 			else {
 				if (value) {
 					const decodedText = textDecoder.decode(value, { stream: true });
-					// do the parsing , if stopper then create a new message box
-					reply += decodedText
+					writeLogs(LogType.cli, projectName, sessionId, `Chunk recieved trying to parse... ${decodedText}`);
+					const parsed = ServerStreamChunkSchema.parse(JSON.parse(decodedText));
+					writeLogs(LogType.cli, projectName, sessionId, `Chunk parsed`);
+					const currentContentType = parsed.contentType
+					const role = (currentContentType === ContentType.tool_call) ? Role.tool : Role.assistant;
+					const isThought = (parsed.contentType === ContentType.thought);
+					// reply += parsed.content
+
+					if (parsed.isStopper) {
+						pushed = false;
+					}
+
 					if (!pushed) {
-						setMessageHistory((prev) => [...prev, { role: Role.assistant, content: reply, createdAt: Date.now() }]);
+						setMessageHistory((prev) => [...prev, { role: role, content: parsed.content, createdAt: Date.now(), isThought }]);
 						pushed = true;
 					}
 					else {
@@ -46,16 +59,16 @@ export default function App({sessionId}:AppArgs) {
 							const current = [...prev];
 							const last = current.at(prev.length ? prev.length - 1 : 0);
 							if (last) {
-								last.content += decodedText;
+								last.content += parsed.content;
 							}
 							return current;
-						}
-						)
+						});
 					}
 				}
 			}
 		}
 	}
+
 	const scrollRef = useRef<ScrollViewRef>(null);
 	const { stdout } = useStdout();
 	const [dimensions, setDimensions] = useState({
@@ -79,7 +92,6 @@ export default function App({sessionId}:AppArgs) {
 			const height = scrollRef.current?.getViewportHeight() || 1;
 			scrollRef.current?.scrollBy(height);
 		}
-
 	});
 
 	useEffect(() => { //an Eventlistner to automatically resize the cli in case of user resize their terminal window
@@ -111,7 +123,7 @@ export default function App({sessionId}:AppArgs) {
 					{messageHistory.length === 0 && <BigText text="BABY PANDA" align='center' font="block" colors={['white']} />}
 					<ScrollView ref={scrollRef} flexGrow={1} flexDirection='column' gap={2}>
 						{messageHistory.length > 0 && messageHistory.map((message) => {
-							return (<MessageBox key={i++} content={message.content as string} isThought={message.isThought} role={message.role} createdAt={message.createdAt}/>);
+							return (<MessageBox key={i++} content={message.content as string} isThought={message.isThought} role={message.role} createdAt={message.createdAt} />);
 						})}
 					</ScrollView>
 				</Box>
