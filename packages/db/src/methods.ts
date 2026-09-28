@@ -46,7 +46,7 @@ export async function addProvider(details: APIProvider) {
     }
 }
 export async function getMessages(sessionId: string) {
-    const messages = await db.select().from(Message).where(eq(Message.sessionId, sessionId));
+    const messages = await db.select().from(Message).where(eq(Message.sessionId, sessionId)).orderBy(asc(Message.createdAt));
     return messages;
 }
 export async function getSessions() {

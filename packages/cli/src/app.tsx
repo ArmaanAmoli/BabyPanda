@@ -1,68 +1,83 @@
 import React from 'react';
-import { Box, useStdout,useInput } from 'ink';
+import { Box, useStdout, useInput } from 'ink';
 import BigText from 'ink-big-text';
 import { useState, useEffect, useRef } from 'react'
 import PromptBox from './components/promptBox'
 import { MessageBox } from './components/messageBox'
-import { Role, type MessageDB } from '@baby-panda/types';
-import { getMessages, sendMessage, startSession } from './services/requests'
+import { LogType, Role, type CleanedMessage, ServerStreamChunkSchema, ContentType } from '@baby-panda/types';
+import { getMessages, sendMessage } from './services/requests'
 import { type ScrollViewRef, ScrollView } from 'ink-scroll-view'
+import { writeLogs, getProjectName } from '@baby-panda/utils'
 
-const getInitialSessionId = () => {
-	if (typeof process !== 'undefined' && process.argv && process.argv[2]) {
-		return process.argv[2];
-	}
-	return null;
+interface AppArgs {
+	sessionId: string;
 };
 
-let initialSessionId = getInitialSessionId();
-if (initialSessionId === null) {
-	initialSessionId = await startSession();
-}
+export default function App({ sessionId }: AppArgs) {
 
-export default function App() {
-	const [messageHistory, setMessageHistory] = useState<MessageDB[]>([]);
-	const sessionId = useRef(initialSessionId ? initialSessionId : '');
 	let i = 0;
+	const [messageHistory, setMessageHistory] = useState<CleanedMessage[]>([]);
 	const [prompt, setPrompt] = useState('');
 	const onChange = (value: string) => setPrompt(value);
+	const projectName = getProjectName();
+
 	const onSubmit = async () => {
-		setMessageHistory((prev) => [...prev, { role: Role.user, content: prompt, createdAt: new Date, sessionId: sessionId.current }]);
+		setMessageHistory((prev) => [...prev, { role: Role.user, content: prompt, createdAt: Date.now(), isThougt: false }]);
 		setPrompt('');
-		const reader = await sendMessage({ role: Role.user, content: prompt, sessionId: sessionId.current });
+		const reader = await sendMessage({ role: Role.user, content: prompt, sessionId: sessionId });
 		const textDecoder = new TextDecoder();
-		let reply = "";
+		// let reply = "";
 		let pushed = false
 		while (true) {
 			const { done, value } = await reader.read()
 			if (done) {
-				reply += textDecoder.decode();
-				console.log(`CLI got the complete streamed reply`);
+				const reply = textDecoder.decode();
+				writeLogs(LogType.cli, projectName, sessionId, `CLI got the complete stream reply ${reply}`);
 				break;
 			}
 			else {
 				if (value) {
-					const decodedText = textDecoder.decode(value, { stream: true });
-					reply += decodedText
-					if (!pushed) {
-						setMessageHistory((prev) => [...prev, { role: Role.assistant, content: reply, createdAt: new Date, sessionId: sessionId.current }]);
-						pushed = true;
-					}
-					else {
-						setMessageHistory((prev) => {
-							const current = [...prev];
-							const last = current.at(prev.length ? prev.length - 1 : 0);
-							if (last) {
-								last.content += decodedText;
-							}
-							return current;
+					try {
+						const decodedText = textDecoder.decode(value, { stream: true });
+						writeLogs(LogType.cli, projectName, sessionId, `Chunk recieved trying to parse... ${decodedText}`);
+						const parsed = ServerStreamChunkSchema.safeParse(JSON.parse(decodedText));
+						if (!parsed.success) {
+							writeLogs(LogType.cli, projectName, sessionId, `[PARSING ERROR]: ${parsed.error.issues}`);
+							continue;
 						}
-						)
+						writeLogs(LogType.cli, projectName, sessionId, `Chunk parsed`);
+						const currentContentType = parsed.data?.contentType
+						const role = (currentContentType === ContentType.tool_call) ? Role.tool : Role.assistant;
+						const isThought = (parsed.data?.contentType === ContentType.thought);
+
+						if (parsed.data?.isStopper) {
+							pushed = false;
+						}
+
+						if (!pushed) {
+							setMessageHistory((prev) => [...prev, { role: role, content: parsed.data!.content, createdAt: Date.now(), isThought }]);
+							pushed = true;
+						}
+						else {
+							setMessageHistory((prev) => {
+								const current = [...prev];
+								const last = current.at(prev.length ? prev.length - 1 : 0);
+								if (last) {
+									last.content += parsed.data!.content;
+								}
+								return current;
+							});
+						}
+					} catch (err) {
+						writeLogs(LogType.cli, projectName, sessionId, `[STREAM PROCESSING ERROR]: ${err}`);
+						continue;
 					}
+
 				}
 			}
 		}
 	}
+
 	const scrollRef = useRef<ScrollViewRef>(null);
 	const { stdout } = useStdout();
 	const [dimensions, setDimensions] = useState({
@@ -86,14 +101,7 @@ export default function App() {
 			const height = scrollRef.current?.getViewportHeight() || 1;
 			scrollRef.current?.scrollBy(height);
 		}
-
 	});
-	// useEffect(() => {
-	// 	if (sessionId.current === '') {
-	// 		const startsession = async () => { sessionId.current = await startSession() };
-	// 		startsession();
-	// 	}
-	// }, [])
 
 	useEffect(() => { //an Eventlistner to automatically resize the cli in case of user resize their terminal window
 		if (!stdout) return;
@@ -112,7 +120,7 @@ export default function App() {
 
 	useEffect(() => {
 		const getHistory = async () => {
-			setMessageHistory(await getMessages(sessionId.current));
+			setMessageHistory(await getMessages(sessionId));
 		}
 		getHistory()
 	}, []);
@@ -124,7 +132,7 @@ export default function App() {
 					{messageHistory.length === 0 && <BigText text="BABY PANDA" align='center' font="block" colors={['white']} />}
 					<ScrollView ref={scrollRef} flexGrow={1} flexDirection='column' gap={2}>
 						{messageHistory.length > 0 && messageHistory.map((message) => {
-							return (<MessageBox key={i++} content={message.content as string} sended={true} role={message.role} />);
+							return (<MessageBox key={i++} content={message.content as string} isThought={message.isThought} role={message.role} createdAt={message.createdAt} />);
 						})}
 					</ScrollView>
 				</Box>

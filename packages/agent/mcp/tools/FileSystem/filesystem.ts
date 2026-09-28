@@ -38,7 +38,7 @@ export async function read(args: ReadArgs) {
         }
         return result;
     } catch (err) {
-        throw new Error(`An error occured while reading file: ${err}`);
+        throw new Error(`An error occured while reading file: ` , {cause:err});
     }
 }
 
@@ -191,10 +191,6 @@ export async function del(path: string, options?: RmOptions) {
 }
 
 export async function glob(pattern: string, ignorePatterns?: string[]): Promise<string[]> {
-    try {
         const files = await gl.glob(pattern, { ignore: ignorePatterns, windowsPathsNoEscape: true });
         return files;
-    } catch (e) {
-        throw e;
-    }
 }

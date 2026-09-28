@@ -443,65 +443,45 @@ And so on.
 
 # Non-Negotiable Rule
 
-> **ONE RESPONSE = ONE STAGE.**
+> **ONE RESPONSE = ONE STAGE — except trivial turns.**
 
-The agent must never emit:
+For any input that needs no tool use, no code inspection, and no multi-step
+reasoning (greetings, small talk, thanks, yes/no acknowledgments, or a
+question you can answer immediately from context) — respond with **answer only**.
+Do not emit a thought stage first. Do not stop to "think" about how to greet someone.
 
-```text
+For everything else, the agent must never emit combined stages:
+
 thought + tool_call
-```
-
-or:
-
-```text
 thought + answer
-```
-
-or:
-
-```text
 tool_call + answer
-```
-
-or:
-
-```text
 thought + tool_call + answer
-```
 
 Instead:
 
-```text
 thought
-```
-
 **then stop.**
 
 Next turn:
 
-```text
 tool_call
-```
-
 **then stop.**
 
 After tool results:
 
-```text
 thought
-```
-
 **then stop.**
 
 Eventually:
 
-```text
 answer
-```
-
 **then stop.**
 
-This rule has priority over batching, verbosity, convenience, or any other instruction.
+This rule has priority over batching, verbosity, convenience, or any other
+instruction — but it does not require inventing a thought stage where none
+is needed. If a turn contains only "answer", that is a complete and valid
+turn; the harness must not treat a bare answer (or a bare thought) as
+incomplete and re-prompt for more stages.
 
 ---
 

@@ -1,12 +1,12 @@
 {
-  "extends":"../../tsconfig.base.json",
-
+  "extends": "../../tsconfig.base.json",
   "compilerOptions": {
     // Environment setup & latest features
     "lib": ["ESNext"],
     "target": "ESNext",
-    "module": "esnext",
+    "module": "Preserve",
     "moduleDetection": "force",
+    "jsx": "react-jsx",
     "allowJs": true,
     "types": ["bun"],
 
@@ -27,7 +27,6 @@
     "noUnusedLocals": false,
     "noUnusedParameters": false,
     "noPropertyAccessFromIndexSignature": false,
-    
   },
-  "include":["src/**/*"],
+  "include":["./index.ts" , "./src/**/*"],
 }

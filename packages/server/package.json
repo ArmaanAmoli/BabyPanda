@@ -13,9 +13,10 @@
     "hono": "^4.13.4",
     "@baby-panda/db":"workspace:*",
     "@baby-panda/agent":"workspace:*",
-    "@baby-panda/types":"workspace:*"
+    "@baby-panda/utils":"workspace:*"
   },
   "devDependencies": {
+    "@baby-panda/types":"workspace:*",
     "@types/bun": "latest"
   },
   "exports":{
