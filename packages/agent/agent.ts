@@ -51,7 +51,7 @@ export class BabyPandaAgent extends EventEmitter {
     console.log("agent cwd ", this.cwd);
     console.log(sessionId, "in agent constructor")
     this.client = new BabyPandaClient({ url, apikey });
-    this.model = ModelsEnum["z-ai/glm-5.3-flash"]; // This will be our default model
+    this.model = ModelsEnum["nvidia/nemotron-3-ultra-550b-a55b"]; // This will be our default model
     this.instructions = readFileSync(instructionsFilePath, { encoding: 'utf-8' });
     this.reasoningEffect = ReasoningEffort.none;
     this.sessionId = sessionId
@@ -253,7 +253,7 @@ export class BabyPandaAgent extends EventEmitter {
           // console.log("full reply: \n", fullReply);
           writeLogs(LogType.agent , this.projectDirectoryName , this.sessionId , `[REPLY]: ${fullReply}` );
           try {
-            await createMessage(this.sessionId, fullReply, Role.assistant);
+            await createMessage(this.sessionId, fullReply, Role.assistant , toolCall);
             if(!toolCall && isAccumulatingToolCall){
               // create an event to push the entire array of tool calls to CLI
               this.emit(ContentType.tool_call , accumulatedToolCalls);
@@ -273,7 +273,7 @@ export class BabyPandaAgent extends EventEmitter {
               } catch (err) {
                 reject("parsing error");
                 this.messageQueue.push(MessageQueueSpecialElement.errorInLastIteration)
-                createMessage(this.sessionId, `Their is an issue in the reply structure that you gave ${err}`, Role.user) // add new feild isError to prevent this from coming in frontend
+                createMessage(this.sessionId, `Their is an issue in the reply structure that you gave ${err}`, Role.user , false) // add new feild isError to prevent this from coming in frontend
                 return;
               }
               if (replyJson) {

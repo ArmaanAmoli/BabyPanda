@@ -80,8 +80,13 @@ app.post('/message', async (c) => {
             content = content.concat(content ? '\n' : '', msg.content);
           }
         })
+        const chunk:ServerStreamChunkSchemaType = {
+          contentType: ContentType.tool_call,
+          content,
+          isStopper:true,
+        }
         writeLogs(LogType.server, cwd, body.sessionId, `[/message]: Final tool content ${content}`);
-        queue.push(content)
+        queue.push(JSON.stringify(chunk));
       }
       const onData = (eventName: ContentType, data: string) => {
         // console.log("[SERVER]:received data", data)
