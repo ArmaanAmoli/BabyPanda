@@ -93,9 +93,12 @@ async function getAllSessions(): Promise<Session[]> {
 }
 
 export async function getMessages(sessionId:string): Promise<CleanedMessage[]> {
+    writeLogs(LogType.cli, cwd , sessionId , "Fetching Message History...");
     const req = new Request('http://localhost:3000/get-messages', { method: "POST" , body:JSON.stringify({sessionId}) });
     const res = await app.fetch(req);
-    if (!res.ok) { return []; }
+    if (!res.ok) {
+        writeLogs(LogType.cli , cwd , sessionId , `[ERROR: ${res.status}]: Failed to fetch message history : ${res.statusText}`)
+        return []; }
     const body = res.body;
     if (!body) return [];
     const chunks: Uint8Array[] = [];
@@ -113,6 +116,10 @@ export async function getMessages(sessionId:string): Promise<CleanedMessage[]> {
     const messagesUint = concatArrayBuffer(chunks);
     const messages = decoder.decode(messagesUint)
     const messagesList = JSON.parse(messages)
-    const parsed = CleanedMessageArraySchema.parse(messagesList);
-    return parsed;
+    const parsed = CleanedMessageArraySchema.safeParse(messagesList);
+    if(!parsed.success){
+        writeLogs(LogType.cli , cwd , sessionId , `[PARSE ERROR]: Failed to parse message history ${parsed.error.issues}`)
+        return [];
+    }
+    return parsed.data;
 }

@@ -19,9 +19,15 @@ app.post('/get-messages', async (c) => {
     const res = new Response("Session id not attached", { status: 400, statusText: "Bad Request" });
     return res;
   }
-  const messages = await getMessages(body.sessionId)
-  const result = cleanMessageHistroy(messages);
-  return new Response(JSON.stringify(result), { status: 200, statusText: "OK" });
+  try {
+    const messages = await getMessages(body.sessionId)
+    const result = cleanMessageHistroy(messages);
+    const response = JSON.stringify(result);
+    return new Response(response, { status: 200, statusText: "OK" });
+  }
+  catch (err) {
+    return new Response('', { status: 500, statusText: `Server Error ${err} ` });
+  }
 });
 
 app.post('/start-session', async () => {

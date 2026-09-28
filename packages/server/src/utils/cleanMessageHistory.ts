@@ -1,10 +1,11 @@
 import { getMessages } from "@baby-panda/db";
-import { Role } from '@baby-panda/types'
+import { LogType, Role } from '@baby-panda/types'
 import { MessageContentSchema, ToolRawResultSchema } from '@baby-panda/types'
 import type { CleanedMessage } from '@baby-panda/types'
-
+import {writeLogs} from '@baby-panda/utils'
 
 export type MessageHistory = Awaited<ReturnType<typeof getMessages>>;
+const cwd = process.cwd().replaceAll('/', '-').replace('-', '');
 
 export function cleanMessageHistroy(messageHistory: MessageHistory) {
     const result = messageHistory.map((m) => {
@@ -26,15 +27,22 @@ export function cleanMessageHistroy(messageHistory: MessageHistory) {
             content = `${parsed.name}: ${argsString} \n`;
         }
         else {
-            const parsed = MessageContentSchema.parse(JSON.parse(m.content));
-            if (parsed.content.answer != undefined || parsed.content.thought != undefined) {
-                if(parsed.content.thought)isThought=true;
-                content = parsed.content.answer ?? parsed.content.thought ?? "";
-                if (content.length === 0) return;
+            try {
+                const parsed = MessageContentSchema.parse(JSON.parse(m.content));
+                if (parsed.content.answer != undefined || parsed.content.thought != undefined) {
+                    if (parsed.content.thought) isThought = true;
+                    content = parsed.content.answer ?? parsed.content.thought ?? "";
+                    if (content.length === 0) return;
+                }
+                else {
+                    return; // ignore tool call message
+                }
             }
-            else {
-                return; // ignore tool call message
+            catch (err) {
+                writeLogs(LogType.server , cwd , m.sessionId! , `[ERROR WHILE CLEAN MESSAGE]: ${err}`)
+                return undefined;
             }
+
         }
         return {
             role: isToolResult ? Role.tool : m.role ?? Role.user,
@@ -65,14 +73,14 @@ function MergeToolCallMessages(messages: (CleanedMessage | undefined)[]) {
             accumulatedContent += (accumulatedContent ? '\n' : '') + m.content;
         }
         else {
-            if(isAccumulating){
+            if (isAccumulating) {
                 isAccumulating = false;
                 finalResult.push({ role: Role.tool, content: accumulatedContent, createdAt: toolCreatedAt });
             }
             finalResult.push(m);
         }
     }
-    if(isAccumulating){
+    if (isAccumulating) {
         finalResult.push({ role: Role.tool, content: accumulatedContent, createdAt: toolCreatedAt });
     }
     // console.log(finalResult);
