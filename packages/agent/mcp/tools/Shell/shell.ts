@@ -21,9 +21,11 @@ export class Shell extends EventEmitter {
         // declare event listners here
         this.pseudoProcess.onData((data)=>{
             if(data.toLowerCase().includes("password")){
-                this.emit('authorize');
+                this.emit('authorize' , data);
             }
-            this.emit('data' , data);
+            else{
+                this.emit('data' , data);
+            }
         })
     }
     write(script: string){

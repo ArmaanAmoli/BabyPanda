@@ -17,6 +17,7 @@ import { compaction } from '@agent/memory/services/compaction';
 import { projectDir, memoryFile } from '@agent/memory/constants';
 import { readFromMemory } from '@agent/memory/utils/memory';
 import { writeLogs } from '@baby-panda/utils'
+import {Shell} from './mcp/tools/Shell/shell';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -114,8 +115,16 @@ export class BabyPandaAgent extends EventEmitter {
   }
 
   private async loop() {
-    // let isAccumulatingToolCall = false;
-    // const accumulatedToolCalls:MessageHistory = [];
+    // we also need the ability to pause agent loop in case we require a permission to execute a sudo command
+    const lastScriptExecuted:string|null = null;
+    const lastScriptToolCallId:string|null = null
+    const shell = new Shell();
+    const shellMessages:string[] = [];
+    shell.on('authorize', (data:string)=>{this.emit('authorize' , data)});
+    shell.on('data' , (data:string)=>{
+      shellMessages.push(data);
+      // we need a way to map these messages to their respective tool call id
+    });
     while (this.messageQueue.length !== 0) {
       console.log("in the loop")
       this.isRunning = true;
