@@ -1,10 +1,11 @@
-import z, { xid } from 'zod';
+import z from 'zod';
 export enum Role {
     system = 'system',
     context = 'context',
     user = 'user',
     assistant = 'assistant',
-    tool = 'tool'
+    tool = 'tool',
+    thought = 'thought'
 }
 
 export interface MessageRegular {
@@ -15,11 +16,10 @@ export interface MessageRegular {
 
 export type UserMessage = Omit<MessageRegular, 'role'> & { role: Role.user };
 export type SystemMessage = Omit<MessageRegular, 'role'> & { role: Role.system };
-export type ContextMessage = Omit<MessageRegular, 'role'> & { role: Role.context };
 export type AssistantMessage = Omit<MessageRegular, 'role'> & { role: Role.assistant };
 export type ToolMessage = Omit<MessageRegular, 'role'> & { role: Role.user, tool_call_id: string };
 export type MessageAPI = Omit<MessageRegular, 'sessionId'>;
-export type Message = (UserMessage | SystemMessage | ContextMessage | AssistantMessage | ToolMessage | MessageRegular | MessageAPI); // universal Message Type
+export type Message = (UserMessage | SystemMessage | AssistantMessage | ToolMessage | MessageRegular | MessageAPI); // universal Message Type
 export type MessageDB = Message & { createdAt: Date };
 
 export enum ContentType {
@@ -67,7 +67,7 @@ export const CleanedMessageSchema = z.object({
     role:z.enum(Role),
     content: z.string(),
     createdAt: z.number().nullable(),
-    isThought: z.boolean().default(false).optional()
+    // isThought: z.boolean().default(false).optional()
 })
 
 export const CleanedMessageArraySchema = z.array(CleanedMessageSchema);
@@ -85,7 +85,7 @@ export enum LogType {
 export const ServerStreamChunkSchema = z.object({
     contentType:z.enum(ContentType),
     content:z.string(),
-    isStopper:z.boolean().default(false)
+    // isStopper:z.boolean().default(false)
 });
 
 export type ServerStreamChunkSchemaType = z.infer<typeof ServerStreamChunkSchema>;

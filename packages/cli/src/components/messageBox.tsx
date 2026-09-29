@@ -6,7 +6,7 @@ import type { CleanedMessage } from '@baby-panda/types';
 import { Markdown } from './markdown'
 
 function getColor(prop: CleanedMessage){
-    if(prop.isThought){
+    if(prop.role === Role.thought){
         return '#863737';
     }
     else if(prop.role === Role.assistant){
@@ -31,7 +31,7 @@ export function MessageBox(prop: CleanedMessage) {
             padding={1}
             marginTop={2}
             borderStyle={'bold'} gap={1}>
-            <Markdown isThought={prop.isThought ?? false}>{`${prop.content}`}</Markdown>
+            <Markdown isThought={prop.role === Role.thought ? true:false}>{`${prop.content}`}</Markdown>
         </Box>
     );
 }

@@ -83,18 +83,17 @@ app.post('/message', async (c) => {
         const chunk:ServerStreamChunkSchemaType = {
           contentType: ContentType.tool_call,
           content,
-          isStopper:true,
+          // isStopper:true,
         }
         writeLogs(LogType.server, cwd, body.sessionId, `[/message]: Final tool content ${content}`);
         queue.push(JSON.stringify(chunk));
       }
       const onData = (eventName: ContentType, data: string) => {
-        // console.log("[SERVER]:received data", data)
         writeLogs(LogType.server, cwd, body.sessionId, "[/message]: Received a data chunk");
         const chunk: ServerStreamChunkSchemaType = {
           contentType: eventName,
           content: data,
-          isStopper: false,
+          // isStopper: false,
         };
         const stringChunk = JSON.stringify(chunk);
         queue.push(stringChunk);
@@ -103,7 +102,7 @@ app.post('/message', async (c) => {
         const stopper: ServerStreamChunkSchemaType = {
           contentType: contentType,
           content: '',
-          isStopper: true,
+          // isStopper: true,
         }
         const stringStopper = JSON.stringify(stopper);
         writeLogs(LogType.server, cwd, body.sessionId, "[/message]: Ended stream");

@@ -22,12 +22,13 @@ export default function App({ sessionId }: AppArgs) {
 	const projectName = getProjectName();
 
 	const onSubmit = async () => {
-		setMessageHistory((prev) => [...prev, { role: Role.user, content: prompt, createdAt: Date.now(), isThougt: false }]);
+		setMessageHistory((prev) => [...prev, { role: Role.user, content: prompt, createdAt: Date.now() }]);
 		setPrompt('');
 		const reader = await sendMessage({ role: Role.user, content: prompt, sessionId: sessionId });
 		const textDecoder = new TextDecoder();
 		// let reply = "";
-		let pushed = false
+		const lastMessageWasStopper = false;
+		let lastRole:(Role|null) = null;
 		while (true) {
 			const { done, value } = await reader.read()
 			if (done) {
@@ -47,16 +48,13 @@ export default function App({ sessionId }: AppArgs) {
 						}
 						writeLogs(LogType.cli, projectName, sessionId, `Chunk parsed`);
 						const currentContentType = parsed.data?.contentType
-						const role = (currentContentType === ContentType.tool_call) ? Role.tool : Role.assistant;
-						const isThought = (parsed.data?.contentType === ContentType.thought);
+						const role = (currentContentType === ContentType.tool_call) ? Role.tool :
+							currentContentType === ContentType.thought ? Role.thought : Role.assistant;
 
-						if (parsed.data?.isStopper) {
-							pushed = false;
-						}
 
-						if (!pushed) {
-							setMessageHistory((prev) => [...prev, { role: role, content: parsed.data!.content, createdAt: Date.now(), isThought }]);
-							pushed = true;
+						if (lastRole == null || (lastRole != role)) {
+							setMessageHistory((prev) => [...prev, { role: role, content: parsed.data!.content, createdAt: Date.now() }]);
+							lastRole = role;
 						}
 						else {
 							setMessageHistory((prev) => {
@@ -132,7 +130,7 @@ export default function App({ sessionId }: AppArgs) {
 					{messageHistory.length === 0 && <BigText text="BABY PANDA" align='center' font="block" colors={['white']} />}
 					<ScrollView ref={scrollRef} flexGrow={1} flexDirection='column' gap={2}>
 						{messageHistory.length > 0 && messageHistory.map((message) => {
-							return (<MessageBox key={i++} content={message.content as string} isThought={message.isThought} role={message.role} createdAt={message.createdAt} />);
+							return (<MessageBox key={i++} content={message.content as string} role={message.role} createdAt={message.createdAt} />);
 						})}
 					</ScrollView>
 				</Box>

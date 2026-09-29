@@ -2,14 +2,15 @@ import { getMessages } from "@baby-panda/db";
 import { LogType, Role } from '@baby-panda/types'
 import { MessageContentSchema, ToolRawResultSchema } from '@baby-panda/types'
 import type { CleanedMessage } from '@baby-panda/types'
-import {writeLogs} from '@baby-panda/utils'
+import { writeLogs } from '@baby-panda/utils'
 
 export type MessageHistory = Awaited<ReturnType<typeof getMessages>>;
 const cwd = process.cwd().replaceAll('/', '-').replace('-', '');
 
 export function cleanMessageHistroy(messageHistory: MessageHistory) {
     const result = messageHistory.map((m) => {
-        let isThought = false;
+        let role = m.role;
+        // let isThought = false;
         let content = '';
         if (!m.content) return;
         const rawContent = m.content.trim();
@@ -19,21 +20,31 @@ export function cleanMessageHistroy(messageHistory: MessageHistory) {
             content = rawContent;
         }
         else if (isToolResult) {
-            const parsed = ToolRawResultSchema.safeParse(JSON.parse(rawContent));
-            if(!parsed.success){
-                return;
+            try {
+                role = Role.tool
+                const parsed = ToolRawResultSchema.safeParse(JSON.parse(rawContent));
+                if (!parsed.success) {
+                    return;
+                }
+                let argsString = '';
+                Object.entries(parsed.data.arguments).forEach(([key, value]) => {
+                    argsString += ` | ${key} : ${value}`;
+                })
+                content = `${parsed.data.name}: ${argsString} \n`;
+            } catch (err) {
+                writeLogs(LogType.server, cwd, m.sessionId!, `[ERROR WHILE CLEAN MESSAGE]: ${err}`)
+                return undefined;
             }
-            let argsString = '';
-            Object.entries(parsed.data.arguments).forEach(([key, value]) => {
-                argsString += ` | ${key} : ${value}`;
-            })
-            content = `${parsed.data.name}: ${argsString} \n`;
+
         }
         else {
             try {
                 const parsed = MessageContentSchema.parse(JSON.parse(m.content));
                 if (parsed.content.answer != undefined || parsed.content.thought != undefined) {
-                    if (parsed.content.thought) isThought = true;
+                    if (parsed.content.thought) {
+                        // isThought = true;
+                        role = Role.thought;
+                    }
                     content = parsed.content.answer ?? parsed.content.thought ?? "";
                     if (content.length === 0) return;
                 }
@@ -42,16 +53,16 @@ export function cleanMessageHistroy(messageHistory: MessageHistory) {
                 }
             }
             catch (err) {
-                writeLogs(LogType.server , cwd , m.sessionId! , `[ERROR WHILE CLEAN MESSAGE]: ${err}`)
+                writeLogs(LogType.server, cwd, m.sessionId!, `[ERROR WHILE CLEAN MESSAGE]: ${err}`)
                 return undefined;
             }
 
         }
         return {
-            role: isToolResult ? Role.tool : m.role ?? Role.user,
+            role: role ?? Role.user,
             content: content,
             createdAt: m.createdAt,
-            isThought: isThought
+            // isThought: isThought
         }
     });
 
