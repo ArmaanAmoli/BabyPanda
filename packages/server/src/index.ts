@@ -70,6 +70,7 @@ app.post('/message', async (c) => {
     return streamText(c, async (stream) => {
       let isDone = false;
       const queue: string[] = [];
+
       const onToolData = (data: MessageHistory) => {
         writeLogs(LogType.server, cwd, body.sessionId, `[/message]: Received a tool chunk`);
         writeLogs(LogType.server, cwd, body.sessionId, `[/message]: Raw tool chunk ${data}`);
@@ -80,7 +81,7 @@ app.post('/message', async (c) => {
             content = content.concat(content ? '\n' : '', msg.content);
           }
         })
-        const chunk:ServerStreamChunkSchemaType = {
+        const chunk: ServerStreamChunkSchemaType = {
           contentType: ContentType.tool_call,
           content,
           // isStopper:true,
@@ -88,6 +89,8 @@ app.post('/message', async (c) => {
         writeLogs(LogType.server, cwd, body.sessionId, `[/message]: Final tool content ${content}`);
         queue.push(JSON.stringify(chunk));
       }
+
+      const handlers: Record<string, (data: string) => void> = {};
       const onData = (eventName: ContentType, data: string) => {
         writeLogs(LogType.server, cwd, body.sessionId, "[/message]: Received a data chunk");
         const chunk: ServerStreamChunkSchemaType = {
@@ -98,6 +101,7 @@ app.post('/message', async (c) => {
         const stringChunk = JSON.stringify(chunk);
         queue.push(stringChunk);
       };
+
       const onEnd = (contentType: ContentType) => {
         const stopper: ServerStreamChunkSchemaType = {
           contentType: contentType,
@@ -114,24 +118,34 @@ app.post('/message', async (c) => {
         console.error("[AGENT:STREAM ERROR] ", err);
         writeLogs(LogType.server, cwd, body.sessionId, `[/message]: Stream error ${err}`);
       }
+
+      const onAbort = () => { isDone = true };
+
       const cleanup = () => {
         writeLogs(LogType.server, cwd, body.sessionId, "Cleanup started");
 
-        [ContentType.answer, ContentType.thought].forEach((eventName) => babyPanda.off(eventName, (data: string) => { onData(eventName, data) }));
+        Object.entries(handlers).forEach(([eventName, handler]) => {
+          babyPanda.off(eventName, handler);
+        });
+
         babyPanda.off(ContentType.tool_call, onToolData);
         babyPanda.off('end', onEnd);
         babyPanda.off('error', onError);
+        babyPanda.off('abort', onAbort)
         writeLogs(LogType.server, cwd, body.sessionId, "[/message]: Aborting stream...");
         stream.abort();
       }
 
-      [ContentType.answer, ContentType.thought].forEach((eventName) => babyPanda.on(eventName, (data: string) => onData(eventName, data)));
+      [ContentType.answer, ContentType.thought].forEach((eventName) => {
+        handlers[eventName] = (data: string) => onData(eventName, data);
+        babyPanda.on(eventName, handlers[eventName]);
+      });
 
       babyPanda.on(ContentType.tool_call, onToolData)
 
       babyPanda.on('end', onEnd);
       babyPanda.on('error', onError);
-      babyPanda.on('abort', () => { isDone = true })
+      babyPanda.on('abort', onAbort)
 
       babyPanda.message(body as Message).catch((err) => {
         onError(err);
