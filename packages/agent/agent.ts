@@ -114,8 +114,8 @@ export class BabyPandaAgent extends EventEmitter {
   }
 
   private async loop() {
-    let isAccumulatingToolCall = false;
-    const accumulatedToolCalls:MessageHistory = [];
+    // let isAccumulatingToolCall = false;
+    // const accumulatedToolCalls:MessageHistory = [];
     while (this.messageQueue.length !== 0) {
       console.log("in the loop")
       this.isRunning = true;
@@ -254,18 +254,18 @@ export class BabyPandaAgent extends EventEmitter {
           writeLogs(LogType.agent , this.projectDirectoryName , this.sessionId , `[REPLY]: ${fullReply}` );
           try {
             await createMessage(this.sessionId, fullReply, Role.assistant , toolCall);
-            if(!toolCall && isAccumulatingToolCall){
-              // create an event to push the entire array of tool calls to CLI
-              this.emit(ContentType.tool_call , accumulatedToolCalls);
-              accumulatedToolCalls.length = 0;
-              isAccumulatingToolCall = false;
-            }
+            // if(!toolCall && isAccumulatingToolCall){
+            //   // create an event to push the entire array of tool calls to CLI
+            //   this.emit(ContentType.tool_call , accumulatedToolCalls);
+            //   accumulatedToolCalls.length = 0;
+            //   isAccumulatingToolCall = false;
+            // }
             this.numberOfMessages += 1;
           } catch (err) {
             reject(new Error(`Unable to store assistant message to database: ${err}`));
           }
           if (toolCall) {
-            if(!isAccumulatingToolCall) isAccumulatingToolCall = true;
+            
             try {
               let replyJson: MessageContent | undefined;
               try {
@@ -305,7 +305,7 @@ export class BabyPandaAgent extends EventEmitter {
                       const content = JSON.stringify(toolResults.at(i))
                       await createMessage(this.sessionId, content, Role.user, true);
                       // push into compined tool call array
-                      accumulatedToolCalls.push({sessionId:this.sessionId, content:content, role:Role.user, isToolResult:true , messageIndex:null , createdAt:Date.now()});
+                      this.emit(ContentType.tool_call,[{sessionId:this.sessionId, content:content, role:Role.user, isToolResult:true , messageIndex:null , createdAt:Date.now()}]);
                       this.numberOfMessages += 1;
                     } catch (err) {
                       reject(new Error(`Unable to store tool message to database: ${err}`));
@@ -330,7 +330,7 @@ export class BabyPandaAgent extends EventEmitter {
           }
           toolCall = false;
           fullReply = '';
-          if(!isAccumulatingToolCall)this.emit('end' , contentType);
+          this.emit('end' , contentType);
           resolve("single iteration of loop done.");
 
         });
