@@ -250,16 +250,9 @@ export class BabyPandaAgent extends EventEmitter {
             resolve("empty reply");
             return;
           }
-          // console.log("full reply: \n", fullReply);
           writeLogs(LogType.agent, this.projectDirectoryName, this.sessionId, `[REPLY]: ${fullReply}`);
           try {
             await createMessage(this.sessionId, fullReply, Role.assistant, toolCall);
-            // if(!toolCall && isAccumulatingToolCall){
-            //   // create an event to push the entire array of tool calls to CLI
-            //   this.emit(ContentType.tool_call , accumulatedToolCalls);
-            //   accumulatedToolCalls.length = 0;
-            //   isAccumulatingToolCall = false;
-            // }
             this.numberOfMessages += 1;
           } catch (err) {
             reject(new Error(`Unable to store assistant message to database: ${err}`));
@@ -269,11 +262,11 @@ export class BabyPandaAgent extends EventEmitter {
             try {
               let replyJson: MessageContent | undefined;
               try {
-                replyJson = MessageContentSchema.parse(JSON.parse(fullReply)) // to-do: try to make it more safe
+                replyJson = MessageContentSchema.parse(JSON.parse(fullReply))
               } catch (err) {
                 reject("parsing error");
                 this.messageQueue.push(MessageQueueSpecialElement.errorInLastIteration)
-                createMessage(this.sessionId, `Their is an issue in the reply structure that you gave ${err}`, Role.user, false) // add new feild isError to prevent this from coming in frontend
+                createMessage(this.sessionId, `Their is an issue in the reply structure that you gave ${err}`, Role.system, false) // add new feild isError to prevent this from coming in frontend
                 return;
               }
               if (replyJson) {
@@ -305,10 +298,12 @@ export class BabyPandaAgent extends EventEmitter {
                       else{
                         const parsed = ShellCallSchema.safeParse(call.arguments);
                         if(!parsed.success){
-                          //
+                          await createMessage(this.sessionId , `Tool Call Syntax Error : received bad arguments for bash tool here is what you send ${JSON.stringify(call.arguments)} and here is the parsing error ${parsed.error}` , Role.system , false);
                         }
                         else{
-                          // shell.write(parsed.data.script);
+                          // emit an event ? or websocket for permission
+
+                          // send event to hono and hono put it in websocket -> CLI -> User -> CLI -> websocket (Hono) -> Agent
                           const rawResult = await shell(parsed.data.command , parsed.data.timeout!);
                           const fullResult:ToolResult = {...call , result:JSON.stringify(rawResult) , error: rawResult.error};
                           toolResults.push(fullResult);
