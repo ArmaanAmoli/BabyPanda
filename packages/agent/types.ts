@@ -28,5 +28,5 @@ export type ToolResult = Tool & {result?:unknown , error?:string};
 
 export const ShellCallSchema = z.object({
     command:z.string().min(1),
-    timeout:z.number().int().positive().max(600_000).optional()
+    timeout:z.number().int().positive().max(600_000).default(120000).optional()
 });

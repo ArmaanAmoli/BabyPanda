@@ -309,7 +309,7 @@ export class BabyPandaAgent extends EventEmitter {
                         }
                         else{
                           // shell.write(parsed.data.script);
-                          const rawResult = await shell(parsed.data.command , parsed.data.timeout);
+                          const rawResult = await shell(parsed.data.command , parsed.data.timeout!);
                           const fullResult:ToolResult = {...call , result:JSON.stringify(rawResult) , error: rawResult.error};
                           toolResults.push(fullResult);
                         }
