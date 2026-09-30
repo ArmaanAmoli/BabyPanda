@@ -1,5 +1,5 @@
-import { z } from 'zod';
 import type {Message} from '@baby-panda/types';
+import { z } from 'zod';
 
 export enum MessageQueueSpecialElement{
   toolCallDone = 'tool-call-done',
@@ -24,3 +24,9 @@ export interface Tool{
     arguments:{[x:string]:unknown} | undefined;
 };
 export type ToolResult = Tool & {result?:unknown , error?:string};
+
+
+export const ShellCallSchema = z.object({
+    command:z.string().min(1),
+    timeout:z.number().int().positive().max(600_000).optional()
+});

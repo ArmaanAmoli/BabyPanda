@@ -1,38 +1,39 @@
-import { EventEmitter } from 'events';
-import * as pty from 'node-pty'
-import os from 'os'
+import os from 'os';
+import {spawn} from 'node:child_process';
 
-export class Shell extends EventEmitter {
-    private shell;
-    private cwd;
-    private env;
-    private rows;
-    private cols;
-    private pseudoProcess;
-    constructor() {
-        super();
-        this.shell = os.platform() === 'win32' ? 'powershell.exe' : 'bash';
-        this.cwd = process.cwd()
-        this.env = process.env;
-        this.rows = process.stdout.rows;
-        this.cols = process.stdout.columns;
-        this.pseudoProcess = pty.spawn(this.shell , [] , {name: 'baby-panda-shell-tool-instance', rows:this.rows, cols:this.cols, cwd:this.cwd, env:this.env})
+interface ShellResult {
+  stdout: string;
+  stderr: string;
+  error: string;
+  code: number | null;
+  signal: NodeJS.Signals | null;
+}
 
-        // declare event listners here
-        this.pseudoProcess.onData((data)=>{
-            if(data.toLowerCase().includes("password")){
-                this.emit('authorize' , data);
-            }
-            else{
-                this.emit('data' , data);
-            }
-        })
-    }
-    write(script: string){
-        this.pseudoProcess.write(script);
-    }
-    kill(){
-        this.pseudoProcess.kill();
-    }
-    
+export async function shell(command:string , timeout?:number):Promise<ShellResult>{
+    let stdout = '';
+    let stderr = '';
+    let error = '';
+    const shell = os.platform() === 'win32' ? 'powershell.exe' : 'bash';
+    const childProcess = spawn(command , [] , {timeout:timeout , cwd:process.cwd() , shell});
+    childProcess.stdout.setEncoding('utf8');
+    childProcess.stderr.setEncoding('utf8');
+    return await new Promise((resolve)=>{
+        
+        childProcess.stdout.on('data' , (data)=>{
+            stdout += data;
+        });
+
+        childProcess.stderr.on('data' , (data)=>{
+            stderr += data;
+        });
+
+        childProcess.on('error' , (err:Error)=>{
+            error = err.message;
+        });
+
+        childProcess.on('close' , (code , signal)=>{
+            resolve({stdout , stderr , error , code , signal})
+        });
+
+    });
 }
