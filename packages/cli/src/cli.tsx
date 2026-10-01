@@ -4,7 +4,9 @@ import { render } from 'ink';
 import App from './app';
 import Bun from 'bun'
 import { startSession } from './services/requests';
+import honoServer from '@baby-panda/server'
 
+const server = Bun.serve(honoServer);
 if (typeof Bun !== 'undefined') {
 	process.stdin.resume();
 	process.stdin.setRawMode?.(true);
@@ -36,7 +38,9 @@ const { waitUntilExit } = render(<App sessionId={initialSessionId} />, {
 	incrementalRendering: true // we dont want ink to erase the entire terminal and repaint it will cause filckering
 });
 await waitUntilExit();
-console.log('Baby panda closed.')
+console.log('stopping server');
+server.stop();
+console.log('Baby panda closed.');
 
 
 process.exit(0)

@@ -1,6 +1,6 @@
 import app from '@baby-panda/server';
 import type  {APIProvider, Session } from '../types';
-import type { Message, CleanedMessage, MessageRegular } from '@baby-panda/types';
+import type { CleanedMessage, MessageRegular } from '@baby-panda/types';
 import {CleanedMessageArraySchema, LogType} from '@baby-panda/types'
 import {writeLogs} from '@baby-panda/utils'
 const cwd = process.cwd().replaceAll('/' , '-').replace('-','');

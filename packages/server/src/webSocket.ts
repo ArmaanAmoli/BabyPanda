@@ -1,4 +1,4 @@
-import { upgradeWebSocket } from 'hono/bun';
+import { upgradeWebSocket } from '@hono/bun';
 import z from 'zod';
 import { agentStore , wsCollection } from './index';
 import type { Context , Next } from 'hono'
@@ -67,4 +67,4 @@ const websocketHandler = (c:Context, next:Next) => {
     return handler(c,next);
 }
 
-export { websocketHandler }
+export { websocketHandler };

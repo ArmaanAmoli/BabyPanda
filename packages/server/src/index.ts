@@ -8,6 +8,7 @@ import { cleanMessageHistroy, type MessageHistory } from './utils/cleanMessageHi
 import { writeLogs } from '@baby-panda/utils';
 import {websocketHandler} from './webSocket'
 import type { WSContext } from 'hono/ws';
+import { websocket } from '@hono/bun'
 
 const app = new Hono()
 
@@ -15,7 +16,7 @@ export const wsCollection = new Map<string, WSContext >(); // sessionID - ws obj
 export const agentStore = new Map<string, BabyPandaAgent>(); // sessionID - agent
 const cwd = process.cwd().replaceAll('/', '-').replace('-', '');
 
-app.get('/ws' , async (c , next)=>await websocketHandler(c , next));
+app.get('/ws' , async (c , next) => websocketHandler(c , next));
 
 app.post('/get-messages', async (c) => {
   const body = await c.req.json()
@@ -92,7 +93,6 @@ app.post('/message', async (c) => {
         const chunk: ServerStreamChunkSchemaType = {
           contentType: ContentType.tool_call,
           content,
-          // isStopper:true,
         }
         writeLogs(LogType.server, cwd, body.sessionId, `[/message]: Final tool content ${content}`);
         queue.push(JSON.stringify(chunk));
@@ -104,7 +104,6 @@ app.post('/message', async (c) => {
         const chunk: ServerStreamChunkSchemaType = {
           contentType: eventName,
           content: data,
-          // isStopper: false,
         };
         const stringChunk = JSON.stringify(chunk);
         queue.push(stringChunk);
@@ -114,7 +113,6 @@ app.post('/message', async (c) => {
         const stopper: ServerStreamChunkSchemaType = {
           contentType: contentType,
           content: '',
-          // isStopper: true,
         }
         const stringStopper = JSON.stringify(stopper);
         writeLogs(LogType.server, cwd, body.sessionId, "[/message]: Ended stream");
@@ -196,9 +194,11 @@ app.post('/add-provider', async (c) => {
   }
 });
 
+export type HonoAppType = typeof app;
 export default {
   port: 3000,
   fetch(request: Request) {
     return app.fetch(request)
   },
+  websocket
 }

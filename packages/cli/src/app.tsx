@@ -27,7 +27,6 @@ export default function App({ sessionId }: AppArgs) {
 		const reader = await sendMessage({ role: Role.user, content: prompt, sessionId: sessionId });
 		const textDecoder = new TextDecoder();
 		// let reply = "";
-		const lastMessageWasStopper = false;
 		let lastRole:(Role|null) = null;
 		while (true) {
 			const { done, value } = await reader.read()

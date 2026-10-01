@@ -19,8 +19,10 @@
 	"files": ["dist"],
 	"dependencies": {
 		"@baby-panda/server": "workspace:*",
-    	"@baby-panda/utils":"workspace:*",
+		"@baby-panda/utils": "workspace:*",
+		"@hono/bun": "^1.0.0",
 		"@inkjs/ui": "^2.0.0",
+		"hono": "^4.13.12",
 		"ink": "^7.1.1",
 		"ink-big-text": "^2.0.0",
 		"ink-gradient": "^4.0.1",
