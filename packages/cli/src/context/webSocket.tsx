@@ -25,3 +25,6 @@ export function SocketProvider({ sessionId, children }: SocketProviderArguments)
         </SocketContext.Provider>
     );
 }
+
+// permission pending array
+// on message for permission => push in pending permission array => if pending Permission array not empty => show the permission pannel
