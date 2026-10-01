@@ -40,6 +40,7 @@ export class BabyPandaAgent extends EventEmitter {
   private contextWindow: number = 0;
   public contextWindowUsed: number = 0;
   private systemInstructions;
+  private permissionMap= new Map<string , boolean>() ; // tool call id - permissionGranted
 
   instructions: string;
   model: ModelsEnum;
@@ -392,6 +393,10 @@ export class BabyPandaAgent extends EventEmitter {
     }
   }
 
+  setPermission(toolCallId:string , permissionGranted:boolean){
+    this.permissionMap.set(toolCallId ,permissionGranted);
+  }
+  
   async setModel(model: ModelsEnum, provider: ProvidersEnum) {
     this.model = model;
     this.contextWindow = Models[provider].models[model].contextLength;

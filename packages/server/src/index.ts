@@ -5,13 +5,16 @@ import { BabyPandaAgent } from '@baby-panda/agent';
 import type { Message, ServerStreamChunkSchemaType } from '@baby-panda/types';
 import { ContentType, LogType, Role } from '@baby-panda/types';
 import { cleanMessageHistroy, type MessageHistory } from './utils/cleanMessageHistory'
-import { writeLogs } from '@baby-panda/utils'
+import { writeLogs } from '@baby-panda/utils';
+import { upgradeWebSocket } from 'hono/bun';
+import {websocketHandler} from './webSocket'
 
 const app = new Hono()
 
-const agentStore = new Map<string, BabyPandaAgent>(); // sessionID - agent
+export const agentStore = new Map<string, BabyPandaAgent>(); // sessionID - agent
 const cwd = process.cwd().replaceAll('/', '-').replace('-', '');
 
+app.get('/ws' , websocketHandler);
 
 app.post('/get-messages', async (c) => {
   const body = await c.req.json()
