@@ -2,9 +2,12 @@
 import React from 'react';
 import { render } from 'ink';
 import App from './app';
-import Bun from 'bun'
+import Bun from 'bun';
 import { startSession } from './services/requests';
-import honoServer from '@baby-panda/server'
+import honoServer from '@baby-panda/server';
+import { SessionProvider } from './context/sessionDetails';
+import { PendingPermissionMessagesProvider } from './context/pendingPermissionMessages';
+import { SocketProvider } from './context/webSocket'
 
 const server = Bun.serve(honoServer);
 if (typeof Bun !== 'undefined') {
@@ -33,7 +36,16 @@ if (initialSessionId === null) {
 	initialSessionId = await startSession();
 }
 
-const { waitUntilExit } = render(<App sessionId={initialSessionId} />, {
+const { waitUntilExit } = render((
+	<>
+		<SessionProvider id={initialSessionId}>
+			<PendingPermissionMessagesProvider>
+				<SocketProvider>
+					<App sessionId={initialSessionId} />
+				</SocketProvider>
+			</PendingPermissionMessagesProvider>
+		</SessionProvider>
+	</>), {
 	alternateScreen: true,
 	incrementalRendering: true // we dont want ink to erase the entire terminal and repaint it will cause filckering
 });
