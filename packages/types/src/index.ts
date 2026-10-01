@@ -26,7 +26,8 @@ export enum ContentType {
     answer = 'answer',
     thought = 'thought',
     tool_call = 'tool_call',
-    unidentified = 'unidentified'
+    unidentified = 'unidentified',
+    permission = 'permission',
 }
 
 export const MessageContentSchema = z.object({
@@ -89,3 +90,11 @@ export const ServerStreamChunkSchema = z.object({
 });
 
 export type ServerStreamChunkSchemaType = z.infer<typeof ServerStreamChunkSchema>;
+
+export const UserPermissionSchema = z.object({
+    toolCallId: z.string(),
+    permission: z.boolean().default(false),
+    content: z.string()
+})
+
+export type UserPermission = z.infer<typeof UserPermissionSchema>

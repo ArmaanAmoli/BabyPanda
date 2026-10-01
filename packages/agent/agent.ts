@@ -1,5 +1,5 @@
 import { BabyPandaClient } from './client';
-import type { Message, MessageAPI, MessageContent } from "@baby-panda/types";
+import type { Message, MessageAPI, MessageContent, UserPermission } from "@baby-panda/types";
 import { ContentType, LogType, MessageContentSchema } from "@baby-panda/types"
 import { Role } from "@baby-panda/types";
 import type { UrlApi, Tool, ToolResult } from './types';
@@ -302,9 +302,15 @@ export class BabyPandaAgent extends EventEmitter {
                           await createMessage(this.sessionId , `Tool Call Syntax Error : received bad arguments for bash tool here is what you send ${JSON.stringify(call.arguments)} and here is the parsing error ${parsed.error}` , Role.system , false);
                         }
                         else{
-                          // emit an event ? or websocket for permission
-
+                          this.permissionMap.set(call.id , false);
                           // send event to hono and hono put it in websocket -> CLI -> User -> CLI -> websocket (Hono) -> Agent
+                          const permissionObject: UserPermission = {
+                            toolCallId:call.id,
+                            permission:false,
+                            content: parsed.data.command
+                          };
+                          this.emit(ContentType.permission , permissionObject );
+                          while(!this.permissionMap.get(call.id)){/**/}
                           const rawResult = await shell(parsed.data.command , parsed.data.timeout!);
                           const fullResult:ToolResult = {...call , result:JSON.stringify(rawResult) , error: rawResult.error};
                           toolResults.push(fullResult);
@@ -396,7 +402,7 @@ export class BabyPandaAgent extends EventEmitter {
   setPermission(toolCallId:string , permissionGranted:boolean){
     this.permissionMap.set(toolCallId ,permissionGranted);
   }
-  
+
   async setModel(model: ModelsEnum, provider: ProvidersEnum) {
     this.model = model;
     this.contextWindow = Models[provider].models[model].contextLength;

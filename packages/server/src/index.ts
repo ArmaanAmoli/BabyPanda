@@ -2,7 +2,7 @@ import { Hono } from 'hono'
 import { getMessages, createSession, addProvider, getSessionsByProjectDirectory } from '@baby-panda/db';
 import { streamText } from 'hono/streaming';
 import { BabyPandaAgent } from '@baby-panda/agent';
-import type { Message, ServerStreamChunkSchemaType } from '@baby-panda/types';
+import type { Message, ServerStreamChunkSchemaType , UserPermission} from '@baby-panda/types';
 import { ContentType, LogType, Role } from '@baby-panda/types';
 import { cleanMessageHistroy, type MessageHistory } from './utils/cleanMessageHistory'
 import { writeLogs } from '@baby-panda/utils';
@@ -11,7 +11,7 @@ import type { WSContext } from 'hono/ws';
 
 const app = new Hono()
 
-export const wsCollection = new Map<string, WSContext>(); // sessionID - ws object
+export const wsCollection = new Map<string, WSContext >(); // sessionID - ws object
 export const agentStore = new Map<string, BabyPandaAgent>(); // sessionID - agent
 const cwd = process.cwd().replaceAll('/', '-').replace('-', '');
 
@@ -56,7 +56,6 @@ app.post('/message', async (c) => {
   try {
     let agent: BabyPandaAgent | undefined;
     if (agentStore.get(body.sessionId)) {
-      //session already exist
       agent = agentStore.get(body.sessionId)
     }
     else {
@@ -74,6 +73,11 @@ app.post('/message', async (c) => {
     return streamText(c, async (stream) => {
       let isDone = false;
       const queue: string[] = [];
+
+      const onAskForPermission = (permissionObject:UserPermission)=>{
+        const ws = wsCollection.get(body.sessionId);
+        ws?.send(JSON.stringify(permissionObject));
+      }
 
       const onToolData = (data: MessageHistory) => {
         writeLogs(LogType.server, cwd, body.sessionId, `[/message]: Received a tool chunk`);
@@ -131,11 +135,11 @@ app.post('/message', async (c) => {
         Object.entries(handlers).forEach(([eventName, handler]) => {
           babyPanda.off(eventName, handler);
         });
-
+        babyPanda.off(ContentType.permission , onAskForPermission);
         babyPanda.off(ContentType.tool_call, onToolData);
         babyPanda.off('end', onEnd);
         babyPanda.off('error', onError);
-        babyPanda.off('abort', onAbort)
+        babyPanda.off('abort', onAbort);
         writeLogs(LogType.server, cwd, body.sessionId, "[/message]: Aborting stream...");
         stream.abort();
       }
@@ -144,12 +148,11 @@ app.post('/message', async (c) => {
         handlers[eventName] = (data: string) => onData(eventName, data);
         babyPanda.on(eventName, handlers[eventName]);
       });
-
       babyPanda.on(ContentType.tool_call, onToolData)
-
+      babyPanda.on(ContentType.permission , onAskForPermission);
       babyPanda.on('end', onEnd);
       babyPanda.on('error', onError);
-      babyPanda.on('abort', onAbort)
+      babyPanda.on('abort', onAbort);
 
       babyPanda.message(body as Message).catch((err) => {
         onError(err);
