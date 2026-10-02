@@ -1,21 +1,21 @@
-import { upgradeWebSocket } from "@hono/bun";
-import z from "zod";
-import { agentStore, wsCollection } from "./index";
-import type { Context, Next } from "hono";
-import {writeLogs} from "@baby-panda/utils"
-import { LogType } from "@baby-panda/types";
+import { upgradeWebSocket } from '@hono/bun';
+import z from 'zod';
+import { agentStore, wsCollection } from './index';
+import type { Context, Next } from 'hono';
+import { writeLogs } from '@baby-panda/utils';
+import { LogType } from '@baby-panda/types';
 
 export const WsEventTypeSchema = z.enum([
-  "permission",
-  "open",
-  "ask_permission",
+  'permission',
+  'open',
+  'ask_permission',
 ]);
 
 const WsEventTypes = WsEventTypeSchema.enum;
 
 const BaseSchema = z.object({});
 
-export const WsEventMessageSchema = z.discriminatedUnion("eventType", [
+export const WsEventMessageSchema = z.discriminatedUnion('eventType', [
   BaseSchema.extend({
     eventType: z.literal(WsEventTypeSchema.enum.permission),
     permissionGranted: z.boolean(),
@@ -32,15 +32,20 @@ export const WsEventMessageSchema = z.discriminatedUnion("eventType", [
 ]);
 
 const websocketHandler = (c: Context, next: Next) => {
-  const sessionId = c.req.query("sessionId");
+  const sessionId = c.req.query('sessionId');
   if (!sessionId) {
-    return c.text("session id not provided");
+    return c.text('session id not provided');
   }
   const handler = upgradeWebSocket((c) => {
     return {
       onOpen(event, ws) {
         wsCollection.set(sessionId, ws);
-        writeLogs(LogType.server , process.cwd().replaceAll('/','-').replace('-' , '') , sessionId , "[WS]: CONNECTED");
+        writeLogs(
+          LogType.server,
+          process.cwd().replaceAll('/', '-').replace('-', ''),
+          sessionId,
+          '[WS]: CONNECTED'
+        );
       },
       onMessage(event) {
         const payload = JSON.parse(event.data.toString());
@@ -62,7 +67,7 @@ const websocketHandler = (c: Context, next: Next) => {
         }
       },
       onClose(event, ws) {
-        ws.send("closed");
+        ws.send('closed');
         wsCollection.delete(sessionId);
       },
     };

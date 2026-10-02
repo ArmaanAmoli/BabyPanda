@@ -1,5 +1,5 @@
 {
-  "extends":"../../tsconfig.base.json",
+  "extends": "../../tsconfig.base.json",
   "compilerOptions": {
     "strict": true,
     "types": ["bun"],
@@ -20,7 +20,6 @@
     "noUnusedParameters": false,
     "noPropertyAccessFromIndexSignature": false
   },
-  "include":["src/**/*"],
-  "exclude":["node_modules/**/*" , "dist" , "node_modules"]
-
+  "include": ["src/**/*"],
+  "exclude": ["node_modules/**/*", "dist", "node_modules"]
 }

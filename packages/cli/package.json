@@ -16,7 +16,9 @@
 		"lint:fix": "eslint . --fix",
 		"type-check": "tsc --noEmit"
 	},
-	"files": ["dist"],
+	"files": [
+		"dist"
+	],
 	"dependencies": {
 		"@baby-panda/server": "workspace:*",
 		"@baby-panda/utils": "workspace:*",

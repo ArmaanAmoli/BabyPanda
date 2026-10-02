@@ -1,13 +1,13 @@
 #!/usr/bin/env node
 import React from 'react';
-import { render } from 'ink';
+import {render} from 'ink';
 import App from './app';
 import Bun from 'bun';
-import { startSession } from './services/requests';
+import {startSession} from './services/requests';
 import honoServer from '@baby-panda/server';
-import { SessionProvider } from './context/sessionDetails';
-import { PendingPermissionMessagesProvider } from './context/pendingPermissionMessages';
-import { SocketProvider } from './context/webSocket'
+import {SessionProvider} from './context/sessionDetails';
+import {PendingPermissionMessagesProvider} from './context/pendingPermissionMessages';
+import {SocketProvider} from './context/webSocket';
 
 const server = Bun.serve(honoServer);
 if (typeof Bun !== 'undefined') {
@@ -36,23 +36,24 @@ if (initialSessionId === null) {
 	initialSessionId = await startSession();
 }
 
-const { waitUntilExit } = render((
+const {waitUntilExit} = render(
 	<>
 		<SessionProvider id={initialSessionId}>
 			<PendingPermissionMessagesProvider>
 				<SocketProvider>
-					<App/>
+					<App />
 				</SocketProvider>
 			</PendingPermissionMessagesProvider>
 		</SessionProvider>
-	</>), {
-	alternateScreen: true,
-	incrementalRendering: true // we dont want ink to erase the entire terminal and repaint it will cause filckering
-});
+	</>,
+	{
+		alternateScreen: true,
+		incrementalRendering: true, // we dont want ink to erase the entire terminal and repaint it will cause filckering
+	},
+);
 await waitUntilExit();
 console.log('stopping server');
 server.stop();
 console.log('Baby panda closed.');
 
-
-process.exit(0)
+process.exit(0);

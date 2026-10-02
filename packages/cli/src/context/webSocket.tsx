@@ -1,4 +1,4 @@
-import React, {useEffect, createContext, useRef , useState} from 'react';
+import React, {useEffect, createContext, useRef, useState} from 'react';
 import {ReactChildPropInterface} from '../types';
 import useSession from '../hooks/useSession';
 import {writeLogs} from '@baby-panda/utils';
@@ -13,7 +13,7 @@ export function SocketProvider({children}: ReactChildPropInterface) {
 	const [socket, setSocket] = useState<WebSocket | null>(null);
 	const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 	const reconnectDelayRef = useRef(1000);
-    const session = useSession();
+	const session = useSession();
 	const permissions = usePendingPermissionMessages();
 	useEffect(() => {
 		let isMounted = true;
@@ -23,7 +23,7 @@ export function SocketProvider({children}: ReactChildPropInterface) {
 			if (!session) return;
 			url.searchParams.set('sessionId', session.sessionId);
 			const socketInstance: WebSocket = new WebSocket(url.toString());
-			setSocket(socketInstance)
+			setSocket(socketInstance);
 
 			socketInstance.onopen = () => {
 				writeLogs(
@@ -81,9 +81,7 @@ export function SocketProvider({children}: ReactChildPropInterface) {
 	}, [session?.sessionId]);
 
 	return (
-		<SocketContext.Provider value={socket}>
-			{children}
-		</SocketContext.Provider>
+		<SocketContext.Provider value={socket}>{children}</SocketContext.Provider>
 	);
 }
 
