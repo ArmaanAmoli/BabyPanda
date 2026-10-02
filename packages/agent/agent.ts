@@ -41,13 +41,13 @@ export class BabyPandaAgent extends EventEmitter {
   private isRunning = false;
   private messageQueue: (MessageAPI | MessageQueueSpecialElement)[] = [];
   private messagesHistory: MessageAPI[] = [];
-  private mcpClient: MCPClient = new MCPClient();
+  private mcpClient: MCPClient;
   private cwd = cwd;
   private projectDirectoryName = '';
   private contextWindow: number = 0;
   public contextWindowUsed: number = 0;
   private systemInstructions;
-  private permissionMap = new Map<string, boolean>(); // tool call id - permissionGranted
+  private permissionWaiters = new Map<string, (granted: boolean) => void>(); // tool call id - permissionGranted
 
   instructions: string;
   model: ModelsEnum;
@@ -59,13 +59,14 @@ export class BabyPandaAgent extends EventEmitter {
     super();
     console.log('agent cwd ', this.cwd);
     console.log(sessionId, 'in agent constructor');
+    this.sessionId = sessionId;
+    this.mcpClient = new MCPClient(this.sessionId);
     this.client = new BabyPandaClient({ url, apikey });
     this.model = ModelsEnum['nvidia/nemotron-3-ultra-550b-a55b']; // This will be our default model
     this.instructions = readFileSync(instructionsFilePath, {
       encoding: 'utf-8',
     });
     this.reasoningEffect = ReasoningEffort.none;
-    this.sessionId = sessionId;
     this.contextWindow = Models['Nvidia'].models[this.model].contextLength; // default model
     if (!(existsSync(projectDir) && lstatSync(projectDir).isDirectory())) {
       mkdirSync(projectDir, { recursive: true });
@@ -132,6 +133,26 @@ export class BabyPandaAgent extends EventEmitter {
     } else {
       const messageHistory = await this.getMessageHistory();
       return [this.systemInstructions, ...messageHistory];
+    }
+  }
+
+  private async waitForPermission(toolCallId: string) {
+    return new Promise<boolean>((resolve) => {
+      this.permissionWaiters.set(toolCallId, resolve);
+      /* We put the resolve function inside the waiters map,
+      now untile we use this function like resolve(true/false),
+      the promise will keep the agent loop pause (ofc we will use await)
+      to do that as soon as we get the permission from CLI we will
+      resolve the promise to the user's decision by using the 
+      setPermission() method */
+    });
+  }
+
+  public async setPermission(toolCallId: string, granted: boolean) {
+    const resolve = this.permissionWaiters.get(toolCallId);
+    if (resolve) {
+      resolve(granted);
+      this.permissionWaiters.delete(toolCallId);
     }
   }
 
@@ -350,16 +371,15 @@ export class BabyPandaAgent extends EventEmitter {
                 });
                 let toolResults: ToolResult[] = [];
 
-                {
-                  const nonShellToolCallCollector: ToolResult[] = [];
-                  toolCallsT.forEach(async (call) => {
+                const executeToolCall = async () => {
+                  const tools: Tool[] = [];
+                  for (const call of toolCallsT) {
                     if (call.name === 'shell') {
                       //execute nonShellToolCalls
-                      if (nonShellToolCallCollector.length !== 0) {
-                        const nonShellToolResults =
-                          await this.mcpClient.callTools(nonShellToolCallCollector);
+                      if (tools.length !== 0) {
+                        const nonShellToolResults = await this.mcpClient.callTools(tools);
                         toolResults = [...toolResults, ...nonShellToolResults];
-                        nonShellToolCallCollector.length = 0;
+                        tools.length = 0;
                       } else {
                         const parsed = ShellCallSchema.safeParse(call.arguments);
                         if (!parsed.success) {
@@ -370,7 +390,6 @@ export class BabyPandaAgent extends EventEmitter {
                             false,
                           );
                         } else {
-                          this.permissionMap.set(call.id, false);
                           // send event to hono and hono put it in websocket -> CLI -> User -> CLI -> websocket (Hono) -> Agent
                           const permissionObject: UserPermission = {
                             toolCallId: call.id,
@@ -378,23 +397,34 @@ export class BabyPandaAgent extends EventEmitter {
                             content: parsed.data.command,
                           };
                           this.emit(ContentType.permission, permissionObject);
-                          while (!this.permissionMap.get(call.id)) {
-                            /**/
+                          const granted = await this.waitForPermission(permissionObject.toolCallId);
+                          if (granted) {
+                            const rawResult = await shell(
+                              parsed.data.command,
+                              parsed.data.timeout!,
+                            );
+                            const fullResult: ToolResult = {
+                              ...call,
+                              result: granted
+                                ? JSON.stringify(rawResult)
+                                : 'USER DENIED TO EXECUTE',
+                              error: rawResult.error,
+                            };
+                            toolResults.push(fullResult);
                           }
-                          const rawResult = await shell(parsed.data.command, parsed.data.timeout!);
-                          const fullResult: ToolResult = {
-                            ...call,
-                            result: JSON.stringify(rawResult),
-                            error: rawResult.error,
-                          };
-                          toolResults.push(fullResult);
                         }
                       }
                     } else {
-                      nonShellToolCallCollector.push(call);
+                      tools.push(call);
                     }
-                  });
-                }
+                  }
+                  // If their is no shell tool call then just execute all
+                  if (tools.length !== 0) {
+                    const results = await this.mcpClient.callTools(tools);
+                    toolResults.push(...results);
+                  }
+                };
+                await executeToolCall();
                 writeLogs(
                   LogType.agent,
                   this.projectDirectoryName,
@@ -489,10 +519,6 @@ export class BabyPandaAgent extends EventEmitter {
       writeLogs(LogType.agent, this.projectDirectoryName, this.sessionId, `Called loop`);
       await this.loop();
     }
-  }
-
-  setPermission(toolCallId: string, permissionGranted: boolean) {
-    this.permissionMap.set(toolCallId, permissionGranted);
   }
 
   async setModel(model: ModelsEnum, provider: ProvidersEnum) {

@@ -45,6 +45,12 @@ const websocketHandler = (c: Context, next: Next) => {
       },
       onMessage(event) {
         const payload = JSON.parse(event.data.toString());
+        writeLogs(
+          LogType.server,
+          process.cwd().replaceAll('/', '-').replace('-', ''),
+          sessionId,
+          `[WS]: ${JSON.stringify(payload)}`,
+        );
         const parse = WsEventMessageSchema.parse(payload);
         switch (parse.eventType) {
           case WsEventTypes.permission: {

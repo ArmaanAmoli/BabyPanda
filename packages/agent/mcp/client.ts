@@ -1,13 +1,17 @@
 import { Client } from '@modelcontextprotocol/client';
 import { StdioClientTransport } from '@modelcontextprotocol/client/stdio';
 import type { Tool, ToolResult } from '@agent/types';
+import { getProjectName, writeLogs } from '@baby-panda/utils';
+import { LogType } from '@baby-panda/types';
 
 export class MCPClient {
   private mcp: Client;
   private transport: StdioClientTransport | null = null;
-  private tools: any = [];
-  constructor() {
+  private sessionId: string;
+  private tools: unknown[] = [];
+  constructor(sessionId: string) {
     this.mcp = new Client({ name: 'baby-panda/mcp-client', version: '1.0.0' });
+    this.sessionId = sessionId;
   }
   async connectToServer(serverScriptPath: string, cwd: string) {
     try {
@@ -48,7 +52,7 @@ export class MCPClient {
       try {
         // console.log("[MCP CLIENT]:", tool);
         const result = await this.mcp.callTool(tool);
-
+        writeLogs(LogType.mcp, getProjectName());
         finalResult.push({
           id: tool.id,
           name: tool.name,

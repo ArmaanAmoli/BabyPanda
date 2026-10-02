@@ -35,8 +35,14 @@ export function SocketProvider({children}: ReactChildPropInterface) {
 			};
 
 			socketInstance.onmessage = event => {
+				writeLogs(
+					LogType.cli,
+					process.cwd().replaceAll('/', '-').replace('-', ''),
+					session.sessionId,
+					`[WS]: ${event.data}`,
+				);
 				const data = event.data;
-				const parsed = UserPermissionSchema.parse(data);
+				const parsed = UserPermissionSchema.parse(JSON.parse(data));
 				permissions?.setPendingPermissionMessages(prev => [...prev, parsed]);
 			};
 

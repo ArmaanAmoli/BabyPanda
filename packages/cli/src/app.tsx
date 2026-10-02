@@ -16,9 +16,11 @@ import {type ScrollViewRef, ScrollView} from 'ink-scroll-view';
 import {writeLogs, getProjectName} from '@baby-panda/utils';
 import useSession from './hooks/useSession';
 import {PermissionBox} from './components/permissionBox';
+import usePendingPermissionMessages from './hooks/usePendingPermissionMessages';
 
 export default function App() {
 	const sessionState = useSession();
+	const {pendingPermissionMessages} = usePendingPermissionMessages();
 	const sessionId = sessionState.sessionId;
 	let i = 0;
 	const [messageHistory, setMessageHistory] = useState<CleanedMessage[]>([]);
@@ -200,8 +202,12 @@ export default function App() {
 							})}
 					</ScrollView>
 				</Box>
-				<PermissionBox />
-				<Box height={6} minHeight={6} margin={0} width="100%">
+				{pendingPermissionMessages.length > 0 && (
+					<Box height={12} width="50%">
+						<PermissionBox />
+					</Box>
+				)}
+				<Box height={6} margin={0} width="100%">
 					<PromptBox
 						placeholder={'Write a message... '}
 						value={prompt}
