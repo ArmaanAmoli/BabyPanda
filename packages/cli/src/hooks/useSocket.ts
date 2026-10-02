@@ -11,5 +11,6 @@ export default function useSocket(){
         writeLogs(LogType.cli , process.cwd().replaceAll('/' , '-').replace('-','') , session?session.sessionId:'global' , `[ERROR]: useSocket Hook not provided with SocketContext`);
         return;
     }
+    writeLogs(LogType.cli , process.cwd().replaceAll('/' , '-').replace('-','') , session?session.sessionId:'global' , `RETURNING SOCKET`);
     return socket;
 }

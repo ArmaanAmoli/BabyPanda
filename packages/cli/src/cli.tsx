@@ -41,7 +41,7 @@ const { waitUntilExit } = render((
 		<SessionProvider id={initialSessionId}>
 			<PendingPermissionMessagesProvider>
 				<SocketProvider>
-					<App sessionId={initialSessionId} />
+					<App/>
 				</SocketProvider>
 			</PendingPermissionMessagesProvider>
 		</SessionProvider>

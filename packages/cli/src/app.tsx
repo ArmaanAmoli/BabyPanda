@@ -1,20 +1,25 @@
 import React from 'react';
 import { Box, useStdout, useInput } from 'ink';
 import BigText from 'ink-big-text';
-import { useState, useEffect, useRef } from 'react'
-import PromptBox from './components/promptBox'
-import { MessageBox } from './components/messageBox'
+import { useState, useEffect, useRef } from 'react';
+import PromptBox from './components/promptBox';
+import { MessageBox } from './components/messageBox';
 import { LogType, Role, type CleanedMessage, ServerStreamChunkSchema, ContentType } from '@baby-panda/types';
-import { getMessages, sendMessage } from './services/requests'
-import { type ScrollViewRef, ScrollView } from 'ink-scroll-view'
-import { writeLogs, getProjectName } from '@baby-panda/utils'
+import { getMessages, sendMessage } from './services/requests';
+import { type ScrollViewRef, ScrollView } from 'ink-scroll-view';
+import { writeLogs, getProjectName } from '@baby-panda/utils';
+import useSocket from './hooks/useSocket'
+import useSession from './hooks/useSession';
 
-interface AppArgs {
-	sessionId: string;
-};
+// interface AppArgs {
+// 	sessionId: string;
+// };
 
-export default function App({ sessionId }: AppArgs) {
-
+export default function App() {
+	const sessionState = useSession()
+	const sessionId = sessionState?.sessionId;
+	if(!sessionId){return <>Session id not provided</>}
+	const socket = useSocket();
 	let i = 0;
 	const [messageHistory, setMessageHistory] = useState<CleanedMessage[]>([]);
 	const [prompt, setPrompt] = useState('');
