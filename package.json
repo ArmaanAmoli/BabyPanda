@@ -4,7 +4,7 @@
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "type-check": "bun run --filter '*' type-check",
-    "format": "prettier --write ."
+    "format": "prettier --write --log-level silent ."
   },
   "private": true,
   "workspaces": [
