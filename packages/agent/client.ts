@@ -24,7 +24,7 @@ class BabyPandaClient {
     messages: Message[],
     model: string,
     isRetrying: boolean,
-    retrysDone: number
+    retrysDone: number,
   ): Promise<ChatCompletionArgs> {
     const options = {
       method: 'POST' as const,
@@ -58,10 +58,7 @@ class BabyPandaClient {
         if (error.status === 429) {
           await setTimeout(60000);
           //retry later
-        } else if (
-          error.status &&
-          (error.status >= 500 || error.status === 400)
-        ) {
+        } else if (error.status && (error.status >= 500 || error.status === 400)) {
           //bad request stop the client
           console.log('BAD REQUEST');
           const errorBody = await fetchError(error);
@@ -85,10 +82,7 @@ class BabyPandaClient {
     }
   }
 
-  async chatCompletion(
-    messages: Message[],
-    model: string
-  ): Promise<ChatCompletionArgs> {
+  async chatCompletion(messages: Message[], model: string): Promise<ChatCompletionArgs> {
     return await this._attempt(messages, model, false, 0);
   }
 }
@@ -107,12 +101,7 @@ const fetchError = async (error: unknown) => {
       });
       response.data.on('end', () => {
         resolve(Buffer.concat(chunks).toString('utf-8'));
-        console.log(
-          '[AXIOS ERROR]: ',
-          response.status,
-          ' ',
-          response.statusText
-        );
+        console.log('[AXIOS ERROR]: ', response.status, ' ', response.statusText);
       });
       response.data.on('error', (e: any) => {
         resolve(`Cant collect error stream failed with error: ${e}`);

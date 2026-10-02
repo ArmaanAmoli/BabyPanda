@@ -32,10 +32,7 @@ const ProviderDetailsSchema = z.object({
   models: z.record(ModelsEnumSchema, ModelDetailSchema),
 });
 
-export const ModelsSchema = z.record(
-  ProvidersEnumSchema,
-  ProviderDetailsSchema
-);
+export const ModelsSchema = z.record(ProvidersEnumSchema, ProviderDetailsSchema);
 
 type ModelsType = z.infer<typeof ModelsSchema>;
 

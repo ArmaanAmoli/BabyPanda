@@ -16,7 +16,7 @@ const WebSearchResultsSchema = z.array(
     title: z.string().nullable().catch(null),
     url: z.string(),
     highlights: z.array(z.string()).optional(),
-  })
+  }),
 );
 export type WebSearchResults = z.infer<typeof WebSearchResultsSchema>;
 
@@ -29,8 +29,6 @@ export async function webSearch(query: string): Promise<WebSearchResults> {
     return parsed ?? [];
   } catch (err) {
     console.log(results);
-    throw new Error(
-      `Error occured while parsing WebSearchResults in webSearch.ts, ${err}`
-    );
+    throw new Error(`Error occured while parsing WebSearchResults in webSearch.ts, ${err}`);
   }
 }

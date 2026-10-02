@@ -1,9 +1,4 @@
-import {
-  integer,
-  primaryKey,
-  sqliteTable,
-  text,
-} from 'drizzle-orm/sqlite-core';
+import { integer, primaryKey, sqliteTable, text } from 'drizzle-orm/sqlite-core';
 import { Role } from '@baby-panda/types';
 
 export const Session = sqliteTable('session', {
@@ -23,11 +18,9 @@ export const Message = sqliteTable(
     createdAt: integer('created_at').default(Date.now()),
     content: text('content'),
     role: text('role').$type<Role>(),
-    isToolResult: integer('is_tool_result', { mode: 'boolean' })
-      .notNull()
-      .default(false),
+    isToolResult: integer('is_tool_result', { mode: 'boolean' }).notNull().default(false),
   },
-  (table) => [primaryKey({ columns: [table.messageIndex, table.sessionId] })]
+  (table) => [primaryKey({ columns: [table.messageIndex, table.sessionId] })],
 );
 
 export const ApiKeys = sqliteTable('api_keys', {
@@ -43,5 +36,5 @@ export const CompactionResults = sqliteTable(
     createdAt: integer('created_at'),
     content: text('content'),
   },
-  (table) => [primaryKey({ columns: [table.sessionId, table.createdAt] })]
+  (table) => [primaryKey({ columns: [table.sessionId, table.createdAt] })],
 );

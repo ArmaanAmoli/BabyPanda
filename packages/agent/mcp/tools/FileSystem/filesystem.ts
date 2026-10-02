@@ -69,7 +69,7 @@ export async function edit(args: EditArgs) {
       throw new Error(
         `old_str matched ${count} times in ${args.path} at lines ${lines}.
 Include more surrounding context (e.g. the enclosing function 
-name or a nearby comment) to uniquely identify the location you mean.`
+name or a nearby comment) to uniquely identify the location you mean.`,
       );
     } else if (count === 1) {
       let newData = data.replace(oldStr, newStr);
@@ -108,11 +108,7 @@ interface GrepOutput {
   exitCode: number | null;
 }
 
-export function grep(
-  path: string,
-  pattern: string,
-  flag?: string
-): Promise<GrepOutput> {
+export function grep(path: string, pattern: string, flag?: string): Promise<GrepOutput> {
   return new Promise((resolve, reject) => {
     const output: GrepOutput = {
       stdout: '',
@@ -155,7 +151,7 @@ export async function list(path: string) {
     return result;
   } catch (e) {
     throw new Error(
-      `/packages/agent/mcp/tools/filesystem.ts:134:142 Error occured in list tool ${e}`
+      `/packages/agent/mcp/tools/filesystem.ts:134:142 Error occured in list tool ${e}`,
     );
   }
 }
@@ -195,15 +191,12 @@ export async function del(path: string, options?: RmOptions) {
     return true;
   } catch (e) {
     throw new Error(
-      `/packages/agent/mcp/tools/filesystem.ts:173:179 Error occured in delete tool ${e}`
+      `/packages/agent/mcp/tools/filesystem.ts:173:179 Error occured in delete tool ${e}`,
     );
   }
 }
 
-export async function glob(
-  pattern: string,
-  ignorePatterns?: string[]
-): Promise<string[]> {
+export async function glob(pattern: string, ignorePatterns?: string[]): Promise<string[]> {
   const files = await gl.glob(pattern, {
     ignore: ignorePatterns,
     windowsPathsNoEscape: true,

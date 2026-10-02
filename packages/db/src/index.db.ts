@@ -11,8 +11,7 @@ if (!process.env['DB_FILE_NAME']) {
   console.log('Database file path not given');
   process.exit(1);
 }
-const dbFile =
-  'file://' + __rootdirname + '/' + process.env['DB_FILE_NAME']?.substring(5);
+const dbFile = 'file://' + __rootdirname + '/' + process.env['DB_FILE_NAME']?.substring(5);
 console.log(dbFile);
 const db = drizzle(dbFile);
 export { db };

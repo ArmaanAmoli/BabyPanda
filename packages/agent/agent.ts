@@ -1,25 +1,10 @@
 import { BabyPandaClient } from './client';
-import type {
-  Message,
-  MessageAPI,
-  MessageContent,
-  UserPermission,
-} from '@baby-panda/types';
+import type { Message, MessageAPI, MessageContent, UserPermission } from '@baby-panda/types';
 import { ContentType, LogType, MessageContentSchema } from '@baby-panda/types';
 import { Role } from '@baby-panda/types';
 import type { UrlApi, Tool, ToolResult } from './types';
-import {
-  MessageQueueSpecialElement,
-  ReasoningEffort,
-  ShellCallSchema,
-} from './types';
-import {
-  readFileSync,
-  existsSync,
-  lstatSync,
-  mkdirSync,
-  writeFileSync,
-} from 'fs';
+import { MessageQueueSpecialElement, ReasoningEffort, ShellCallSchema } from './types';
+import { readFileSync, existsSync, lstatSync, mkdirSync, writeFileSync } from 'fs';
 import { EventEmitter } from 'events';
 import { MCPClient } from './mcp/client';
 import {
@@ -46,12 +31,7 @@ const __dirname = path.dirname(__filename);
 
 const cwd = process.cwd();
 
-const instructionsFilePath = path.join(
-  __dirname,
-  'memory',
-  'BabyPanda',
-  'BabyPanda.md'
-);
+const instructionsFilePath = path.join(__dirname, 'memory', 'BabyPanda', 'BabyPanda.md');
 
 // let compact = true;
 type MessageHistory = Awaited<ReturnType<typeof getMessages>>;
@@ -91,15 +71,11 @@ export class BabyPandaAgent extends EventEmitter {
       mkdirSync(projectDir, { recursive: true });
       writeFileSync(memoryFile, '');
     }
-    this.projectDirectoryName = process
-      .cwd()
-      .replaceAll('/', '-')
-      .replace('-', '');
+    this.projectDirectoryName = process.cwd().replaceAll('/', '-').replace('-', '');
 
     this.systemInstructions = {
       role: Role.system,
-      content:
-        this.instructions + `user current working directory: "${this.cwd}"`,
+      content: this.instructions + `user current working directory: "${this.cwd}"`,
     };
   }
 
@@ -152,11 +128,7 @@ export class BabyPandaAgent extends EventEmitter {
           ...messageHistory,
         ];
       }
-      return [
-        this.systemInstructions,
-        { role: Role.user, content: content! },
-        ...messageHistory,
-      ];
+      return [this.systemInstructions, { role: Role.user, content: content! }, ...messageHistory];
     } else {
       const messageHistory = await this.getMessageHistory();
       return [this.systemInstructions, ...messageHistory];
@@ -198,11 +170,7 @@ export class BabyPandaAgent extends EventEmitter {
         userInput !== MessageQueueSpecialElement.lastReplyFromLLMWasThought
       ) {
         messages.push(userInput);
-        await createMessage(
-          this.sessionId,
-          userInput.content as string,
-          Role.user
-        );
+        await createMessage(this.sessionId, userInput.content as string, Role.user);
       }
       this.messageQueue.splice(0, 1);
       // console.log('MESSAGES' , messages)
@@ -210,21 +178,16 @@ export class BabyPandaAgent extends EventEmitter {
         LogType.agent,
         this.projectDirectoryName,
         this.sessionId,
-        'message sended waiting for response...'
+        'message sended waiting for response...',
       );
       const response = await this.client.chatCompletion(messages, this.model);
-      writeLogs(
-        LogType.agent,
-        this.projectDirectoryName,
-        this.sessionId,
-        'received first chunk'
-      );
+      writeLogs(LogType.agent, this.projectDirectoryName, this.sessionId, 'received first chunk');
       if (response.systemError) {
         writeLogs(
           LogType.agent,
           this.projectDirectoryName,
           this.sessionId,
-          `Request failed: ${response.error} restarting loop...`
+          `Request failed: ${response.error} restarting loop...`,
         );
         this.isRunning = false;
         this.messageQueue.push(MessageQueueSpecialElement.errorInLastIteration);
@@ -256,8 +219,7 @@ export class BabyPandaAgent extends EventEmitter {
         const regex = /^data:\s/;
 
         response.response?.data.on('data', (chunk: Buffer | string) => {
-          const encodedChunk =
-            typeof chunk === 'string' ? chunk : chunk.toString('utf-8');
+          const encodedChunk = typeof chunk === 'string' ? chunk : chunk.toString('utf-8');
           buffer += encodedChunk;
           const lines = buffer.split('\n');
           buffer = lines.pop() ?? '';
@@ -279,34 +241,32 @@ export class BabyPandaAgent extends EventEmitter {
                     LogType.agent,
                     this.projectDirectoryName,
                     this.sessionId,
-                    'received a tool called'
+                    'received a tool called',
                   );
                 } else if (answerRegex.test(fullReply)) {
                   contentType = ContentType.answer;
                   cleanedReplyForCLI = fullReply.substring(
-                    fullReply.indexOf(matchAnswer) + matchAnswer.length
+                    fullReply.indexOf(matchAnswer) + matchAnswer.length,
                   );
                   writeLogs(
                     LogType.agent,
                     this.projectDirectoryName,
                     this.sessionId,
-                    'received an answer'
+                    'received an answer',
                   );
                   toBreak = true;
                 } else if (thoughtRegex.test(fullReply)) {
                   contentType = ContentType.thought;
                   cleanedReplyForCLI = fullReply.substring(
-                    fullReply.indexOf(matchThought) + matchThought.length
+                    fullReply.indexOf(matchThought) + matchThought.length,
                   );
                   writeLogs(
                     LogType.agent,
                     this.projectDirectoryName,
                     this.sessionId,
-                    'received a thought'
+                    'received a thought',
                   );
-                  this.messageQueue.push(
-                    MessageQueueSpecialElement.lastReplyFromLLMWasThought
-                  );
+                  this.messageQueue.push(MessageQueueSpecialElement.lastReplyFromLLMWasThought);
                 }
                 lineBuffer.push(content);
               } else {
@@ -331,7 +291,7 @@ export class BabyPandaAgent extends EventEmitter {
             LogType.agent,
             this.projectDirectoryName,
             this.sessionId,
-            `[Context Window Used]: ${this.contextWindow}`
+            `[Context Window Used]: ${this.contextWindow}`,
           );
           fullReply = extractFirstJSON(fullReply) ?? '';
           if (!fullReply) {
@@ -339,11 +299,9 @@ export class BabyPandaAgent extends EventEmitter {
               LogType.agent,
               this.projectDirectoryName,
               this.sessionId,
-              'Reply received was empty retrying...'
+              'Reply received was empty retrying...',
             );
-            this.messageQueue.push(
-              MessageQueueSpecialElement.lastReplyFromLLMWasEmpty
-            );
+            this.messageQueue.push(MessageQueueSpecialElement.lastReplyFromLLMWasEmpty);
             toBreak = false;
             resolve('empty reply');
             return;
@@ -352,20 +310,13 @@ export class BabyPandaAgent extends EventEmitter {
             LogType.agent,
             this.projectDirectoryName,
             this.sessionId,
-            `[REPLY]: ${fullReply}`
+            `[REPLY]: ${fullReply}`,
           );
           try {
-            await createMessage(
-              this.sessionId,
-              fullReply,
-              Role.assistant,
-              toolCall
-            );
+            await createMessage(this.sessionId, fullReply, Role.assistant, toolCall);
             this.numberOfMessages += 1;
           } catch (err) {
-            reject(
-              new Error(`Unable to store assistant message to database: ${err}`)
-            );
+            reject(new Error(`Unable to store assistant message to database: ${err}`));
           }
           if (toolCall) {
             try {
@@ -374,14 +325,12 @@ export class BabyPandaAgent extends EventEmitter {
                 replyJson = MessageContentSchema.parse(JSON.parse(fullReply));
               } catch (err) {
                 reject('parsing error');
-                this.messageQueue.push(
-                  MessageQueueSpecialElement.errorInLastIteration
-                );
+                this.messageQueue.push(MessageQueueSpecialElement.errorInLastIteration);
                 createMessage(
                   this.sessionId,
                   `Their is an issue in the reply structure that you gave ${err}`,
                   Role.system,
-                  false
+                  false,
                 ); // add new feild isError to prevent this from coming in frontend
                 return;
               }
@@ -408,21 +357,17 @@ export class BabyPandaAgent extends EventEmitter {
                       //execute nonShellToolCalls
                       if (nonShellToolCallCollector.length === 0) {
                         const nonShellToolResults =
-                          await this.mcpClient.callTools(
-                            nonShellToolCallCollector
-                          );
+                          await this.mcpClient.callTools(nonShellToolCallCollector);
                         toolResults = [...toolResults, ...nonShellToolResults];
                         nonShellToolCallCollector.length = 0;
                       } else {
-                        const parsed = ShellCallSchema.safeParse(
-                          call.arguments
-                        );
+                        const parsed = ShellCallSchema.safeParse(call.arguments);
                         if (!parsed.success) {
                           await createMessage(
                             this.sessionId,
                             `Tool Call Syntax Error : received bad arguments for bash tool here is what you send ${JSON.stringify(call.arguments)} and here is the parsing error ${parsed.error}`,
                             Role.system,
-                            false
+                            false,
                           );
                         } else {
                           this.permissionMap.set(call.id, false);
@@ -436,10 +381,7 @@ export class BabyPandaAgent extends EventEmitter {
                           while (!this.permissionMap.get(call.id)) {
                             /**/
                           }
-                          const rawResult = await shell(
-                            parsed.data.command,
-                            parsed.data.timeout!
-                          );
+                          const rawResult = await shell(parsed.data.command, parsed.data.timeout!);
                           const fullResult: ToolResult = {
                             ...call,
                             result: JSON.stringify(rawResult),
@@ -457,7 +399,7 @@ export class BabyPandaAgent extends EventEmitter {
                   LogType.agent,
                   this.projectDirectoryName,
                   this.sessionId,
-                  `[TOOL RESULT]: ${toolResults}`
+                  `[TOOL RESULT]: ${toolResults}`,
                 );
 
                 let i = 0;
@@ -468,12 +410,7 @@ export class BabyPandaAgent extends EventEmitter {
                   } else {
                     try {
                       const content = JSON.stringify(toolResults.at(i));
-                      await createMessage(
-                        this.sessionId,
-                        content,
-                        Role.user,
-                        true
-                      );
+                      await createMessage(this.sessionId, content, Role.user, true);
                       // push into compined tool call array
                       this.emit(ContentType.tool_call, [
                         {
@@ -487,11 +424,7 @@ export class BabyPandaAgent extends EventEmitter {
                       ]);
                       this.numberOfMessages += 1;
                     } catch (err) {
-                      reject(
-                        new Error(
-                          `Unable to store tool message to database: ${err}`
-                        )
-                      );
+                      reject(new Error(`Unable to store tool message to database: ${err}`));
                     }
                   }
                   i += 1;
@@ -508,12 +441,10 @@ export class BabyPandaAgent extends EventEmitter {
                 LogType.agent,
                 this.projectDirectoryName,
                 this.sessionId,
-                `[TOOL CALL ERROR]: Informing LLM about it, \n${fullErrMessage}`
+                `[TOOL CALL ERROR]: Informing LLM about it, \n${fullErrMessage}`,
               );
               createMessage(this.sessionId, fullErrMessage, Role.user);
-              this.messageQueue.push(
-                MessageQueueSpecialElement.errorInLastIteration
-              );
+              this.messageQueue.push(MessageQueueSpecialElement.errorInLastIteration);
               reject(err);
             }
           }
@@ -537,11 +468,9 @@ export class BabyPandaAgent extends EventEmitter {
             LogType.agent,
             this.projectDirectoryName,
             this.sessionId,
-            `[PROMISE ERROR]: ${err}`
+            `[PROMISE ERROR]: ${err}`,
           );
-          this.messageQueue.push(
-            MessageQueueSpecialElement.errorInLastIteration
-          );
+          this.messageQueue.push(MessageQueueSpecialElement.errorInLastIteration);
         });
       if (toBreak) {
         this.isRunning = false;
@@ -549,12 +478,7 @@ export class BabyPandaAgent extends EventEmitter {
         break;
       }
     }
-    writeLogs(
-      LogType.agent,
-      this.projectDirectoryName,
-      this.sessionId,
-      `Loop has ended`
-    );
+    writeLogs(LogType.agent, this.projectDirectoryName, this.sessionId, `Loop has ended`);
   }
 
   async message(msg: Message) {
@@ -562,12 +486,7 @@ export class BabyPandaAgent extends EventEmitter {
     if (this.isRunning) {
       return;
     } else {
-      writeLogs(
-        LogType.agent,
-        this.projectDirectoryName,
-        this.sessionId,
-        `Called loop`
-      );
+      writeLogs(LogType.agent, this.projectDirectoryName, this.sessionId, `Called loop`);
       await this.loop();
     }
   }

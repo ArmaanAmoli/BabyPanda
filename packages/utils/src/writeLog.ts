@@ -1,40 +1,20 @@
-import {
-  writeFileSync,
-  readFileSync,
-  existsSync,
-  lstatSync,
-  mkdirSync,
-} from 'fs';
+import { writeFileSync, readFileSync, existsSync, lstatSync, mkdirSync } from 'fs';
 import path from 'path';
 import { LogType } from '@baby-panda/types';
 import os from 'os';
 
-export function writeLogs(
-  type: LogType,
-  projectName: string,
-  sessionId: string,
-  content: string
-) {
+export function writeLogs(type: LogType, projectName: string, sessionId: string, content: string) {
   const timestamp = Date.now();
   //write to file
   const homeDir = os.homedir();
-  const logDirectoryLocation = path.join(
-    homeDir,
-    '.babypanda',
-    'logs',
-    projectName,
-    sessionId
-  );
+  const logDirectoryLocation = path.join(homeDir, '.babypanda', 'logs', projectName, sessionId);
   const mcpLogFile = path.join(logDirectoryLocation, 'mcp.log');
   const agentLogFile = path.join(logDirectoryLocation, 'agent.log');
   const dbLogFile = path.join(logDirectoryLocation, 'db.log');
   const cliLogFile = path.join(logDirectoryLocation, 'cli.log');
   const serverLogFile = path.join(logDirectoryLocation, 'server.log');
 
-  if (!(
-    existsSync(logDirectoryLocation) &&
-    lstatSync(logDirectoryLocation).isDirectory()
-  )) {
+  if (!(existsSync(logDirectoryLocation) && lstatSync(logDirectoryLocation).isDirectory())) {
     mkdirSync(logDirectoryLocation, { recursive: true });
     writeFileSync(mcpLogFile, 'MCP LOGS');
     writeFileSync(agentLogFile, 'AGENT LOGS');
@@ -44,9 +24,6 @@ export function writeLogs(
   }
 
   const writePath = path.join(logDirectoryLocation, type);
-  content =
-    readFileSync(writePath).toString() +
-    '\n' +
-    `[${type}: ${timestamp}]: ${content}`;
+  content = readFileSync(writePath).toString() + '\n' + `[${type}: ${timestamp}]: ${content}`;
   writeFileSync(writePath, content);
 }

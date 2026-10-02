@@ -27,12 +27,7 @@ export type ToolMessage = Omit<MessageRegular, 'role'> & {
 };
 export type MessageAPI = Omit<MessageRegular, 'sessionId'>;
 export type Message =
-  | UserMessage
-  | SystemMessage
-  | AssistantMessage
-  | ToolMessage
-  | MessageRegular
-  | MessageAPI; // universal Message Type
+  UserMessage | SystemMessage | AssistantMessage | ToolMessage | MessageRegular | MessageAPI; // universal Message Type
 export type MessageDB = Message & { createdAt: Date };
 
 export enum ContentType {
@@ -53,7 +48,7 @@ export const MessageContentSchema = z.object({
           type: z.string(),
           function: z.string(),
           arguments: z.record(z.string(), z.unknown()),
-        })
+        }),
       )
       .optional(),
     thought: z.string().optional(),
@@ -104,9 +99,7 @@ export const ServerStreamChunkSchema = z.object({
   // isStopper:z.boolean().default(false)
 });
 
-export type ServerStreamChunkSchemaType = z.infer<
-  typeof ServerStreamChunkSchema
->;
+export type ServerStreamChunkSchemaType = z.infer<typeof ServerStreamChunkSchema>;
 
 export const UserPermissionSchema = z.object({
   toolCallId: z.string(),

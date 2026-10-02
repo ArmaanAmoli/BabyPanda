@@ -12,14 +12,11 @@ const agent = new BabyPandaAgent(
     url: 'https://integrate.api.nvidia.com/v1/chat/completions',
     apikey: process.env['NVIDIA_API_KEY']!,
   },
-  sessionId
+  sessionId,
 );
 await agent.init();
 // agent.model=ModelsEnum["nvidia/nemotron-3-ultra-550b-a55b"];
-agent.setModel(
-  ModelsEnum['nvidia/nemotron-3-ultra-550b-a55b'],
-  ProvidersEnum['Nvidia']
-);
+agent.setModel(ModelsEnum['nvidia/nemotron-3-ultra-550b-a55b'], ProvidersEnum['Nvidia']);
 const prompt = `continue`;
 const message1: Message = {
   role: Role.user,

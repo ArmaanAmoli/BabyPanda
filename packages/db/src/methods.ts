@@ -15,7 +15,7 @@ export async function createSession(parentSessionId?: string) {
     .values(
       parentSessionId
         ? { id, parentSessionId, projectDirectory: cwd }
-        : { id, projectDirectory: cwd }
+        : { id, projectDirectory: cwd },
     );
   return id;
 }
@@ -23,7 +23,7 @@ export async function createMessage(
   sessionId: string,
   content: string,
   role: Role,
-  isToolResult?: boolean
+  isToolResult?: boolean,
 ) {
   await db.transaction(async (tx) => {
     const session = await tx
@@ -55,13 +55,11 @@ export async function createMessage(
 export async function addProvider(details: APIProvider) {
   console.log(details);
   try {
-    await db
-      .insert(ApiKeys)
-      .values({
-        provider: details.provider,
-        endpoint: details.endpoint,
-        key: details.key,
-      });
+    await db.insert(ApiKeys).values({
+      provider: details.provider,
+      endpoint: details.endpoint,
+      key: details.key,
+    });
     return true;
   } catch (err) {
     console.log(`Error occred while adding provider, ${err}`);
@@ -80,17 +78,11 @@ export async function getSessions() {
   const sessions = await db.select().from(Session);
   return sessions;
 }
-export async function updateSession(
-  sessionId: string,
-  updatedValue: { messagesCount: number }
-) {
+export async function updateSession(sessionId: string, updatedValue: { messagesCount: number }) {
   await db.update(Session).set(updatedValue).where(eq(Session.id, sessionId));
 }
 export async function getSession(sessionId: string) {
-  const session = await db
-    .select()
-    .from(Session)
-    .where(eq(Session.id, sessionId));
+  const session = await db.select().from(Session).where(eq(Session.id, sessionId));
   return session;
 }
 export async function getSessionsByProjectDirectory(projectDirectory: string) {
@@ -124,13 +116,7 @@ export async function getMostRecentCompactionSummary(sessionId: string) {
   )[0];
   return summary;
 }
-export async function getMessagesAfterTimestamp(
-  sessionId: string,
-  timestamp: number
-) {
-  const messages = await db
-    .select()
-    .from(Message)
-    .where(gt(Message.createdAt, timestamp));
+export async function getMessagesAfterTimestamp(sessionId: string, timestamp: number) {
+  const messages = await db.select().from(Message).where(gt(Message.createdAt, timestamp));
   return messages;
 }

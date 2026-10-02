@@ -38,10 +38,7 @@ export class MCPClient {
         };
       });
     } catch (err) {
-      console.log(
-        '[ERROR] packages/agent/mcp/client.ts Failed to connect to MCP server: ',
-        err
-      );
+      console.log('[ERROR] packages/agent/mcp/client.ts Failed to connect to MCP server: ', err);
       throw err;
     }
   }

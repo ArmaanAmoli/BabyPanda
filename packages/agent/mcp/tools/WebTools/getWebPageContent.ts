@@ -21,7 +21,7 @@ const WebPageResultsSchema = z.array(
       links: z.array(z.string()).default([]),
     }),
     entities: z.object().nullable().catch(null),
-  })
+  }),
 );
 
 type WebPageResults = z.infer<typeof WebPageResultsSchema>;

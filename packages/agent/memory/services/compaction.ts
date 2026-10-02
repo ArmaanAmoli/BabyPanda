@@ -10,20 +10,14 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(path.dirname(__filename));
-const compactionInstructionFilePath = path.join(
-  __dirname,
-  'BabyPanda',
-  'Compaction.md'
-);
+const compactionInstructionFilePath = path.join(__dirname, 'BabyPanda', 'Compaction.md');
 const maxRetries = 2;
 
 function cleanMessageArray(messages: MessageAPI[]) {
   let result: string = ``;
   messages.forEach((msg) => {
     try {
-      const parsed = MessageContentSchema.parse(
-        JSON.parse(jsonrepair(msg.content))
-      );
+      const parsed = MessageContentSchema.parse(JSON.parse(jsonrepair(msg.content)));
       const pContent = parsed.content;
       if (!pContent.tool_call) {
         console.log('in loop');
@@ -36,25 +30,17 @@ function cleanMessageArray(messages: MessageAPI[]) {
   return result;
 }
 
-export async function compaction(
-  messages: MessageAPI[],
-  agent: BabyPandaAgent
-) {
+export async function compaction(messages: MessageAPI[], agent: BabyPandaAgent) {
   const content = `<messages>${cleanMessageArray(messages)}</messages>`;
   // console.log(content);
-  const systemInstructions = readFileSync(
-    compactionInstructionFilePath
-  ).toString();
+  const systemInstructions = readFileSync(compactionInstructionFilePath).toString();
   const systemMessage: Message = {
     role: Role.system,
     content: systemInstructions,
   };
   const transcript: Message = { role: Role.user, content: content };
   console.log(systemInstructions, transcript);
-  const response = await agent.client.chatCompletion(
-    [systemMessage, transcript],
-    agent.model
-  );
+  const response = await agent.client.chatCompletion([systemMessage, transcript], agent.model);
   let fullReply = '';
   let isRetrying: boolean = false;
   let retriesDone = 0;
@@ -66,8 +52,7 @@ export async function compaction(
 
         await new Promise((resolve, reject) => {
           response.response?.data.on('data', (chunk: Buffer | string) => {
-            const encodedChunk =
-              typeof chunk === 'string' ? chunk : chunk.toString('utf-8');
+            const encodedChunk = typeof chunk === 'string' ? chunk : chunk.toString('utf-8');
             buffer += encodedChunk;
             const lines = buffer.split('\n');
             buffer = lines.pop() ?? '';

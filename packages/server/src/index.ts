@@ -7,16 +7,9 @@ import {
 } from '@baby-panda/db';
 import { streamText } from 'hono/streaming';
 import { BabyPandaAgent } from '@baby-panda/agent';
-import type {
-  Message,
-  ServerStreamChunkSchemaType,
-  UserPermission,
-} from '@baby-panda/types';
+import type { Message, ServerStreamChunkSchemaType, UserPermission } from '@baby-panda/types';
 import { ContentType, LogType, Role } from '@baby-panda/types';
-import {
-  cleanMessageHistroy,
-  type MessageHistory,
-} from './utils/cleanMessageHistory';
+import { cleanMessageHistroy, type MessageHistory } from './utils/cleanMessageHistory';
 import { writeLogs } from '@baby-panda/utils';
 import { websocketHandler } from './webSocket';
 import type { WSContext } from 'hono/ws';
@@ -95,12 +88,7 @@ app.post('/message', async (c) => {
     }
 
     const babyPanda = agent!;
-    writeLogs(
-      LogType.server,
-      cwd,
-      body.sessionId,
-      '[/message]: about to start stream'
-    );
+    writeLogs(LogType.server, cwd, body.sessionId, '[/message]: about to start stream');
     return streamText(
       c,
       async (stream) => {
@@ -113,18 +101,8 @@ app.post('/message', async (c) => {
         };
 
         const onToolData = (data: MessageHistory) => {
-          writeLogs(
-            LogType.server,
-            cwd,
-            body.sessionId,
-            `[/message]: Received a tool chunk`
-          );
-          writeLogs(
-            LogType.server,
-            cwd,
-            body.sessionId,
-            `[/message]: Raw tool chunk ${data}`
-          );
+          writeLogs(LogType.server, cwd, body.sessionId, `[/message]: Received a tool chunk`);
+          writeLogs(LogType.server, cwd, body.sessionId, `[/message]: Raw tool chunk ${data}`);
           const cleaned = cleanMessageHistroy(data);
           let content = '';
           cleaned.forEach((msg) => {
@@ -140,19 +118,14 @@ app.post('/message', async (c) => {
             LogType.server,
             cwd,
             body.sessionId,
-            `[/message]: Final tool content ${content}`
+            `[/message]: Final tool content ${content}`,
           );
           queue.push(JSON.stringify(chunk));
         };
 
         const handlers: Record<string, (data: string) => void> = {};
         const onData = (eventName: ContentType, data: string) => {
-          writeLogs(
-            LogType.server,
-            cwd,
-            body.sessionId,
-            '[/message]: Received a data chunk'
-          );
+          writeLogs(LogType.server, cwd, body.sessionId, '[/message]: Received a data chunk');
           const chunk: ServerStreamChunkSchemaType = {
             contentType: eventName,
             content: data,
@@ -167,24 +140,14 @@ app.post('/message', async (c) => {
             content: '',
           };
           const stringStopper = JSON.stringify(stopper);
-          writeLogs(
-            LogType.server,
-            cwd,
-            body.sessionId,
-            '[/message]: Ended stream'
-          );
+          writeLogs(LogType.server, cwd, body.sessionId, '[/message]: Ended stream');
           queue.push(stringStopper);
         };
 
         const onError = (err: Error) => {
           isDone = true;
           console.error('[AGENT:STREAM ERROR] ', err);
-          writeLogs(
-            LogType.server,
-            cwd,
-            body.sessionId,
-            `[/message]: Stream error ${err}`
-          );
+          writeLogs(LogType.server, cwd, body.sessionId, `[/message]: Stream error ${err}`);
         };
 
         const onAbort = () => {
@@ -202,12 +165,7 @@ app.post('/message', async (c) => {
           babyPanda.off('end', onEnd);
           babyPanda.off('error', onError);
           babyPanda.off('abort', onAbort);
-          writeLogs(
-            LogType.server,
-            cwd,
-            body.sessionId,
-            '[/message]: Aborting stream...'
-          );
+          writeLogs(LogType.server, cwd, body.sessionId, '[/message]: Aborting stream...');
           stream.abort();
         };
 
@@ -230,21 +188,11 @@ app.post('/message', async (c) => {
             await stream.sleep(100);
             continue;
           }
-          writeLogs(
-            LogType.server,
-            cwd,
-            body.sessionId,
-            `[/message]: Wrote to stream, ${chunk}`
-          );
+          writeLogs(LogType.server, cwd, body.sessionId, `[/message]: Wrote to stream, ${chunk}`);
           await stream.write(chunk);
         }
         stream.onAbort(() => {
-          writeLogs(
-            LogType.server,
-            cwd,
-            body.sessionId,
-            '[/message]: Stream aborted'
-          );
+          writeLogs(LogType.server, cwd, body.sessionId, '[/message]: Stream aborted');
         });
 
         if (isDone) cleanup();
@@ -253,16 +201,11 @@ app.post('/message', async (c) => {
         console.log('stream error', err);
         stream.write('An error occured during streaming');
         throw err;
-      }
+      },
     );
   } catch (e) {
     console.log(e);
-    writeLogs(
-      LogType.server,
-      cwd,
-      body.sessionId,
-      `[/message]: Stream error: ${e}`
-    );
+    writeLogs(LogType.server, cwd, body.sessionId, `[/message]: Stream error: ${e}`);
     return new Response(`message creatation failed ${e}`, {
       status: 500,
       statusText: `Internal Server Error ${e}`,

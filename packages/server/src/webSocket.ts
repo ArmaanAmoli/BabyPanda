@@ -5,11 +5,7 @@ import type { Context, Next } from 'hono';
 import { writeLogs } from '@baby-panda/utils';
 import { LogType } from '@baby-panda/types';
 
-export const WsEventTypeSchema = z.enum([
-  'permission',
-  'open',
-  'ask_permission',
-]);
+export const WsEventTypeSchema = z.enum(['permission', 'open', 'ask_permission']);
 
 const WsEventTypes = WsEventTypeSchema.enum;
 
@@ -44,7 +40,7 @@ const websocketHandler = (c: Context, next: Next) => {
           LogType.server,
           process.cwd().replaceAll('/', '-').replace('-', ''),
           sessionId,
-          '[WS]: CONNECTED'
+          '[WS]: CONNECTED',
         );
       },
       onMessage(event) {

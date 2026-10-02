@@ -9,10 +9,7 @@ interface ShellResult {
   signal: NodeJS.Signals | null;
 }
 
-export async function shell(
-  command: string,
-  timeout: number
-): Promise<ShellResult> {
+export async function shell(command: string, timeout: number): Promise<ShellResult> {
   let stdout = '';
   let stderr = '';
   let error = '';

@@ -31,21 +31,13 @@ export function cleanMessageHistroy(messageHistory: MessageHistory) {
         });
         content = `${parsed.data.name}: ${argsString} \n`;
       } catch (err) {
-        writeLogs(
-          LogType.server,
-          cwd,
-          m.sessionId!,
-          `[ERROR WHILE CLEAN MESSAGE]: ${err}`
-        );
+        writeLogs(LogType.server, cwd, m.sessionId!, `[ERROR WHILE CLEAN MESSAGE]: ${err}`);
         return undefined;
       }
     } else {
       try {
         const parsed = MessageContentSchema.parse(JSON.parse(m.content));
-        if (
-          parsed.content.answer != undefined ||
-          parsed.content.thought != undefined
-        ) {
+        if (parsed.content.answer != undefined || parsed.content.thought != undefined) {
           if (parsed.content.thought) {
             // isThought = true;
             role = Role.thought;
@@ -56,12 +48,7 @@ export function cleanMessageHistroy(messageHistory: MessageHistory) {
           return; // ignore tool call message
         }
       } catch (err) {
-        writeLogs(
-          LogType.server,
-          cwd,
-          m.sessionId!,
-          `[ERROR WHILE CLEAN MESSAGE]: ${err}`
-        );
+        writeLogs(LogType.server, cwd, m.sessionId!, `[ERROR WHILE CLEAN MESSAGE]: ${err}`);
         return undefined;
       }
     }

@@ -1,25 +1,11 @@
 import { McpServer } from '@modelcontextprotocol/server';
 import { StdioServerTransport } from '@modelcontextprotocol/server/stdio';
-import {
-  read,
-  grep,
-  edit,
-  glob,
-  del,
-  list,
-  write,
-  mkdir,
-} from './tools/FileSystem/filesystem';
+import { read, grep, edit, glob, del, list, write, mkdir } from './tools/FileSystem/filesystem';
 import { webSearch } from './tools/WebTools/webSearch';
 import { getWebPage } from './tools/WebTools/getWebPageContent';
 import { array, string, z } from 'zod';
 import { addToMemory } from '../memory/utils/memory';
-import {
-  listNotes,
-  readNotes,
-  writeNotes,
-  editNotes,
-} from '../memory/utils/notes';
+import { listNotes, readNotes, writeNotes, editNotes } from '../memory/utils/notes';
 
 const server = new McpServer({
   name: 'baby-panda/mcp',
@@ -52,7 +38,7 @@ server.registerTool(
         },
       ],
     };
-  }
+  },
 );
 
 server.registerTool(
@@ -64,9 +50,7 @@ server.registerTool(
       pattern: z.string().describe('Regular expression for searching'),
       flag: z
         .string()
-        .describe(
-          'flags to use (spawn process of nodeJs) [flag , pattern , path]'
-        )
+        .describe('flags to use (spawn process of nodeJs) [flag , pattern , path]')
         .optional(),
     }),
   },
@@ -80,7 +64,7 @@ server.registerTool(
         },
       ],
     };
-  }
+  },
 );
 
 server.registerTool(
@@ -98,7 +82,7 @@ server.registerTool(
     return {
       content: [{ type: 'text', text: `${edited}` }],
     };
-  }
+  },
 );
 
 server.registerTool(
@@ -107,9 +91,7 @@ server.registerTool(
     description: 'search for files',
     inputSchema: z.object({
       pattern: string().describe('String that will be replaced'),
-      ignorePatterns: array(z.string())
-        .describe('The string that will replace')
-        .optional(),
+      ignorePatterns: array(z.string()).describe('The string that will replace').optional(),
     }),
   },
   async (args) => {
@@ -117,7 +99,7 @@ server.registerTool(
     return {
       content: [{ type: 'text', text: `${JSON.stringify(result)}` }],
     };
-  }
+  },
 );
 
 server.registerTool(
@@ -141,7 +123,7 @@ server.registerTool(
     return {
       content: [{ type: 'text', text: `${deleted}` }],
     };
-  }
+  },
 );
 
 server.registerTool(
@@ -157,7 +139,7 @@ server.registerTool(
     return {
       content: [{ type: 'text', text: `${JSON.stringify(result)}` }],
     };
-  }
+  },
 );
 
 server.registerTool(
@@ -174,7 +156,7 @@ server.registerTool(
     return {
       content: [{ type: 'text', text: `${result}` }],
     };
-  }
+  },
 );
 
 server.registerTool(
@@ -190,7 +172,7 @@ server.registerTool(
     return {
       content: [{ type: 'text', text: `${result}` }],
     };
-  }
+  },
 );
 
 // Web
@@ -198,8 +180,7 @@ server.registerTool(
 server.registerTool(
   'web_search',
   {
-    description:
-      'Takes in a search query and return links to relevant web pages',
+    description: 'Takes in a search query and return links to relevant web pages',
     inputSchema: z.object({
       query: z.string(),
     }),
@@ -209,14 +190,13 @@ server.registerTool(
     return {
       content: [{ type: 'text', text: `${JSON.stringify(results)}` }],
     };
-  }
+  },
 );
 
 server.registerTool(
   'get_web_page',
   {
-    description:
-      'Takes in a search query and return links to relevant web pages',
+    description: 'Takes in a search query and return links to relevant web pages',
     inputSchema: z.object({
       url: z.array(z.string()),
     }),
@@ -226,7 +206,7 @@ server.registerTool(
     return {
       content: [{ type: 'text', text: `${JSON.stringify(results)}` }],
     };
-  }
+  },
 );
 
 // Memory
@@ -241,7 +221,7 @@ server.registerTool(
     return {
       content: [{ type: 'text', text: `${JSON.stringify(result)}` }],
     };
-  }
+  },
 );
 
 server.registerTool(
@@ -258,7 +238,7 @@ server.registerTool(
     return {
       content: [{ type: 'text', text: `${JSON.stringify(result)}` }],
     };
-  }
+  },
 );
 
 server.registerTool(
@@ -271,7 +251,7 @@ server.registerTool(
     return {
       content: [{ type: 'text', text: `${JSON.stringify(result)}` }],
     };
-  }
+  },
 );
 
 server.registerTool(
@@ -289,7 +269,7 @@ server.registerTool(
     return {
       content: [{ type: 'text', text: result }],
     };
-  }
+  },
 );
 
 server.registerTool(
@@ -307,7 +287,7 @@ server.registerTool(
     return {
       content: [{ type: 'text', text: `${result}` }],
     };
-  }
+  },
 );
 
 async function main() {
