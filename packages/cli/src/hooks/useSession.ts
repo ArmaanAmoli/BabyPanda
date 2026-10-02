@@ -13,7 +13,7 @@ export default function useSession() {
 			'global',
 			'[session hook]: session context not provided',
 		);
-		return;
+		throw new Error(`useSession must be used inside SessionProvider`);
 	}
 	return sessionContext;
 }

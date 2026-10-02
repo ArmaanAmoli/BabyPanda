@@ -16,6 +16,7 @@ import {type ScrollViewRef, ScrollView} from 'ink-scroll-view';
 import {writeLogs, getProjectName} from '@baby-panda/utils';
 import useSocket from './hooks/useSocket';
 import useSession from './hooks/useSession';
+import usePendingPermissionMessages from './hooks/usePendingPermissionMessages';
 
 // interface AppArgs {
 // 	sessionId: string;
@@ -23,11 +24,10 @@ import useSession from './hooks/useSession';
 
 export default function App() {
 	const sessionState = useSession();
-	const sessionId = sessionState?.sessionId;
-	if (!sessionId) {
-		return <>Session id not provided</>;
-	}
+	const {pendingPermissionMessages, setPendingPermissionMessages} =
+		usePendingPermissionMessages();
 	const socket = useSocket();
+	const sessionId = sessionState.sessionId;
 	let i = 0;
 	const [messageHistory, setMessageHistory] = useState<CleanedMessage[]>([]);
 	const [prompt, setPrompt] = useState('');
