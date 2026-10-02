@@ -242,8 +242,6 @@ app.post('/add-provider', async (c) => {
 export type HonoAppType = typeof app;
 export default {
   port: 3000,
-  fetch(request: Request) {
-    return app.fetch(request);
-  },
+  fetch:app.fetch,
   websocket,
 };
