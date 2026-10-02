@@ -355,7 +355,7 @@ export class BabyPandaAgent extends EventEmitter {
                   toolCallsT.forEach(async (call) => {
                     if (call.name === 'shell') {
                       //execute nonShellToolCalls
-                      if (nonShellToolCallCollector.length === 0) {
+                      if (nonShellToolCallCollector.length !== 0) {
                         const nonShellToolResults =
                           await this.mcpClient.callTools(nonShellToolCallCollector);
                         toolResults = [...toolResults, ...nonShellToolResults];
