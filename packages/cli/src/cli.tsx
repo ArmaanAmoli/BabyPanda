@@ -8,6 +8,7 @@ import honoServer from '@baby-panda/server';
 import {SessionProvider} from './context/sessionDetails';
 import {PendingPermissionMessagesProvider} from './context/pendingPermissionMessages';
 import {SocketProvider} from './context/webSocket';
+import {ActiveComponetsContextProvider} from './context/compontActiveState';
 
 const server = Bun.serve(honoServer);
 if (typeof Bun !== 'undefined') {
@@ -19,10 +20,13 @@ if (typeof Bun !== 'undefined') {
 
 // 1. Immediately switch to the Alternate Screen Buffer
 process.stdout.write('\x1b[?1049h');
-
+// process.stdout.write('\x1B[?1006h'); // SGR mouse encoding
+// process.stdout.write('\x1B[?1000h'); // Button press/release only
 // 2. Automatically clean up and return to normal screen when the process exits
 process.on('exit', () => {
 	process.stdout.write('\x1b[?1049l');
+	// process.stdout.write('\x1B[?1000l');
+	// process.stdout.write('\x1B[?1006l');
 });
 
 const getInitialSessionId = () => {
@@ -41,7 +45,9 @@ const {waitUntilExit} = render(
 		<SessionProvider id={initialSessionId}>
 			<PendingPermissionMessagesProvider>
 				<SocketProvider>
-					<App />
+					<ActiveComponetsContextProvider>
+						<App />
+					</ActiveComponetsContextProvider>
 				</SocketProvider>
 			</PendingPermissionMessagesProvider>
 		</SessionProvider>
