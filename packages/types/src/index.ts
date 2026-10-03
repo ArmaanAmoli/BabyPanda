@@ -67,13 +67,6 @@ export const ToolRawResultSchema = z.object({
   }),
 });
 
-// export interface CleanedMessage {
-//     role: Role,
-//     content: string,
-//     createdAt: number | null
-//     isThougt?: boolean
-// }
-
 export const CleanedMessageSchema = z.object({
   role: z.enum(Role),
   content: z.string(),
@@ -108,3 +101,24 @@ export const UserPermissionSchema = z.object({
 });
 
 export type UserPermission = z.infer<typeof UserPermissionSchema>;
+
+export const WsEventTypeSchema = z.enum(['permission', 'ask_permission']);
+
+export const WsEventTypes = WsEventTypeSchema.enum;
+
+const BaseSchema = z.object({});
+
+export const WsEventMessageSchema = z.discriminatedUnion('eventType', [
+  BaseSchema.extend({
+    eventType: z.literal(WsEventTypeSchema.enum.permission),
+    permissionGranted: z.boolean(),
+    toolCallId: z.string(),
+  }),
+  BaseSchema.extend({
+    eventType: z.literal(WsEventTypeSchema.enum.ask_permission),
+    toolCallId: z.string(),
+    toolCallContent: z.string(),
+  }),
+]);
+
+export type WsEventMessage = z.infer<typeof WsEventMessageSchema>;

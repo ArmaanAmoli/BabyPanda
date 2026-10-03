@@ -1,8 +1,11 @@
-import React, {useEffect, useState} from 'react';
+import React from 'react';
 import usePendingPermissionMessages from '../hooks/usePendingPermissionMessages';
 import {Box, Text} from 'ink';
 import useSocket from '../hooks/useSocket';
 import SelectInput, {Item} from 'ink-select-input';
+import {LogType, WsEventMessage} from '@baby-panda/types';
+import {writeLogs, getProjectName} from '@baby-panda/utils';
+import useSession from '../hooks/useSession';
 
 interface Item {
 	label: string;
@@ -10,12 +13,12 @@ interface Item {
 }
 
 export function PermissionBox() {
+	const session = useSession();
 	const {pendingPermissionMessages, setPendingPermissionMessages} =
 		usePendingPermissionMessages();
 	const socket = useSocket();
-	const [allowed, setAllowed] = useState(false);
 	const handleSelect = (item: Item) => {
-		setAllowed(item.value);
+		send(item);
 	};
 	const items: Item[] = [
 		{
@@ -27,17 +30,27 @@ export function PermissionBox() {
 			value: false,
 		},
 	];
-	useEffect(() => {
+	const send = (item: Item) => {
 		const permissionObject = pendingPermissionMessages.at(
 			pendingPermissionMessages.length - 1,
 		);
 		if (permissionObject) {
-			permissionObject.permission = allowed;
-			socket?.send(JSON.stringify(permissionObject));
+			const message: WsEventMessage = {
+				eventType: 'permission',
+				permissionGranted: item.value,
+				toolCallId: permissionObject.toolCallId,
+			};
+			writeLogs(
+				LogType.cli,
+				getProjectName(),
+				session.sessionId,
+				`[USER REPLY FOR PERMISSION]: ${JSON.stringify(message)}`,
+			);
+			socket?.send(JSON.stringify(message));
 			setPendingPermissionMessages(prev => prev.slice(0, -1));
-			setAllowed(false);
+			// setAllowed(false);
 		}
-	}, [allowed]);
+	};
 	return (
 		<>
 			{socket && pendingPermissionMessages.length !== 0 && (

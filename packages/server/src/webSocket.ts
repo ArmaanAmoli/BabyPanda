@@ -3,29 +3,7 @@ import z from 'zod';
 import { agentStore, wsCollection } from './index';
 import type { Context, Next } from 'hono';
 import { writeLogs } from '@baby-panda/utils';
-import { LogType } from '@baby-panda/types';
-
-export const WsEventTypeSchema = z.enum(['permission', 'open', 'ask_permission']);
-
-const WsEventTypes = WsEventTypeSchema.enum;
-
-const BaseSchema = z.object({});
-
-export const WsEventMessageSchema = z.discriminatedUnion('eventType', [
-  BaseSchema.extend({
-    eventType: z.literal(WsEventTypeSchema.enum.permission),
-    permissionGranted: z.boolean(),
-    toolCallId: z.string(),
-  }),
-  BaseSchema.extend({
-    eventType: z.literal(WsEventTypeSchema.enum.open),
-  }),
-  BaseSchema.extend({
-    eventType: z.literal(WsEventTypeSchema.enum.ask_permission),
-    toolCallId: z.string(),
-    toolCallContent: z.string(),
-  }),
-]);
+import { LogType, WsEventMessageSchema, WsEventTypes } from '@baby-panda/types';
 
 const websocketHandler = (c: Context, next: Next) => {
   const sessionId = c.req.query('sessionId');
@@ -74,7 +52,6 @@ const websocketHandler = (c: Context, next: Next) => {
       },
     };
   });
-
   return handler(c, next);
 };
 
