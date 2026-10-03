@@ -13,11 +13,13 @@ export default function PromptBox({
 }: PromptBoxArgs) {
 	return (
 		<Box
-			borderStyle={'single'}
-			borderColor={'white'}
+			// borderStyle={'single'}
+			// borderColor={'white'}
+			paddingTop={1}
+			paddingX={1}
 			width="100%"
 			height="100%"
-			backgroundColor={'black'}
+			backgroundColor={'#242424'}
 		>
 			<ActiveComponentWrapper isActive={isActive}>
 				<TextInput

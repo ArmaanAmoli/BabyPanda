@@ -32,6 +32,7 @@ export function MessageBox(prop: CleanedMessage) {
 			marginTop={2}
 			borderStyle={'bold'}
 			gap={1}
+			backgroundColor={'#111111b0'}
 		>
 			<Markdown
 				isThought={prop.role === Role.thought ? true : false}

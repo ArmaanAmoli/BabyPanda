@@ -10,11 +10,12 @@ export function ChatBox({
 }: {
 	isActive: boolean;
 	messageHistory: CleanedMessage[];
+	height: number;
 }) {
 	let i = 0;
 	return (
 		<ActiveComponentWrapper isActive={isActive}>
-			<Box>
+			<Box flexGrow={1} flexDirection="column">
 				{messageHistory.length > 0 &&
 					messageHistory.map(message => {
 						return (

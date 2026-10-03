@@ -164,14 +164,28 @@ export default function App() {
 							colors={['white']}
 						/>
 					)}
-					<ChatBox messageHistory={messageHistory} isActive={false} />
+					<ChatBox
+						messageHistory={messageHistory}
+						isActive={true}
+						height={
+							pendingPermissionMessages.length == 0
+								? dimensions.rows
+								: dimensions.rows - 12
+						}
+					/>
 				</Box>
 				{pendingPermissionMessages.length > 0 && (
 					<Box height={12} width="50%">
 						<PermissionBox />
 					</Box>
 				)}
-				<Box height={6} margin={0} width="100%">
+				<Box
+					height={6}
+					minHeight={6}
+					margin={0}
+					width="100%"
+					backgroundColor={'#242424'}
+				>
 					<PromptBox
 						isActive={false}
 						placeholder={'Write a message... '}
