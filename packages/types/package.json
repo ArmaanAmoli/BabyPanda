@@ -7,6 +7,6 @@
     "@types/bun": "latest"
   },
   "exports": {
-    ".":"./src/index.ts"
+    ".": "./src/index.ts"
   }
 }

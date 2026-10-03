@@ -15,11 +15,11 @@
     "paths": {
       "*": ["./*"],
       "@/*": ["./*"],
-      "@agent/*":["./packages/agent/*"],
-      "@cli/*":["./packages/cli/src"]
+      "@agent/*": ["./packages/agent/*"],
+      "@cli/*": ["./packages/cli/src"]
     },
-    "noUnusedParameters": true,
+    "noUnusedParameters": true
   },
   "include": ["packages/**/*"],
-  "exclude": ["node_modules" , "dist" , "**/node_modules"]
+  "exclude": ["node_modules", "dist", "**/node_modules"]
 }

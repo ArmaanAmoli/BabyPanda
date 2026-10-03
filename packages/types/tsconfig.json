@@ -1,5 +1,5 @@
 {
-  "extends":"../../tsconfig.base.json",
+  "extends": "../../tsconfig.base.json",
   "compilerOptions": {
     // Environment setup & latest features
     "lib": ["ESNext"],
@@ -27,7 +27,5 @@
     "noUnusedParameters": false,
     "noPropertyAccessFromIndexSignature": false
   },
-  "include":[
-   "src/index.ts"
-  ]
+  "include": ["src/index.ts"]
 }

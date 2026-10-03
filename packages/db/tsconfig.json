@@ -1,5 +1,5 @@
 {
-  "extends":"../../tsconfig.base.json",
+  "extends": "../../tsconfig.base.json",
 
   "compilerOptions": {
     // Environment setup & latest features
@@ -26,8 +26,7 @@
     // Some stricter flags (disabled by default)
     "noUnusedLocals": false,
     "noUnusedParameters": false,
-    "noPropertyAccessFromIndexSignature": false,
-    
+    "noPropertyAccessFromIndexSignature": false
   },
-  "include":["src/**/*"],
+  "include": ["src/**/*"]
 }

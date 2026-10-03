@@ -1,60 +1,74 @@
 import { Client } from '@modelcontextprotocol/client';
-import { StdioClientTransport } from '@modelcontextprotocol/client/stdio'
+import { StdioClientTransport } from '@modelcontextprotocol/client/stdio';
 import type { Tool, ToolResult } from '@agent/types';
+import { getProjectName, writeLogs } from '@baby-panda/utils';
+import { LogType } from '@baby-panda/types';
 
 export class MCPClient {
-    private mcp: Client;
-    private transport: StdioClientTransport | null = null;
-    private tools: any = [];
-    constructor() {
-        this.mcp = new Client({ name: "baby-panda/mcp-client", version: "1.0.0" });
+  private mcp: Client;
+  private transport: StdioClientTransport | null = null;
+  private sessionId: string;
+  private tools: unknown[] = [];
+  constructor(sessionId: string) {
+    this.mcp = new Client({ name: 'baby-panda/mcp-client', version: '1.0.0' });
+    this.sessionId = sessionId;
+  }
+  async connectToServer(serverScriptPath: string, cwd: string) {
+    try {
+      const isJs = serverScriptPath.endsWith('.ts');
+      if (!isJs) {
+        throw new Error('Server script must be a .ts file');
+      }
+      console.log('MCP:', cwd);
+      this.transport = new StdioClientTransport({
+        command: 'npx',
+        args: ['tsx', serverScriptPath],
+        cwd: cwd,
+        env: {
+          ...process.env,
+          CLIENT_CWD: cwd,
+        },
+      });
+      console.log('StdioClientTreansportCreated');
+      await this.mcp.connect(this.transport);
+      console.log('[MCP CLIENT]: connected');
+      const toolsResult = await this.mcp.listTools();
+      this.tools = toolsResult.tools.map((tool) => {
+        console.log(tool);
+        return {
+          name: tool.name,
+          description: tool.description,
+          input_schema: tool.inputSchema,
+        };
+      });
+    } catch (err) {
+      console.log('[ERROR] packages/agent/mcp/client.ts Failed to connect to MCP server: ', err);
+      throw err;
     }
-    async connectToServer(serverScriptPath: string, cwd: string) {
-        try {
-            const isJs = serverScriptPath.endsWith(".ts");
-            if (!isJs) {
-                throw new Error("Server script must be a .ts file");
-            }
-            console.log("MCP:", cwd)
-            this.transport = new StdioClientTransport({
-                command: "npx",
-                args: ["tsx", serverScriptPath],
-                cwd: cwd,
-                env: {
-                    ...process.env,
-                    CLIENT_CWD: cwd
-                }
-            });
-            console.log("StdioClientTreansportCreated")
-            await this.mcp.connect(this.transport);
-            console.log("[MCP CLIENT]: connected")
-            const toolsResult = await this.mcp.listTools();
-            this.tools = toolsResult.tools.map((tool) => {
-                console.log(tool)
-                return {
-                    name: tool.name,
-                    description: tool.description,
-                    input_schema: tool.inputSchema
-                };
-            });
-        } catch (err) {
-            console.log("[ERROR] packages/agent/mcp/client.ts Failed to connect to MCP server: ", err);
-            throw err;
-        }
+  }
+  async callTools(tools: Tool[]): Promise<ToolResult[]> {
+    const finalResult: ToolResult[] = [];
+    for (const tool of tools) {
+      try {
+        // console.log("[MCP CLIENT]:", tool);
+        const result = await this.mcp.callTool(tool);
+        writeLogs(LogType.mcp, getProjectName(), this.sessionId, `[TOOL RESULT]: ${result}`);
+        finalResult.push({
+          id: tool.id,
+          name: tool.name,
+          arguments: tool.arguments,
+          result: result,
+        });
+      } catch (err) {
+        finalResult.push({
+          id: tool.id,
+          name: tool.name,
+          arguments: tool.arguments,
+          error: String(err),
+        });
+        console.error(`An error occured while calling ${tool} \n ${err}`);
+      }
     }
-    async callTools(tools: Tool[]): Promise<ToolResult[]> {
-        const finalResult: ToolResult[] = [];
-        for (const tool of tools) {
-            try {
-                // console.log("[MCP CLIENT]:", tool);
-                const result = await this.mcp.callTool(tool);
-
-                finalResult.push({ id: tool.id, name: tool.name, arguments: tool.arguments, result: result });
-            } catch (err) {
-                finalResult.push({ id: tool.id, name: tool.name, arguments: tool.arguments, error: String(err) });
-                console.error(`An error occured while calling ${tool} \n ${err}`);
-            }
-        }
-        return finalResult;
-    }
+    return finalResult;
+  }
 }

@@ -1,317 +1,302 @@
-import { McpServer } from "@modelcontextprotocol/server";
-import { StdioServerTransport } from "@modelcontextprotocol/server/stdio";
-import { read, grep, edit, glob, del, list, write, mkdir } from './tools/FileSystem/filesystem'
+import { McpServer } from '@modelcontextprotocol/server';
+import { StdioServerTransport } from '@modelcontextprotocol/server/stdio';
+import { read, grep, edit, glob, del, list, write, mkdir } from './tools/FileSystem/filesystem';
 import { webSearch } from './tools/WebTools/webSearch';
 import { getWebPage } from './tools/WebTools/getWebPageContent';
-import { array, string, z } from "zod";
-import { addToMemory} from '../memory/utils/memory';
-import { listNotes , readNotes , writeNotes , editNotes} from '../memory/utils/notes';
+import { array, string, z } from 'zod';
+import { addToMemory } from '../memory/utils/memory';
+import { listNotes, readNotes, writeNotes, editNotes } from '../memory/utils/notes';
 
 const server = new McpServer({
-    name: "baby-panda/mcp",
-    version: "1.0.0",
+  name: 'baby-panda/mcp',
+  version: '1.0.0',
 });
 
 // file system
 
 server.registerTool(
-    "read",
-    {
-        description: "Read content of a file",
-        inputSchema: z.object({
-            path: z.string().describe("Location of file"),
-            offset: z.number().optional().describe("Starting line number"),
-            limit: z.number().optional().describe("Number of lines coming after offset (including offset)")
-        }),
-    },
-    async (args) => {
-        console.log("in the read tool", args.path)
-        const text: string = await read(args);
-        return {
-            content: [{
-                type: 'text',
-                text: text
-            }]
-        }
-    }
+  'read',
+  {
+    description: 'Read content of a file',
+    inputSchema: z.object({
+      path: z.string().describe('Location of file'),
+      offset: z.number().optional().describe('Starting line number'),
+      limit: z
+        .number()
+        .optional()
+        .describe('Number of lines coming after offset (including offset)'),
+    }),
+  },
+  async (args) => {
+    console.log('in the read tool', args.path);
+    const text: string = await read(args);
+    return {
+      content: [
+        {
+          type: 'text',
+          text: text,
+        },
+      ],
+    };
+  },
 );
 
 server.registerTool(
-    "grep",
-    {
-        description: "Search content across files",
-        inputSchema: z.object({
-            path: z.string().describe("Location of file"),
-            pattern: z.string().describe("Regular expression for searching"),
-            flag: z.string().describe("flags to use (spawn process of nodeJs) [flag , pattern , path]").optional()
-        }),
-    },
-    async (args) => {
-        const searchResult = await grep(args.path, args.pattern, args.flag)
-        return {
-            content: [
-                {
-                    type: "text",
-                    text: JSON.stringify(searchResult)
-                }
-            ]
-        }
-    }
+  'grep',
+  {
+    description: 'Search content across files',
+    inputSchema: z.object({
+      path: z.string().describe('Location of file'),
+      pattern: z.string().describe('Regular expression for searching'),
+      flag: z
+        .string()
+        .describe('flags to use (spawn process of nodeJs) [flag , pattern , path]')
+        .optional(),
+    }),
+  },
+  async (args) => {
+    const searchResult = await grep(args.path, args.pattern, args.flag);
+    return {
+      content: [
+        {
+          type: 'text',
+          text: JSON.stringify(searchResult),
+        },
+      ],
+    };
+  },
 );
 
 server.registerTool(
-    "edit",
-    {
-        description: "edit content of a pre existing file",
-        inputSchema: z.object({
-            path: z.string().describe("Location of file"),
-            old_str: string().describe("String that will be replaced"),
-            new_str: string().describe("The string that will replace")
-        }),
-    },
-    async (args) => {
-        const edited = await edit(args);
-        return {
-            content: [
-                { type: "text", text: `${edited}` }
-            ]
-        }
-    }
+  'edit',
+  {
+    description: 'edit content of a pre existing file',
+    inputSchema: z.object({
+      path: z.string().describe('Location of file'),
+      old_str: string().describe('String that will be replaced'),
+      new_str: string().describe('The string that will replace'),
+    }),
+  },
+  async (args) => {
+    const edited = await edit(args);
+    return {
+      content: [{ type: 'text', text: `${edited}` }],
+    };
+  },
 );
 
 server.registerTool(
-    "glob",
-    {
-        description: "search for files",
-        inputSchema: z.object({
-            pattern: string().describe("String that will be replaced"),
-            ignorePatterns: array(z.string()).describe("The string that will replace").optional()
-        }),
-    },
-    async (args) => {
-        const result = await glob(args.pattern, args.ignorePatterns);
-        return {
-            content: [
-                { type: "text", text: `${JSON.stringify(result)}` }
-            ]
-        }
-    }
+  'glob',
+  {
+    description: 'search for files',
+    inputSchema: z.object({
+      pattern: string().describe('String that will be replaced'),
+      ignorePatterns: array(z.string()).describe('The string that will replace').optional(),
+    }),
+  },
+  async (args) => {
+    const result = await glob(args.pattern, args.ignorePatterns);
+    return {
+      content: [{ type: 'text', text: `${JSON.stringify(result)}` }],
+    };
+  },
 );
 
 server.registerTool(
-    "delete",
-    {
-        description: "deletes a file",
-        inputSchema: z.object({
-            path: string().describe("path of the file"),
-            options: z.object({
-                force: z.boolean().optional().default(false),
-                maxRetries: z.number().optional().default(0),
-                recursive: z.boolean().optional().default(false),
-                retryDelay: z.number().default(100),
-            }).optional()
-        }),
-    },
-    async (args) => {
-        const deleted = await del(args.path, args.options);
-        return {
-            content: [
-                { type: "text", text: `${deleted}` }
-            ]
-        }
-    }
+  'delete',
+  {
+    description: 'deletes a file',
+    inputSchema: z.object({
+      path: string().describe('path of the file'),
+      options: z
+        .object({
+          force: z.boolean().optional().default(false),
+          maxRetries: z.number().optional().default(0),
+          recursive: z.boolean().optional().default(false),
+          retryDelay: z.number().default(100),
+        })
+        .optional(),
+    }),
+  },
+  async (args) => {
+    const deleted = await del(args.path, args.options);
+    return {
+      content: [{ type: 'text', text: `${deleted}` }],
+    };
+  },
 );
 
 server.registerTool(
-    "list",
-    {
-        description: "List all the files in a folder",
-        inputSchema: z.object({
-            path: z.string()
-        }),
-    },
-    async (args) => {
-        const result = await list(args.path);
-        return {
-            content: [
-                { type: "text", text: `${JSON.stringify(result)}` }
-            ]
-        };
-    }
+  'list',
+  {
+    description: 'List all the files in a folder',
+    inputSchema: z.object({
+      path: z.string(),
+    }),
+  },
+  async (args) => {
+    const result = await list(args.path);
+    return {
+      content: [{ type: 'text', text: `${JSON.stringify(result)}` }],
+    };
+  },
 );
 
 server.registerTool(
-    "write",
-    {
-        description: "Create or overwrite a given file",
-        inputSchema: z.object({
-            path: z.string(),
-            content: z.string()
-        }),
-    },
-    async (args) => {
-        const result = await write(args.path, args.content);
-        return {
-            content: [
-                { type: "text", text: `${result}` }
-            ]
-        };
-    }
+  'write',
+  {
+    description: 'Create or overwrite a given file',
+    inputSchema: z.object({
+      path: z.string(),
+      content: z.string(),
+    }),
+  },
+  async (args) => {
+    const result = await write(args.path, args.content);
+    return {
+      content: [{ type: 'text', text: `${result}` }],
+    };
+  },
 );
 
 server.registerTool(
-    "mkdir",
-    {
-        description: "Create a new folder",
-        inputSchema: z.object({
-            path: z.string(),
-        }),
-    },
-    async (args) => {
-        const result = await mkdir(args.path);
-        return {
-            content: [
-                { type: "text", text: `${result}` }
-            ]
-        };
-    }
+  'mkdir',
+  {
+    description: 'Create a new folder',
+    inputSchema: z.object({
+      path: z.string(),
+    }),
+  },
+  async (args) => {
+    const result = await mkdir(args.path);
+    return {
+      content: [{ type: 'text', text: `${result}` }],
+    };
+  },
 );
 
 // Web
 
 server.registerTool(
-    "web_search",
-    {
-        description: "Takes in a search query and return links to relevant web pages",
-        inputSchema: z.object({
-            query: z.string()
-        }),
-    },
-    async (args) => {
-        const results = await webSearch(args.query);
-        return {
-            content: [
-                { type: "text", text: `${JSON.stringify(results)}` }
-            ]
-        }
-    }
+  'web_search',
+  {
+    description: 'Takes in a search query and return links to relevant web pages',
+    inputSchema: z.object({
+      query: z.string(),
+    }),
+  },
+  async (args) => {
+    const results = await webSearch(args.query);
+    return {
+      content: [{ type: 'text', text: `${JSON.stringify(results)}` }],
+    };
+  },
 );
 
 server.registerTool(
-    "get_web_page",
-    {
-        description: "Takes in a search query and return links to relevant web pages",
-        inputSchema: z.object({
-            url: z.array(z.string())
-        }),
-    },
-    async (args) => {
-        const results = await getWebPage(args.url);
-        return {
-            content: [
-                { type: "text", text: `${JSON.stringify(results)}` }
-            ]
-        }
-    }
+  'get_web_page',
+  {
+    description: 'Takes in a search query and return links to relevant web pages',
+    inputSchema: z.object({
+      url: z.array(z.string()),
+    }),
+  },
+  async (args) => {
+    const results = await getWebPage(args.url);
+    return {
+      content: [{ type: 'text', text: `${JSON.stringify(results)}` }],
+    };
+  },
 );
 
 // Memory
 server.registerTool(
-    "add_content_to_memory", {
-    description: "Add new information to memory",
+  'add_content_to_memory',
+  {
+    description: 'Add new information to memory',
     inputSchema: z.object({ content: z.string() }),
-},
-    async (args) => {
-        const result = await addToMemory(args.content);
-        return {
-            content: [
-                { type: "text", text: `${JSON.stringify(result)}` }
-            ]
-        }
-    }
+  },
+  async (args) => {
+    const result = await addToMemory(args.content);
+    return {
+      content: [{ type: 'text', text: `${JSON.stringify(result)}` }],
+    };
+  },
 );
 
 server.registerTool(
-    "write_notes",
-    {
-        description:"create a new notes file",
-        inputSchema:z.object({
-            fileName:z.string(),
-            content:z.string().default(''),
-        })
-    },
-    async (args) => {
-        const result = await writeNotes(args.fileName , args.content);
-        return {
-            content: [
-                { type: "text", text: `${JSON.stringify(result)}` }
-            ]
-        }
-    }
+  'write_notes',
+  {
+    description: 'create a new notes file',
+    inputSchema: z.object({
+      fileName: z.string(),
+      content: z.string().default(''),
+    }),
+  },
+  async (args) => {
+    const result = await writeNotes(args.fileName, args.content);
+    return {
+      content: [{ type: 'text', text: `${JSON.stringify(result)}` }],
+    };
+  },
 );
 
 server.registerTool(
-    "list_notes",
-    {
-        description:"list all the notes files in the current working project"
-    },
-    async ()=>{
-        const result = await listNotes();
-        return {
-            content: [
-                { type: "text", text: `${JSON.stringify(result)}` }
-            ]
-        }
-    }
+  'list_notes',
+  {
+    description: 'list all the notes files in the current working project',
+  },
+  async () => {
+    const result = await listNotes();
+    return {
+      content: [{ type: 'text', text: `${JSON.stringify(result)}` }],
+    };
+  },
 );
 
 server.registerTool(
-    "read_notes",
-    {
-        description:"read notes file",
-        inputSchema:z.object({
-            fileName:z.string(),
-            offset:z.number(),
-            limit:z.number()
-        })
-    },
-    async (args)=>{
-        const result = await readNotes(args.fileName , args.offset , args.limit);
-        return {
-            content:[
-                {type:"text" , text:result}
-            ]
-        };
-    }  
+  'read_notes',
+  {
+    description: 'read notes file',
+    inputSchema: z.object({
+      fileName: z.string(),
+      offset: z.number(),
+      limit: z.number(),
+    }),
+  },
+  async (args) => {
+    const result = await readNotes(args.fileName, args.offset, args.limit);
+    return {
+      content: [{ type: 'text', text: result }],
+    };
+  },
 );
 
 server.registerTool(
-    "edit_notes",
-    {
-        description:"edit notes file",
-        inputSchema:z.object({
-            fileName:z.string(),
-            old_str:z.string(),
-            new_str:z.string()
-        })
-    },
-    async (args)=>{
-        const result = await editNotes(args.fileName , args.old_str , args.new_str);
-        return {
-            content:[
-                {type:"text" , text:`${result}`}
-            ]
-        };
-    }  
+  'edit_notes',
+  {
+    description: 'edit notes file',
+    inputSchema: z.object({
+      fileName: z.string(),
+      old_str: z.string(),
+      new_str: z.string(),
+    }),
+  },
+  async (args) => {
+    const result = await editNotes(args.fileName, args.old_str, args.new_str);
+    return {
+      content: [{ type: 'text', text: `${result}` }],
+    };
+  },
 );
 
 async function main() {
-    const transport = new StdioServerTransport();
-    await server.connect(transport);
-    console.error('Baby panda MCP server is now live')
+  const transport = new StdioServerTransport();
+  await server.connect(transport);
+  console.error('Baby panda MCP server is now live');
 }
 
 main().catch((error) => {
-    console.error("Fatal error in main():", error);
-    process.exit(1);
+  console.error('Fatal error in main():', error);
+  process.exit(1);
 });

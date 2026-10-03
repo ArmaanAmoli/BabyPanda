@@ -2,9 +2,7 @@
   "version": "7",
   "dialect": "sqlite",
   "id": "6c8d901e-1d62-4f74-93d4-cdc9d1ada57d",
-  "prevIds": [
-    "8ee205da-ce18-4257-bdde-7d6601a41011"
-  ],
+  "prevIds": ["8ee205da-ce18-4257-bdde-7d6601a41011"],
   "ddl": [
     {
       "name": "api_keys",
@@ -193,13 +191,9 @@
       "table": "session"
     },
     {
-      "columns": [
-        "session_id"
-      ],
+      "columns": ["session_id"],
       "tableTo": "session",
-      "columnsTo": [
-        "session_id"
-      ],
+      "columnsTo": ["session_id"],
       "onUpdate": "NO ACTION",
       "onDelete": "NO ACTION",
       "nameExplicit": false,
@@ -208,13 +202,9 @@
       "table": "compaction_results"
     },
     {
-      "columns": [
-        "session_id"
-      ],
+      "columns": ["session_id"],
       "tableTo": "session",
-      "columnsTo": [
-        "session_id"
-      ],
+      "columnsTo": ["session_id"],
       "onUpdate": "NO ACTION",
       "onDelete": "NO ACTION",
       "nameExplicit": false,
@@ -223,38 +213,28 @@
       "table": "message"
     },
     {
-      "columns": [
-        "session_id",
-        "created_at"
-      ],
+      "columns": ["session_id", "created_at"],
       "nameExplicit": false,
       "name": "compaction_results_pk",
       "entityType": "pks",
       "table": "compaction_results"
     },
     {
-      "columns": [
-        "message_index",
-        "session_id"
-      ],
+      "columns": ["message_index", "session_id"],
       "nameExplicit": false,
       "name": "message_pk",
       "entityType": "pks",
       "table": "message"
     },
     {
-      "columns": [
-        "key"
-      ],
+      "columns": ["key"],
       "nameExplicit": false,
       "name": "api_keys_pk",
       "table": "api_keys",
       "entityType": "pks"
     },
     {
-      "columns": [
-        "session_id"
-      ],
+      "columns": ["session_id"],
       "nameExplicit": false,
       "name": "session_pk",
       "table": "session",

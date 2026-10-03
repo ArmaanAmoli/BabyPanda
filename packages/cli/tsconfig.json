@@ -1,19 +1,19 @@
 {
-  "extends": "../../tsconfig.base.json",
-  "compilerOptions": {
-    "module": "esnext",
-    "strict": true,
-    "jsx": "react-jsx",
-    "jsxImportSource": "react",
-    "moduleResolution": "bundler",
-    "rootDir": "./src",
-    "outDir": "./dist",
-    "types": ["node"],
-    // "paths": {
-    //   "@cli/*": ["./src/*"]
-    // },
-    "skipLibCheck": true
-  },
-  "include": ["./src/**/*"],
-  "exclude": ["node_modules , dist"]
+	"extends": "../../tsconfig.base.json",
+	"compilerOptions": {
+		"module": "esnext",
+		"strict": true,
+		"jsx": "react-jsx",
+		"jsxImportSource": "react",
+		"moduleResolution": "bundler",
+		"rootDir": "./src",
+		"outDir": "./dist",
+		"types": ["node"],
+		// "paths": {
+		//   "@cli/*": ["./src/*"]
+		// },
+		"skipLibCheck": true
+	},
+	"include": ["./src/**/*"],
+	"exclude": ["node_modules , dist"]
 }

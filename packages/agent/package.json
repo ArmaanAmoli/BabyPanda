@@ -6,11 +6,12 @@
   },
   "dependencies": {
     "@baby-panda/db": "workspace:*",
+    "@baby-panda/utils": "workspace:*",
     "@modelcontextprotocol/client": "^2.0.0",
     "@modelcontextprotocol/server": "^2.0.0",
     "exa-js": "^2.22.0",
     "glob": "^13.0.6",
-    "@baby-panda/utils":"workspace:*"
+    "node-pty": "^1.1.0"
   },
   "devDependencies": {
     "@baby-panda/types": "workspace:*",
