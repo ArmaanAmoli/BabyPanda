@@ -1,4 +1,4 @@
-import React, {SetStateAction, useRef} from 'react';
+import React, {useRef} from 'react';
 import {useInput} from 'ink';
 import {type ScrollViewRef, ScrollView} from 'ink-scroll-view';
 
@@ -8,7 +8,6 @@ export function ActiveComponentWrapper({
 	children,
 }: {
 	isActive: boolean;
-	// setIsActive:React.Dispatch<SetStateAction<boolean>>;
 	children: React.ReactNode;
 }) {
 	const scrollRef = useRef<ScrollViewRef>(null);

@@ -5,6 +5,7 @@ export interface PromptBoxArgs {
 	value: string;
 	onSubmit: () => void;
 	onChange: (value: string) => void;
+	isActive: boolean;
 }
 
 export interface APIProvider {
@@ -27,13 +28,3 @@ export enum ComponentName {
 	chatBox = 'chatBox',
 	promptBox = 'promptBox',
 }
-
-export type TerminalMouseKey = Key & {
-	mouse?: {
-		x: number;
-		y: number;
-		action: 'down' | 'up' | 'drag';
-		button: 'left' | 'middle' | 'right' | 'none';
-		isPressed: boolean;
-	};
-};

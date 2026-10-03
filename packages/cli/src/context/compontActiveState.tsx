@@ -20,9 +20,9 @@ export function ActiveComponetsContextProvider({
 }) {
 	const [isChatBoxActive, setChatBoxIsActive] = useState(true);
 	const [isPromptBoxActive, setPromptBoxIsActive] = useState(false);
-	const activationStates = useRef<Map<ComponentName, ActivationState>>(
-		new Map<ComponentName, ActivationState>(),
-	);
+	const [activationStates, setActivationStates] = useState<
+		Map<ComponentName, ActivationState>
+	>(new Map<ComponentName, ActivationState>());
 
 	const setChatBox = (state: boolean) => {
 		setChatBoxIsActive(state);
@@ -34,17 +34,24 @@ export function ActiveComponetsContextProvider({
 	};
 
 	useEffect(() => {
-		activationStates.current.set(ComponentName.chatBox, {
-			isActive: isChatBoxActive,
-			setIsActive: setChatBox,
-		});
-		activationStates.current.set(ComponentName.promptBox, {
-			isActive: isPromptBoxActive,
-			setIsActive: setPromptBox,
+		setActivationStates(prev => {
+			const next = new Map(prev);
+
+			next.set(ComponentName.chatBox, {
+				isActive: isChatBoxActive,
+				setIsActive: setChatBox,
+			});
+
+			next.set(ComponentName.promptBox, {
+				isActive: isPromptBoxActive,
+				setIsActive: setPromptBox,
+			});
+
+			return next;
 		});
 	}, [isChatBoxActive, isPromptBoxActive]);
 	return (
-		<ActiveComponentsContext.Provider value={activationStates.current}>
+		<ActiveComponentsContext.Provider value={activationStates}>
 			{children}
 		</ActiveComponentsContext.Provider>
 	);

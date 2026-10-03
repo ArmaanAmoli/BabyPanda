@@ -16,6 +16,8 @@ import {writeLogs, getProjectName} from '@baby-panda/utils';
 import useSession from './hooks/useSession';
 import {PermissionBox} from './components/permissionBox';
 import usePendingPermissionMessages from './hooks/usePendingPermissionMessages';
+import {useActiveComponentState} from './hooks/useActiveComponentState';
+import {ComponentName} from './types';
 
 export default function App() {
 	const sessionState = useSession();
@@ -122,7 +124,19 @@ export default function App() {
 		rows: stdout?.rows || 24,
 	});
 
-	useInput((input, key) => {});
+	const activeComponentState = useActiveComponentState();
+	const isActive = activeComponentState.get(ComponentName.chatBox)?.isActive;
+	const setIsActive = activeComponentState.get(
+		ComponentName.chatBox,
+	)?.setIsActive;
+
+	useInput((input, key) => {
+		if (key.tab) {
+			if (setIsActive !== undefined) {
+				setIsActive(!isActive);
+			}
+		}
+	});
 
 	useEffect(() => {
 		//an Eventlistner to automatically resize the cli in case of user resize their terminal window
@@ -166,12 +180,12 @@ export default function App() {
 					)}
 					<ChatBox
 						messageHistory={messageHistory}
-						isActive={true}
-						height={
-							pendingPermissionMessages.length == 0
-								? dimensions.rows
-								: dimensions.rows - 12
-						}
+						isActive={isActive}
+						// height={
+						// 	pendingPermissionMessages.length == 0
+						// 		? dimensions.rows
+						// 		: dimensions.rows - 12
+						// }
 					/>
 				</Box>
 				{pendingPermissionMessages.length > 0 && (
@@ -187,7 +201,7 @@ export default function App() {
 					backgroundColor={'#242424'}
 				>
 					<PromptBox
-						isActive={false}
+						isActive={!isActive}
 						placeholder={'Write a message... '}
 						value={prompt}
 						onChange={onChange}
