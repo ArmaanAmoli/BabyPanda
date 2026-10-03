@@ -369,7 +369,7 @@ export class BabyPandaAgent extends EventEmitter {
                     arguments: tool.arguments,
                   };
                 });
-                let toolResults: ToolResult[] = [];
+                const toolResults: ToolResult[] = [];
 
                 const executeToolCall = async () => {
                   const tools: Tool[] = [];
@@ -378,7 +378,7 @@ export class BabyPandaAgent extends EventEmitter {
                       //execute nonShellToolCalls
                       if (tools.length !== 0) {
                         const nonShellToolResults = await this.mcpClient.callTools(tools);
-                        toolResults = [...toolResults, ...nonShellToolResults];
+                        toolResults.push(...nonShellToolResults);
                         tools.length = 0;
                       } else {
                         const parsed = ShellCallSchema.safeParse(call.arguments);

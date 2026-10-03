@@ -52,7 +52,7 @@ export class MCPClient {
       try {
         // console.log("[MCP CLIENT]:", tool);
         const result = await this.mcp.callTool(tool);
-        writeLogs(LogType.mcp, getProjectName());
+        writeLogs(LogType.mcp, getProjectName(), this.sessionId, `[TOOL RESULT]: ${result}`);
         finalResult.push({
           id: tool.id,
           name: tool.name,
