@@ -1,9 +1,11 @@
 import type {Message} from '@baby-panda/types';
+import type {Key} from 'ink';
 export interface PromptBoxArgs {
 	placeholder: string;
 	value: string;
 	onSubmit: () => void;
 	onChange: (value: string) => void;
+	isActive: boolean;
 }
 
 export interface APIProvider {
@@ -21,3 +23,8 @@ export interface ReactChildPropInterface {
 	children: React.ReactNode;
 }
 export type MessageStatusElement = Message & {sended: boolean};
+
+export enum ComponentName {
+	chatBox = 'chatBox',
+	promptBox = 'promptBox',
+}

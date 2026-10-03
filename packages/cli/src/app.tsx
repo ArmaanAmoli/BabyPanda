@@ -1,9 +1,9 @@
 import React from 'react';
 import {Box, useStdout, useInput} from 'ink';
 import BigText from 'ink-big-text';
-import {useState, useEffect, useRef} from 'react';
+import {useState, useEffect} from 'react';
 import PromptBox from './components/promptBox';
-import {MessageBox} from './components/messageBox';
+import {ChatBox} from './components/ChatBox';
 import {
 	LogType,
 	Role,
@@ -12,17 +12,17 @@ import {
 	ContentType,
 } from '@baby-panda/types';
 import {getMessages, sendMessage} from './services/requests';
-import {type ScrollViewRef, ScrollView} from 'ink-scroll-view';
 import {writeLogs, getProjectName} from '@baby-panda/utils';
 import useSession from './hooks/useSession';
 import {PermissionBox} from './components/permissionBox';
 import usePendingPermissionMessages from './hooks/usePendingPermissionMessages';
+import {useActiveComponentState} from './hooks/useActiveComponentState';
+import {ComponentName} from './types';
 
 export default function App() {
 	const sessionState = useSession();
 	const {pendingPermissionMessages} = usePendingPermissionMessages();
 	const sessionId = sessionState.sessionId;
-	let i = 0;
 	const [messageHistory, setMessageHistory] = useState<CleanedMessage[]>([]);
 	const [prompt, setPrompt] = useState('');
 	const onChange = (value: string) => setPrompt(value);
@@ -118,28 +118,23 @@ export default function App() {
 		}
 	};
 
-	const scrollRef = useRef<ScrollViewRef>(null);
 	const {stdout} = useStdout();
 	const [dimensions, setDimensions] = useState({
 		columns: stdout?.columns || 80,
 		rows: stdout?.rows || 24,
 	});
 
+	const activeComponentState = useActiveComponentState();
+	const isActive = activeComponentState.get(ComponentName.chatBox)?.isActive;
+	const setIsActive = activeComponentState.get(
+		ComponentName.chatBox,
+	)?.setIsActive;
+
 	useInput((input, key) => {
-		if (key.upArrow) {
-			scrollRef.current?.scrollBy(-3); // Scroll up 1 line
-		}
-		if (key.downArrow) {
-			scrollRef.current?.scrollBy(3); // Scroll down 1 line
-		}
-		if (key.pageUp) {
-			// Scroll up by viewport height
-			const height = scrollRef.current?.getViewportHeight() || 1;
-			scrollRef.current?.scrollBy(-height);
-		}
-		if (key.pageDown) {
-			const height = scrollRef.current?.getViewportHeight() || 1;
-			scrollRef.current?.scrollBy(height);
+		if (key.tab) {
+			if (setIsActive !== undefined) {
+				setIsActive(!isActive);
+			}
 		}
 	});
 
@@ -183,32 +178,30 @@ export default function App() {
 							colors={['white']}
 						/>
 					)}
-					<ScrollView
-						ref={scrollRef}
-						flexGrow={1}
-						flexDirection="column"
-						gap={2}
-					>
-						{messageHistory.length > 0 &&
-							messageHistory.map(message => {
-								return (
-									<MessageBox
-										key={i++}
-										content={message.content as string}
-										role={message.role}
-										createdAt={message.createdAt}
-									/>
-								);
-							})}
-					</ScrollView>
+					<ChatBox
+						messageHistory={messageHistory}
+						isActive={isActive}
+						// height={
+						// 	pendingPermissionMessages.length == 0
+						// 		? dimensions.rows
+						// 		: dimensions.rows - 12
+						// }
+					/>
 				</Box>
 				{pendingPermissionMessages.length > 0 && (
 					<Box height={12} width="50%">
 						<PermissionBox />
 					</Box>
 				)}
-				<Box height={6} margin={0} width="100%">
+				<Box
+					height={6}
+					minHeight={6}
+					margin={0}
+					width="100%"
+					backgroundColor={'#242424'}
+				>
 					<PromptBox
+						isActive={!isActive}
 						placeholder={'Write a message... '}
 						value={prompt}
 						onChange={onChange}
