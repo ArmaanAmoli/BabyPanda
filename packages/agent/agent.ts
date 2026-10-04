@@ -405,10 +405,15 @@ export class BabyPandaAgent extends EventEmitter {
                             );
                             const fullResult: ToolResult = {
                               ...call,
-                              result: granted
-                                ? JSON.stringify(rawResult)
-                                : 'USER DENIED TO EXECUTE',
+                              result: granted,
                               error: rawResult.error,
+                            };
+                            toolResults.push(fullResult);
+                          } else {
+                            const fullResult: ToolResult = {
+                              ...call,
+                              result:
+                                'Command execution denied by user. Ask the user for clarification or alternative instructions.',
                             };
                             toolResults.push(fullResult);
                           }
