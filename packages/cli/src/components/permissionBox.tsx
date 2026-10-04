@@ -55,7 +55,6 @@ export function PermissionBox() {
 			);
 			socket?.send(JSON.stringify(message));
 			setPendingPermissionMessages(prev => prev.slice(0, -1));
-			// setAllowed(false);
 		}
 	};
 	return (

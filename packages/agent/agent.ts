@@ -397,12 +397,13 @@ export class BabyPandaAgent extends EventEmitter {
                             permission: false,
                             content: parsed.data.command,
                           };
-                          this.emit(ContentType.permission, permissionObject);
+                          let granted: boolean = false;
+                          if (this.alwaysAllowBash === true) granted = true;
+                          else {
+                            this.emit(ContentType.permission, permissionObject);
+                            granted = await this.waitForPermission(permissionObject.toolCallId);
+                          }
 
-                          const granted =
-                            this.alwaysAllowBash === true
-                              ? true
-                              : await this.waitForPermission(permissionObject.toolCallId);
                           if (granted) {
                             const rawResult = await shell(
                               parsed.data.command,
@@ -538,5 +539,9 @@ export class BabyPandaAgent extends EventEmitter {
 
   setAllowAlwaysTrue() {
     this.alwaysAllowBash = true;
+    for (const [toolCallId, resolve] of this.permissionWaiters) {
+      resolve(true);
+    }
+    this.permissionWaiters.clear();
   }
 }
