@@ -44,6 +44,11 @@ const websocketHandler = (c: Context, next: Next) => {
             ws?.send(JSON.stringify({ toolCallContent, toolCallId }));
             break;
           }
+
+          case WsEventTypes.always_allow: {
+            const agent = agentStore.get(sessionId);
+            agent?.setAllowAlwaysTrue();
+          }
         }
       },
       onClose(event, ws) {

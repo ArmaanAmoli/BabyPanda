@@ -48,6 +48,7 @@ export class BabyPandaAgent extends EventEmitter {
   public contextWindowUsed: number = 0;
   private systemInstructions;
   private permissionWaiters = new Map<string, (granted: boolean) => void>(); // tool call id - permissionGranted
+  private alwaysAllowBash = false; // when close session we reset this variable thats why not stored in db
 
   instructions: string;
   model: ModelsEnum;
@@ -397,7 +398,11 @@ export class BabyPandaAgent extends EventEmitter {
                             content: parsed.data.command,
                           };
                           this.emit(ContentType.permission, permissionObject);
-                          const granted = await this.waitForPermission(permissionObject.toolCallId);
+
+                          const granted =
+                            this.alwaysAllowBash === true
+                              ? true
+                              : await this.waitForPermission(permissionObject.toolCallId);
                           if (granted) {
                             const rawResult = await shell(
                               parsed.data.command,
@@ -529,5 +534,9 @@ export class BabyPandaAgent extends EventEmitter {
   async setModel(model: ModelsEnum, provider: ProvidersEnum) {
     this.model = model;
     this.contextWindow = Models[provider].models[model].contextLength;
+  }
+
+  setAllowAlwaysTrue() {
+    this.alwaysAllowBash = true;
   }
 }
