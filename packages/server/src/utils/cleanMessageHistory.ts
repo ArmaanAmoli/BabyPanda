@@ -31,7 +31,12 @@ export function cleanMessageHistroy(messageHistory: MessageHistory) {
         });
         content = `${parsed.data.name}: ${argsString} \n`;
       } catch (err) {
-        writeLogs(LogType.server, cwd, m.sessionId!, `[ERROR WHILE CLEAN MESSAGE]: ${err}`);
+        writeLogs(
+          LogType.server,
+          cwd,
+          m.sessionId!,
+          `[ERROR WHILE CLEAN MESSAGE]: ${err} ${rawContent}`,
+        );
         return undefined;
       }
     } else {

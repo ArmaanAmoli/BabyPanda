@@ -29,17 +29,24 @@ export function PermissionBox() {
 			label: "Don't Allow",
 			value: false,
 		},
+		{
+			label: 'Always Allow',
+			value: true,
+		},
 	];
 	const send = (item: Item) => {
 		const permissionObject = pendingPermissionMessages.at(
 			pendingPermissionMessages.length - 1,
 		);
 		if (permissionObject) {
-			const message: WsEventMessage = {
-				eventType: 'permission',
-				permissionGranted: item.value,
-				toolCallId: permissionObject.toolCallId,
-			};
+			const message: WsEventMessage =
+				item.label === 'Always Allow'
+					? {eventType: 'always_allow'}
+					: {
+							eventType: 'permission',
+							permissionGranted: item.value ?? false,
+							toolCallId: permissionObject.toolCallId,
+						};
 			writeLogs(
 				LogType.cli,
 				getProjectName(),
@@ -48,7 +55,6 @@ export function PermissionBox() {
 			);
 			socket?.send(JSON.stringify(message));
 			setPendingPermissionMessages(prev => prev.slice(0, -1));
-			// setAllowed(false);
 		}
 	};
 	return (
