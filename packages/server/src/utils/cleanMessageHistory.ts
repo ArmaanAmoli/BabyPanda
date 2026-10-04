@@ -11,7 +11,7 @@ export function cleanMessageHistroy(messageHistory: MessageHistory) {
   const result = messageHistory.map((m) => {
     let role = m.role;
     // let isThought = false;
-    let content = '';
+    let content: string;
     if (!m.content) return;
     const rawContent = m.content.trim();
     const isToolResult = m.isToolResult ?? false;
