@@ -405,7 +405,7 @@ export class BabyPandaAgent extends EventEmitter {
                             );
                             const fullResult: ToolResult = {
                               ...call,
-                              result: granted,
+                              result: JSON.stringify(rawResult),
                               error: rawResult.error,
                             };
                             toolResults.push(fullResult);
