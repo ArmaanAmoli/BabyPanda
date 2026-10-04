@@ -61,10 +61,9 @@ export type MessageContent = z.infer<typeof MessageContentSchema>;
 export const ToolRawResultSchema = z.object({
   id: z.string(),
   name: z.string(),
-  arguments: z.record(z.string(), z.string().or(z.number())),
-  result: z.object({
-    content: z.array(z.object({ type: z.enum(['text']), text: z.string() })),
-  }),
+  arguments: z.record(z.string(), z.unknown()),
+  result: z.unknown().optional(),
+  error: z.string().optional(),
 });
 
 export const CleanedMessageSchema = z.object({
