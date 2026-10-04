@@ -29,6 +29,9 @@ export default function App() {
 	const projectName = getProjectName();
 
 	const onSubmit = async () => {
+		if (prompt.trim().length === 0) {
+			return;
+		}
 		setMessageHistory(prev => [
 			...prev,
 			{role: Role.user, content: prompt, createdAt: Date.now()},
@@ -96,12 +99,16 @@ export default function App() {
 							lastRole = role;
 						} else {
 							setMessageHistory(prev => {
-								const current = [...prev];
-								const last = current.at(prev.length ? prev.length - 1 : 0);
-								if (last) {
-									last.content += parsed.data!.content;
-								}
-								return current;
+								if (prev.length === 0) return prev;
+								return prev.map((msg, index) => {
+									if (index === prev.length - 1) {
+										return {
+											...msg,
+											content: msg.content + (parsed.data.content ?? ''),
+										};
+									}
+									return msg;
+								});
 							});
 						}
 					} catch (err) {
