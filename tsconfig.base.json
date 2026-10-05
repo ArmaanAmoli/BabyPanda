@@ -13,7 +13,6 @@
     "allowJs": true,
     "types": ["bun"],
     "paths": {
-      "*": ["./*"],
       "@/*": ["./*"],
       "@agent/*": ["./packages/agent/*"],
       "@cli/*": ["./packages/cli/src"]

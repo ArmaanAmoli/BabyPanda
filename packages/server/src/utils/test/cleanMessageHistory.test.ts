@@ -170,7 +170,7 @@ describe('Typesafe extraction of tool result and messages', () => {
   });
 });
 
-describe('Handling of schema voilation', () => {
+describe('Handling of schema violation', () => {
   test("expect to ignore invalid JSON's ", () => {
     const result = cleanMessageHistroy(multipleMessages.slice(2));
     expect(result).toEqual([]);
