@@ -1,17 +1,15 @@
-import * as dotenv from 'dotenv';
 import * as path from 'path';
 import { drizzle } from 'drizzle-orm/libsql';
 import os from 'os';
 import { existsSync, mkdirSync, writeFileSync } from 'fs';
+import { ENV } from '@/env.config';
 
 const dbFilePath = path.join(os.homedir(), '.babypanda', 'db', 'db.db');
 const testDbFilePath = path.join(os.homedir(), '.babypanda', 'db', 'db.test.db');
 
 const dbFolderPath = path.join(os.homedir(), '.babypanda', 'db');
-const envPath = path.resolve(__dirname, '../../../../.env');
-dotenv.config({ path: envPath });
 
-const IN_DEV_MODE = process.env['IN_DEV_MODE'] ?? false;
+const IN_DEV_MODE = ENV.IN_DEV_MODE;
 
 if (!existsSync(dbFolderPath)) {
   mkdirSync(dbFolderPath, { recursive: true });
