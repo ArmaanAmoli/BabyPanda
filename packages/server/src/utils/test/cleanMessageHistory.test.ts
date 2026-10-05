@@ -106,4 +106,8 @@ describe('Typesafe extraction of tool result and messages', () => {
       },
     ]);
   });
+  test('expect an empty array when passed empty array', () => {
+    const result = cleanMessageHistroy([]);
+    expect(result).toEqual([]);
+  });
 });
