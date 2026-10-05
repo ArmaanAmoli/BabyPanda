@@ -15,7 +15,7 @@
     "paths": {
       "@/*": ["./*"],
       "@agent/*": ["./packages/agent/*"],
-      "@cli/*": ["./packages/cli/src"]
+      "@cli/*": ["./packages/cli/src/*"]
     },
     "noUnusedParameters": true
   },
