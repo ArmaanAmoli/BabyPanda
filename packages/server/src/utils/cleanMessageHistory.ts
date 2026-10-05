@@ -25,6 +25,9 @@ export function cleanMessageHistroy(messageHistory: MessageHistory) {
         if (!parsed.success) {
           return;
         }
+        if (parsed.data.result == null) {
+          return;
+        }
         let argsString = '';
         Object.entries(parsed.data.arguments).forEach(([key, value]) => {
           argsString += ` | ${key} : ${value}`;

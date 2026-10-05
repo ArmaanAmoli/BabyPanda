@@ -43,7 +43,6 @@ const multipleMessages = [
       },
     }),
   },
-
   {
     messageIndex: 1,
     sessionId: 'session',
@@ -64,16 +63,75 @@ const multipleMessages = [
       error: '',
     }),
   },
-
   {
     messageIndex: 2,
     sessionId: 'session',
     createdAt: 10,
     role: Role.assistant,
     isToolResult: false,
-    content: 'The file contains a hello world message',
+    content: `{
+      role: Role.assistant,
+      content: {
+        thought: 'The user wants to read file in the current working directory.',
+      ,
+    }`,
   },
 ];
+
+const wrongMessageSchemaMessage = {
+  messageIndex: 3,
+  sessionId: 'session',
+  createdAt: 112,
+  role: Role.assistant,
+  isToolResult: false,
+  content: `{
+      role: Role.assistant,
+      content: {
+        wrongFeild: 'The user wants to read file in the current working directory.',
+      }
+    }`,
+};
+
+const wrongToolResultSchemaMessage = {
+  // arguments must be object but we passed string
+  messageIndex: 1,
+  sessionId: 'session',
+  createdAt: 3,
+  role: Role.user,
+  isToolResult: true,
+  content: JSON.stringify({
+    id: 'tool-22',
+    name: 'read',
+    arguments: JSON.stringify({
+      path: '/home/folder/file',
+      offset: 10,
+      limit: 1,
+    }),
+    result: JSON.stringify({
+      content: [{ type: 'text', text: 'hello world' }],
+    }),
+    error: '',
+  }),
+};
+
+const nullToolResultSchemaMessage = {
+  messageIndex: 1,
+  sessionId: 'session',
+  createdAt: 3,
+  role: Role.user,
+  isToolResult: true,
+  content: JSON.stringify({
+    id: 'tool-22',
+    name: 'read',
+    arguments: {
+      path: '/home/folder/file',
+      offset: 10,
+      limit: 1,
+    },
+    result: null,
+    error: '',
+  }),
+};
 
 describe('Typesafe extraction of tool result and messages', () => {
   test('extracts bash tool results whose result is a serialized shell response', () => {
@@ -108,6 +166,25 @@ describe('Typesafe extraction of tool result and messages', () => {
   });
   test('expect an empty array when passed empty array', () => {
     const result = cleanMessageHistroy([]);
+    expect(result).toEqual([]);
+  });
+});
+
+describe('Handling of schema voilation', () => {
+  test("expect to ignore invalid JSON's ", () => {
+    const result = cleanMessageHistroy(multipleMessages.slice(2));
+    expect(result).toEqual([]);
+  });
+  test('expect to ignore message content schema voilation', () => {
+    const result = cleanMessageHistroy([wrongMessageSchemaMessage]);
+    expect(result).toEqual([]);
+  });
+  test('expect to ignore tool result schema voilation', () => {
+    const result = cleanMessageHistroy([wrongToolResultSchemaMessage]);
+    expect(result).toEqual([]);
+  });
+  test('expect to ignore if tool result is null', () => {
+    const result = cleanMessageHistroy([nullToolResultSchemaMessage]);
     expect(result).toEqual([]);
   });
 });
