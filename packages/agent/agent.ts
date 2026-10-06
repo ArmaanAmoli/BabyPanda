@@ -313,7 +313,7 @@ export class BabyPandaAgent extends EventEmitter {
             LogType.agent,
             this.projectDirectoryName,
             this.sessionId,
-            `[Context Window Used]: ${this.contextWindow}`,
+            `[Context Window Used]: ${this.contextWindowUsed}`,
           );
           fullReply = extractFirstJSON(fullReply) ?? '';
           if (!fullReply) {

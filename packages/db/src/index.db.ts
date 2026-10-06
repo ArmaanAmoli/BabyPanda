@@ -8,7 +8,7 @@ const testDbFilePath = path.join(os.homedir(), '.babypanda', 'db', 'db.test.db')
 
 const dbFolderPath = path.join(os.homedir(), '.babypanda', 'db');
 
-const IN_DEV_MODE = process.env['IN_DEV_MODE'] ?? false;
+const IN_DEV_MODE = process.env['IN_DEV_MODE'] === 'true' ? true : false;
 
 if (!existsSync(dbFolderPath)) {
   mkdirSync(dbFolderPath, { recursive: true });
