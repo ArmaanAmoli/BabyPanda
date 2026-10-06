@@ -89,9 +89,11 @@ describe('Database methods test suite', () => {
 
     describe('Tests for getting messages', () => {
       let messages: MessageArrayFromDB;
-      let belongsToSameSession = true;
-      let haveNullSessionId = false;
+      let belongsToSameSession: boolean;
+      let haveNullSessionId: boolean;
       beforeEach(async () => {
+        belongsToSameSession = true;
+        haveNullSessionId = false;
         messages = await getMessages(newSessionId);
         for (const msg of messages) {
           if (msg.sessionId == null) {
@@ -112,14 +114,17 @@ describe('Database methods test suite', () => {
   });
 
   describe('Testing for getting messages created after a timestamp', () => {
-    let timestamp: number;
     let messagesAfterTS2: MessageArrayFromDB;
-    let belongsToSameSession = true;
-    let haveNullSessionId = false;
-    let timeStampConditionVoilated = false;
-    let timestampNull = false;
+    let belongsToSameSession: boolean;
+    let haveNullSessionId: boolean;
+    let timeStampConditionVoilated: boolean;
+    let timestampNull: boolean;
     beforeEach(async () => {
-      timestamp = Date.now();
+      belongsToSameSession = true;
+      haveNullSessionId = false;
+      timeStampConditionVoilated = false;
+      timestampNull = false;
+      const timestamp = Date.now();
       await createMessage(newSessionId2, 'this is a test message 2', Role.user, false);
       await createMessage(newSessionId, 'this is a test message 2', Role.user, false);
       await createMessage(newSessionId, 'this is a test message 3', Role.user, false);
@@ -202,7 +207,7 @@ describe('Database methods test suite', () => {
         expect(haveNullSessionId).toBe(false);
       });
 
-      test.skipIf(haveNullSessionId)('returns summary of the same sessionId', () => {
+      test('returns summary of the same sessionId', () => {
         for (const s of summary) {
           if (s.sessionId) {
             if (s.sessionId !== newSessionId) {
@@ -214,37 +219,31 @@ describe('Database methods test suite', () => {
         expect(returnSummariesOfSameSession).toBe(true);
       });
 
-      test.skipIf(!returnSummariesOfSameSession)(
-        'timestamp is not null in all summary messages',
-        () => {
-          for (const s of summary) {
-            if (s.createdAt == null) {
-              isTimestampNull = true;
+      test('timestamp is not null in all summary messages', () => {
+        for (const s of summary) {
+          if (s.createdAt == null) {
+            isTimestampNull = true;
+            break;
+          }
+        }
+        expect(isTimestampNull).toBe(false);
+      });
+      test('returns summary sorted in ascending order with respect to timestamp they were created', () => {
+        let isSorted = true;
+        let lastTimestamp = 0;
+        for (const s of summary) {
+          if (lastTimestamp === 0) {
+            lastTimestamp = s.createdAt!;
+          } else {
+            if (lastTimestamp >= s.createdAt!) {
+              isSorted = false;
               break;
             }
+            lastTimestamp = s.createdAt!;
           }
-          expect(isTimestampNull).toBe(false);
-        },
-      );
-      test.skipIf(isTimestampNull)(
-        'returns summary sorted in ascending order with respect to timestamp they were created',
-        () => {
-          let isSorted = true;
-          let lastTimestamp = 0;
-          for (const s of summary) {
-            if (lastTimestamp === 0) {
-              lastTimestamp = s.createdAt!;
-            } else {
-              if (lastTimestamp >= s.createdAt!) {
-                isSorted = false;
-                break;
-              }
-              lastTimestamp = s.createdAt!;
-            }
-          }
-          expect(isSorted).toBe(true);
-        },
-      );
+        }
+        expect(isSorted).toBe(true);
+      });
     });
   });
 
@@ -263,14 +262,14 @@ describe('Database methods test suite', () => {
 
     if (!sessionDeleted) {
       //manual cleanup
-      db.delete(Session).where(eq(Session.id, newSessionId));
-      db.delete(Session).where(eq(Session.id, newSessionId2));
+      await db.delete(Session).where(eq(Session.id, newSessionId));
+      await db.delete(Session).where(eq(Session.id, newSessionId2));
 
-      db.delete(Message).where(eq(Message.sessionId, newSessionId));
-      db.delete(Message).where(eq(Message.sessionId, newSessionId2));
+      await db.delete(Message).where(eq(Message.sessionId, newSessionId));
+      await db.delete(Message).where(eq(Message.sessionId, newSessionId2));
 
-      db.delete(CompactionResults).where(eq(CompactionResults.sessionId, newSessionId));
-      db.delete(CompactionResults).where(eq(CompactionResults.sessionId, newSessionId2));
+      await db.delete(CompactionResults).where(eq(CompactionResults.sessionId, newSessionId));
+      await db.delete(CompactionResults).where(eq(CompactionResults.sessionId, newSessionId2));
     }
   });
 });

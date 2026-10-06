@@ -1,7 +1,7 @@
 import { db } from './index.db';
 import { Session, Message, ApiKeys, CompactionResults } from './db/schema';
 import type { Role } from '@baby-panda/types';
-import { asc, desc, eq, gt } from 'drizzle-orm';
+import { asc, desc, eq, gte, and } from 'drizzle-orm';
 interface APIProvider {
   provider: string;
   endpoint: string;
@@ -120,7 +120,10 @@ export async function getMostRecentCompactionSummary(sessionId: string) {
   return summary;
 }
 export async function getMessagesAfterTimestamp(sessionId: string, timestamp: number) {
-  const messages = await db.select().from(Message).where(gt(Message.createdAt, timestamp));
+  const messages = await db
+    .select()
+    .from(Message)
+    .where(and(gte(Message.createdAt, timestamp), eq(Message.sessionId, sessionId)));
   return messages;
 }
 
