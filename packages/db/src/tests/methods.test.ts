@@ -19,7 +19,7 @@ import { Message, Session, CompactionResults } from '../db/schema';
 import { Role } from '@baby-panda/types';
 const rootDir = path.dirname(path.dirname(path.join(__dirname)));
 
-const IN_DEV_MODE = process.env['IN_DEV_MODE'] ?? false;
+const IN_DEV_MODE = process.env['IN_DEV_MODE'] == 'true' ? true : false;
 if (!IN_DEV_MODE) {
   test.skip('Test only available in dev mode', () => {});
 }
@@ -95,8 +95,9 @@ describe('Test for db session creation', () => {
       });
     });
 
-    describe('Testing for getting messages after a timestamp', async () => {
+    describe('Testing for getting messages created after a timestamp', async () => {
       const timestamp2 = Date.now();
+      await createMessage(newSessionId2, 'this is a test message 2', Role.user, false);
       await createMessage(newSessionId, 'this is a test message 2', Role.user, false);
       await createMessage(newSessionId, 'this is a test message 3', Role.user, false);
 
@@ -129,7 +130,7 @@ describe('Test for db session creation', () => {
       });
       test('all messages are strictly created after the given timestamp', () => {
         expect(timeStampConditionVoilated).toBe(false);
-        expect(messagesAfterTS2.length === 2);
+        expect(messagesAfterTS2.length).toBe(2);
       });
     });
 
@@ -204,13 +205,14 @@ describe('Test for db session creation', () => {
           test.skipIf(isTimestampNull)(
             'returns summary sorted in decending order with respect to timestamp they were created',
             () => {
-              const isSorted = true;
+              let isSorted = true;
               let lastTimestamp = 0;
               for (const s of summary) {
                 if (lastTimestamp === 0) {
                   lastTimestamp = s.createdAt!;
                 } else {
                   if (lastTimestamp <= s.createdAt!) {
+                    isSorted = false;
                     break;
                   }
                 }
