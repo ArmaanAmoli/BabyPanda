@@ -107,7 +107,7 @@ describe('Database methods test suite', () => {
       test('all messages must have non null sessionId', () => {
         expect(haveNullSessionId).toBe(false);
       });
-      test('getMessages returns all the messages with same sessionId', () => {
+      test('getMessagesAfterTimestamp returns only messages from the requested session', () => {
         expect(belongsToSameSession).toBe(true);
       });
     });
