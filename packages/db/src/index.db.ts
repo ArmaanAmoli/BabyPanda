@@ -1,17 +1,25 @@
-import * as dotenv from 'dotenv';
 import * as path from 'path';
 import { drizzle } from 'drizzle-orm/libsql';
-import { fileURLToPath } from 'url';
+import os from 'os';
+import { existsSync, mkdirSync, writeFileSync } from 'fs';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-const __rootdirname = path.dirname(__dirname);
-dotenv.config({ path: path.resolve(__dirname, '../.env') });
-if (!process.env['DB_FILE_NAME']) {
-  console.log('Database file path not given');
-  process.exit(1);
+const dbFilePath = path.join(os.homedir(), '.babypanda', 'db', 'db.db');
+const testDbFilePath = path.join(os.homedir(), '.babypanda', 'db', 'db.test.db');
+
+const dbFolderPath = path.join(os.homedir(), '.babypanda', 'db');
+
+const IN_DEV_MODE = process.env['IN_DEV_MODE'] ?? false;
+
+if (!existsSync(dbFolderPath)) {
+  mkdirSync(dbFolderPath, { recursive: true });
 }
-const dbFile = 'file://' + __rootdirname + '/' + process.env['DB_FILE_NAME']?.substring(5);
-console.log(dbFile);
+if (!existsSync(dbFilePath)) {
+  writeFileSync(dbFilePath, '');
+}
+if (IN_DEV_MODE && !existsSync(testDbFilePath)) {
+  writeFileSync(testDbFilePath, '');
+}
+const dbFile = 'file://' + (IN_DEV_MODE ? testDbFilePath : dbFilePath);
+
 const db = drizzle(dbFile);
-export { db };
+export { db, dbFile };

@@ -1,45 +1,190 @@
-import { expect, test } from 'bun:test';
+import { expect, test, describe } from 'bun:test';
 import { cleanMessageHistroy } from '../cleanMessageHistory';
-import { getMessages } from '@baby-panda/db';
 import { Role } from '@baby-panda/types';
 
-test('Typesafe extraction of tool result and messages', async () => {
-  const messageHistory = await getMessages('acc0899b-9876-4de2-8ac4-78b3ad4201be');
-  expect(() => cleanMessageHistroy(messageHistory)).not.toThrowError();
+// sample inputs
+const bashInput = [
+  {
+    messageIndex: 0,
+    sessionId: 'session',
+    createdAt: 1,
+    role: Role.user,
+    isToolResult: true,
+    content: JSON.stringify({
+      id: 'tool-1',
+      name: 'shell',
+      arguments: {
+        command: 'printf \'{"status":"ok"}\'',
+        timeout: 120000,
+      },
+      result: JSON.stringify({
+        stdout: '{"status":"ok"}',
+        stderr: '',
+        error: '',
+        code: 0,
+        signal: null,
+      }),
+      error: '',
+    }),
+  },
+];
+
+const multipleMessages = [
+  {
+    messageIndex: 0,
+    sessionId: 'session',
+    createdAt: 1,
+    role: Role.assistant,
+    isToolResult: false,
+    content: JSON.stringify({
+      role: Role.assistant,
+      content: {
+        thought: 'The user wants to read file in the current working directory.',
+      },
+    }),
+  },
+  {
+    messageIndex: 1,
+    sessionId: 'session',
+    createdAt: 3,
+    role: Role.user,
+    isToolResult: true,
+    content: JSON.stringify({
+      id: 'tool-22',
+      name: 'read',
+      arguments: {
+        path: '/home/folder/file',
+        offset: 10,
+        limit: 1,
+      },
+      result: JSON.stringify({
+        content: [{ type: 'text', text: 'hello world' }],
+      }),
+      error: '',
+    }),
+  },
+  {
+    messageIndex: 2,
+    sessionId: 'session',
+    createdAt: 10,
+    role: Role.assistant,
+    isToolResult: false,
+    content: `{
+      role: Role.assistant,
+      content: {
+        thought: 'The user wants to read file in the current working directory.',
+      ,
+    }`,
+  },
+];
+
+const wrongMessageSchemaMessage = {
+  messageIndex: 3,
+  sessionId: 'session',
+  createdAt: 112,
+  role: Role.assistant,
+  isToolResult: false,
+  content: `{
+      role: Role.assistant,
+      content: {
+        wrongFeild: 'The user wants to read file in the current working directory.',
+      }
+    }`,
+};
+
+const wrongToolResultSchemaMessage = {
+  // arguments must be object but we passed string
+  messageIndex: 1,
+  sessionId: 'session',
+  createdAt: 3,
+  role: Role.user,
+  isToolResult: true,
+  content: JSON.stringify({
+    id: 'tool-22',
+    name: 'read',
+    arguments: JSON.stringify({
+      path: '/home/folder/file',
+      offset: 10,
+      limit: 1,
+    }),
+    result: JSON.stringify({
+      content: [{ type: 'text', text: 'hello world' }],
+    }),
+    error: '',
+  }),
+};
+
+const nullToolResultSchemaMessage = {
+  messageIndex: 1,
+  sessionId: 'session',
+  createdAt: 3,
+  role: Role.user,
+  isToolResult: true,
+  content: JSON.stringify({
+    id: 'tool-22',
+    name: 'read',
+    arguments: {
+      path: '/home/folder/file',
+      offset: 10,
+      limit: 1,
+    },
+    result: null,
+    error: '',
+  }),
+};
+
+describe('Typesafe extraction of tool result and messages', () => {
+  test('extracts bash tool results whose result is a serialized shell response', () => {
+    const result = cleanMessageHistroy(bashInput);
+    expect(result).toEqual([
+      {
+        role: Role.tool,
+        content: 'shell:  | command : printf \'{"status":"ok"}\' | timeout : 120000 \n',
+        createdAt: 1,
+      },
+    ]);
+  });
+  test('extract read tool result whose result is a ToolResult type JSON', () => {
+    const result = cleanMessageHistroy(multipleMessages.slice(1, 2));
+    expect(result).toEqual([
+      {
+        role: Role.tool,
+        content: 'read:  | path : /home/folder/file | offset : 10 | limit : 1 \n',
+        createdAt: 3,
+      },
+    ]);
+  });
+  test('extract thought or answer whose results are simple string', () => {
+    const result = cleanMessageHistroy(multipleMessages.slice(0, 1));
+    expect(result).toEqual([
+      {
+        role: Role.thought,
+        content: 'The user wants to read file in the current working directory.',
+        createdAt: 1,
+      },
+    ]);
+  });
+  test('expect an empty array when passed empty array', () => {
+    const result = cleanMessageHistroy([]);
+    expect(result).toEqual([]);
+  });
 });
 
-test('extracts bash tool results whose result is a serialized shell response', () => {
-  const result = cleanMessageHistroy([
-    {
-      messageIndex: 0,
-      sessionId: 'session',
-      createdAt: 1,
-      role: Role.user,
-      isToolResult: true,
-      content: JSON.stringify({
-        id: 'tool-1',
-        name: 'shell',
-        arguments: {
-          command: 'printf \'{"status":"ok"}\'',
-          timeout: 120000,
-        },
-        result: JSON.stringify({
-          stdout: '{"status":"ok"}',
-          stderr: '',
-          error: '',
-          code: 0,
-          signal: null,
-        }),
-        error: '',
-      }),
-    },
-  ]);
-
-  expect(result).toEqual([
-    {
-      role: Role.tool,
-      content: 'shell:  | command : printf \'{"status":"ok"}\' | timeout : 120000 \n',
-      createdAt: 1,
-    },
-  ]);
+describe('Handling of schema violation', () => {
+  test("expect to ignore invalid JSON's ", () => {
+    const result = cleanMessageHistroy(multipleMessages.slice(2));
+    expect(result).toEqual([]);
+  });
+  test('expect to ignore message content schema voilation', () => {
+    const result = cleanMessageHistroy([wrongMessageSchemaMessage]);
+    expect(result).toEqual([]);
+  });
+  test('expect to ignore tool result schema voilation', () => {
+    const result = cleanMessageHistroy([wrongToolResultSchemaMessage]);
+    expect(result).toEqual([]);
+  });
+  test('expect to ignore if tool result is null', () => {
+    const result = cleanMessageHistroy([nullToolResultSchemaMessage]);
+    expect(result).toEqual([]);
+  });
 });

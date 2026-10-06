@@ -14,7 +14,7 @@ export const Message = sqliteTable(
   'message',
   {
     messageIndex: integer('message_index'),
-    sessionId: text('session_id').references(() => Session.id),
+    sessionId: text('session_id').references(() => Session.id, { onDelete: 'cascade' }),
     createdAt: integer('created_at').default(Date.now()),
     content: text('content'),
     role: text('role').$type<Role>(),
@@ -32,7 +32,7 @@ export const ApiKeys = sqliteTable('api_keys', {
 export const CompactionResults = sqliteTable(
   'compaction_results',
   {
-    sessionId: text('session_id').references(() => Session.id),
+    sessionId: text('session_id').references(() => Session.id, { onDelete: 'cascade' }),
     createdAt: integer('created_at'),
     content: text('content'),
   },

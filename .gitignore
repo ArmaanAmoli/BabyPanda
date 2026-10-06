@@ -1,3 +1,4 @@
 /node_modules
 Missions.md
 tsconfig.base.tsbuildinfo
+.env

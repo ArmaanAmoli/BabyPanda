@@ -1,7 +1,7 @@
 import { db } from './index.db';
 import { Session, Message, ApiKeys, CompactionResults } from './db/schema';
 import type { Role } from '@baby-panda/types';
-import { asc, desc, eq, gt } from 'drizzle-orm';
+import { asc, desc, eq, gte, and } from 'drizzle-orm';
 interface APIProvider {
   provider: string;
   endpoint: string;
@@ -25,6 +25,7 @@ export async function createMessage(
   role: Role,
   isToolResult?: boolean,
 ) {
+  const creationTime = Date.now();
   await db.transaction(async (tx) => {
     const session = await tx
       .select({
@@ -32,7 +33,7 @@ export async function createMessage(
       })
       .from(Session)
       .where(eq(Session.id, sessionId));
-    console.log(`session:`, session);
+    // console.log(`session:`, session);
     if (!session[0] || session[0].messageCount === null) {
       tx.rollback();
       throw new Error(`Unable to find Session`);
@@ -41,7 +42,7 @@ export async function createMessage(
     await tx.insert(Message).values({
       messageIndex: messageIndex,
       sessionId: sessionId,
-      createdAt: Date.now(), // Fixes the database driver positioning crash
+      createdAt: creationTime, // Fixes the database driver positioning crash
       content: content,
       role: role,
       isToolResult: isToolResult ?? false,
@@ -51,9 +52,10 @@ export async function createMessage(
       .set({ messagesCount: messageIndex + 1 })
       .where(eq(Session.id, sessionId));
   });
+  return creationTime;
 }
 export async function addProvider(details: APIProvider) {
-  console.log(details);
+  // console.log(details);
   try {
     await db.insert(ApiKeys).values({
       provider: details.provider,
@@ -62,7 +64,7 @@ export async function addProvider(details: APIProvider) {
     });
     return true;
   } catch (err) {
-    console.log(`Error occred while adding provider, ${err}`);
+    // console.log(`Error occred while adding provider, ${err}`);
     throw new Error(`Error occred while adding provider`, { cause: err });
   }
 }
@@ -97,6 +99,7 @@ export async function addCompactionSummary(sessionId: string, summary: string) {
   await db
     .insert(CompactionResults)
     .values({ content: summary, sessionId: sessionId, createdAt: timestamp });
+  return timestamp;
 }
 export async function getCompactionSummaries(sessionId: string) {
   const summaries = await db
@@ -117,6 +120,13 @@ export async function getMostRecentCompactionSummary(sessionId: string) {
   return summary;
 }
 export async function getMessagesAfterTimestamp(sessionId: string, timestamp: number) {
-  const messages = await db.select().from(Message).where(gt(Message.createdAt, timestamp));
+  const messages = await db
+    .select()
+    .from(Message)
+    .where(and(gte(Message.createdAt, timestamp), eq(Message.sessionId, sessionId)));
   return messages;
+}
+
+export async function deleteSession(sessionId: string) {
+  await db.delete(Session).where(eq(Session.id, sessionId));
 }
