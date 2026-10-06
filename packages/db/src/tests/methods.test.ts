@@ -55,11 +55,18 @@ describe('Test for db session creation', () => {
         .from(Message)
         .where(and(eq(Message.createdAt, creationTime), eq(Message.sessionId, newSessionId)));
 
+      const messageCount = await db
+        .select({ count: Session.messagesCount })
+        .from(Session)
+        .where(eq(Session.id, newSessionId));
       test('message created must have a unique key (sessionId, timestamp)', () => {
         expect(messages.length === 1).toBe(true);
       });
       test('message created must not be undefined', () => {
         expect(messages[0] == undefined).toBe(false);
+      });
+      test('message count must incriment in session table', () => {
+        expect(messageCount[0] && messageCount[0].count === 1).toBe(true);
       });
 
       describe('Tests for getting messages', async () => {
@@ -83,47 +90,52 @@ describe('Test for db session creation', () => {
           expect(belongsToSameSession).toBe(true);
         });
       });
-      describe('Testing for getting messages after a timestamp', async () => {
-        const timeStamp1 = Date.now();
-        await createMessage(newSessionId, 'this is a test message 1', Role.user, false);
-        const timestamp2 = Date.now();
-        await createMessage(newSessionId, 'this is a test message 2', Role.user, false);
-        await createMessage(newSessionId, 'this is a test message 3', Role.user, false);
-
-        let belongsToSameSession = true;
-        let haveNullSessionId = false;
-        let timeStampConditionVoilated = false;
-        let timestampNull = false;
-        const messagesAfterTS2 = await getMessagesAfterTimestamp(newSessionId, timestamp2);
-        for (const msg of messagesAfterTS2) {
-          if (msg.createdAt == null) {
-            timestampNull = true;
-          }
-          if (msg.sessionId == null) {
-            haveNullSessionId = true;
-          } else if (msg.sessionId !== null && msg.sessionId != newSessionId) {
-            belongsToSameSession = false;
-          } else if (msg.createdAt != null && msg.createdAt <= timestamp2) {
-            timeStampConditionVoilated = true;
-          }
-        }
-        //expect
-        test('all messages must have non null sessionId', () => {
-          expect(haveNullSessionId).toBe(false);
-        });
-        test('getMessages returns all the messages with same sessionId', () => {
-          expect(belongsToSameSession).toBe(true);
-        });
-        test('all messages must have non null timestamp', () => {
-          expect(timestampNull).toBe(false);
-        });
-        test('all messages are strictly created after the given timestamp', () => {
-          expect(timeStampConditionVoilated).toBe(false);
-          expect(messagesAfterTS2.length === 2);
-        });
-        //cleanup
-        await db.delete(Message).where(gte(Message.createdAt, timeStamp1));
-      });
     });
+
+    describe('Testing for getting messages after a timestamp', async () => {
+      const timeStamp1 = Date.now();
+      await createMessage(newSessionId, 'this is a test message 1', Role.user, false);
+      const timestamp2 = Date.now();
+      await createMessage(newSessionId, 'this is a test message 2', Role.user, false);
+      await createMessage(newSessionId, 'this is a test message 3', Role.user, false);
+
+      let belongsToSameSession = true;
+      let haveNullSessionId = false;
+      let timeStampConditionVoilated = false;
+      let timestampNull = false;
+      const messagesAfterTS2 = await getMessagesAfterTimestamp(newSessionId, timestamp2);
+      for (const msg of messagesAfterTS2) {
+        if (msg.createdAt == null) {
+          timestampNull = true;
+        }
+        if (msg.sessionId == null) {
+          haveNullSessionId = true;
+        } else if (msg.sessionId !== null && msg.sessionId != newSessionId) {
+          belongsToSameSession = false;
+        } else if (msg.createdAt != null && msg.createdAt <= timestamp2) {
+          timeStampConditionVoilated = true;
+        }
+      }
+      //expect
+      test('all messages must have non null sessionId', () => {
+        expect(haveNullSessionId).toBe(false);
+      });
+      test('getMessages returns all the messages with same sessionId', () => {
+        expect(belongsToSameSession).toBe(true);
+      });
+      test('all messages must have non null timestamp', () => {
+        expect(timestampNull).toBe(false);
+      });
+      test('all messages are strictly created after the given timestamp', () => {
+        expect(timeStampConditionVoilated).toBe(false);
+        expect(messagesAfterTS2.length === 2);
+      });
+      //cleanup
+      await db.delete(Message).where(gte(Message.createdAt, timeStamp1));
+    });
+
+    describe('Tests for getting and inserting compaction summary', () => {});
+
+    test('delete session must delete all the messages in that session', () => {});
   });
 });

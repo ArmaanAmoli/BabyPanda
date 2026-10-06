@@ -122,3 +122,7 @@ export async function getMessagesAfterTimestamp(sessionId: string, timestamp: nu
   const messages = await db.select().from(Message).where(gt(Message.createdAt, timestamp));
   return messages;
 }
+
+export async function deleteSession(sessionId: string) {
+  await db.delete(Session).where(eq(Session.id, sessionId));
+}

@@ -3,7 +3,10 @@
   "module": "index.ts",
   "type": "module",
   "scripts": {
-    "type-check": "tsc --noEmit"
+    "type-check": "tsc --noEmit",
+    "migrate-dev": "IN_DEV_MODE=true bunx drizzle-kit migrate",
+    "migrate-production": "IN_DEV_MODE=fasle bunx drizzle-kit migrate",
+    "generate": "bunx drizzle-kit generate"
   },
   "exports": {
     ".": "./src/index.ts"
