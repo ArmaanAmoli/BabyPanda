@@ -99,6 +99,7 @@ export async function addCompactionSummary(sessionId: string, summary: string) {
   await db
     .insert(CompactionResults)
     .values({ content: summary, sessionId: sessionId, createdAt: timestamp });
+  return timestamp;
 }
 export async function getCompactionSummaries(sessionId: string) {
   const summaries = await db

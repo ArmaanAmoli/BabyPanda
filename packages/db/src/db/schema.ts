@@ -32,7 +32,7 @@ export const ApiKeys = sqliteTable('api_keys', {
 export const CompactionResults = sqliteTable(
   'compaction_results',
   {
-    sessionId: text('session_id').references(() => Session.id),
+    sessionId: text('session_id').references(() => Session.id, { onDelete: 'cascade' }),
     createdAt: integer('created_at'),
     content: text('content'),
   },

@@ -9,11 +9,13 @@ import {
   getCompactionSummaries,
   getMostRecentCompactionSummary,
   getMessagesAfterTimestamp,
+  deleteSession,
+  getSession,
 } from '../methods';
 import { and, eq, gte } from 'drizzle-orm';
 import path from 'path';
 import { db } from '../index.db';
-import { Message, Session } from '../db/schema';
+import { Message, Session, CompactionResults } from '../db/schema';
 import { Role } from '@baby-panda/types';
 const rootDir = path.dirname(path.dirname(path.join(__dirname)));
 
@@ -134,8 +136,36 @@ describe('Test for db session creation', () => {
       await db.delete(Message).where(gte(Message.createdAt, timeStamp1));
     });
 
-    describe('Tests for getting and inserting compaction summary', () => {});
+    describe('Tests for getting and inserting compaction summary', async () => {
+      const creationTime = await addCompactionSummary(newSessionId, 'this is a test summary');
+      const compactionSummary = await db
+        .select()
+        .from(CompactionResults)
+        .where(
+          and(
+            eq(CompactionResults.sessionId, newSessionId),
+            eq(CompactionResults.createdAt, creationTime),
+          ),
+        );
+      test('compaction summary successfully created', () => {
+        expect(compactionSummary.length === 1).toBe(true);
+      });
+      test('created compaction summary is not undefined', () => {
+        expect(compactionSummary[0] == undefined).toBe(false);
+      });
+    });
 
-    test('delete session must delete all the messages in that session', () => {});
+    test('delete session must delete all the messages in that session', async () => {
+      await deleteSession(newSessionId);
+      const sessionDeleted = (await getSession(newSessionId)).length === 0;
+      const messagesDeleted = (await getMessages(newSessionId)).length === 0;
+      expect(sessionDeleted).toBe(true);
+      expect(messagesDeleted).toBe(true);
+      if (!sessionDeleted) {
+        //manual cleanup
+        db.delete(Session).where(eq(Session.id, newSessionId));
+        db.delete(Message).where(eq(Message.sessionId, newSessionId));
+      }
+    });
   });
 });
