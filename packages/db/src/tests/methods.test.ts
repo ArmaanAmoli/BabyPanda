@@ -145,78 +145,81 @@ describe('Test for db session creation', () => {
           ),
         );
       const compactionSummarySuccessfulCreation = compactionSummary.length === 1;
-      const compactionSummaryIsNotUndefined = compactionSummary[0] == undefined;
-      const compactionSummaryWorkingCorrectly =
-        compactionSummarySuccessfulCreation && compactionSummaryIsNotUndefined;
+      const compactionSummaryIsUndefined = compactionSummary[0] == undefined;
+      const addCompactionSummaryWorkingCorrectly =
+        compactionSummarySuccessfulCreation == true && compactionSummaryIsUndefined == false;
       describe('Add compaction summary', async () => {
         test('compaction summary successfully created', () => {
           expect(compactionSummarySuccessfulCreation).toBe(true);
         });
         test('created compaction summary is not undefined', () => {
-          expect(compactionSummaryIsNotUndefined).toBe(false);
+          expect(compactionSummaryIsUndefined).toBe(false);
         });
       });
-      describe.skipIf(!compactionSummaryWorkingCorrectly)('Get compaction summary', async () => {
-        await addCompactionSummary(newSessionId, 'this is a test summary');
-        await addCompactionSummary(newSessionId, 'this is a test summary');
-        await addCompactionSummary(newSessionId, 'this is a test summary');
-        await addCompactionSummary(newSessionId2, 'this is a test summary');
-        const summary = await getCompactionSummaries(newSessionId);
-        let haveNullSessionId = false;
-        let isTimestampNull = false;
-        let returnSummariesOfSameSession = true;
+      describe.skipIf(addCompactionSummaryWorkingCorrectly === false)(
+        'Get compaction summary',
+        async () => {
+          await addCompactionSummary(newSessionId, 'this is a test summary');
+          await addCompactionSummary(newSessionId, 'this is a test summary');
+          await addCompactionSummary(newSessionId, 'this is a test summary');
+          await addCompactionSummary(newSessionId2, 'this is a test summary');
+          const summary = await getCompactionSummaries(newSessionId);
+          let haveNullSessionId = false;
+          let isTimestampNull = false;
+          let returnSummariesOfSameSession = true;
 
-        test('returns summary with not null sessionId', () => {
-          for (const s of summary) {
-            if (s.sessionId == null) {
-              haveNullSessionId = true;
-              break;
-            }
-          }
-        });
-
-        test.skipIf(haveNullSessionId)('returns summary of the same sessionId', () => {
-          for (const s of summary) {
-            if (s.sessionId) {
-              if (s.sessionId !== newSessionId) {
-                returnSummariesOfSameSession = false;
+          test('returns summary with not null sessionId', () => {
+            for (const s of summary) {
+              if (s.sessionId == null) {
+                haveNullSessionId = true;
                 break;
               }
             }
-          }
-          expect(returnSummariesOfSameSession).toBe(true);
-        });
+          });
 
-        test.skipIf(!returnSummariesOfSameSession)(
-          'timestamp is not null in all summary messages',
-          () => {
+          test.skipIf(haveNullSessionId)('returns summary of the same sessionId', () => {
             for (const s of summary) {
-              if (s.createdAt == null) {
-                isTimestampNull = true;
-                break;
-              }
-            }
-            expect(isTimestampNull).toBe(false);
-          },
-        );
-        test.skipIf(isTimestampNull)(
-          'returns summary sorted in decending order with respect to timestamp they were created',
-          () => {
-            const isSorted = true;
-            let lastTimestamp = 0;
-            for (const s of summary) {
-              if (lastTimestamp === 0) {
-                lastTimestamp = s.createdAt!;
-              } else {
-                if (lastTimestamp <= s.createdAt!) {
+              if (s.sessionId) {
+                if (s.sessionId !== newSessionId) {
+                  returnSummariesOfSameSession = false;
                   break;
                 }
               }
             }
-            expect(isSorted).toBe(true);
-          },
-        );
-      });
+            expect(returnSummariesOfSameSession).toBe(true);
+          });
+
+          test.skipIf(!returnSummariesOfSameSession)(
+            'timestamp is not null in all summary messages',
+            () => {
+              for (const s of summary) {
+                if (s.createdAt == null) {
+                  isTimestampNull = true;
+                  break;
+                }
+              }
+              expect(isTimestampNull).toBe(false);
+            },
+          );
+          test.skipIf(isTimestampNull)(
+            'returns summary sorted in decending order with respect to timestamp they were created',
+            () => {
+              const isSorted = true;
+              let lastTimestamp = 0;
+              for (const s of summary) {
+                if (lastTimestamp === 0) {
+                  lastTimestamp = s.createdAt!;
+                } else {
+                  if (lastTimestamp <= s.createdAt!) {
+                    break;
+                  }
+                }
+              }
+              expect(isSorted).toBe(true);
+            },
+          );
+        },
+      );
     });
 
     test('delete session must delete all the messages in that session', async () => {
