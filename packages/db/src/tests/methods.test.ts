@@ -1,6 +1,20 @@
 import { describe, test, expect } from 'bun:test';
 import { spawnSync } from 'child_process';
+import {
+  createSession,
+  createMessage,
+  addProvider,
+  getMessages,
+  addCompactionSummary,
+  getCompactionSummaries,
+  getMostRecentCompactionSummary,
+  getMessagesAfterTimestamp,
+} from '../methods';
+import { and, eq, gte } from 'drizzle-orm';
 import path from 'path';
+import { db } from '../index.db';
+import { Message, Session } from '../db/schema';
+import { Role } from '@baby-panda/types';
 const rootDir = path.dirname(path.dirname(path.join(__dirname)));
 
 const IN_DEV_MODE = process.env['IN_DEV_MODE'] ?? false;
@@ -20,4 +34,96 @@ if (output.stderr.toString().trim().length !== 0) {
   test.skip(`Can't perform test migration drizzle command failed: ${output.stderr.toString()}`, () => {});
 }
 
-describe('tests for database methods', () => {});
+describe('Test for db session creation', () => {
+  test('create new session with uniques sessionId', async () => {
+    //create session;
+    const newSessionId = await createSession();
+    const newSession = await db.select().from(Session).where(eq(Session.id, newSessionId));
+    expect(newSession.length === 1 && newSession[0]?.id && newSession[0]?.id === newSessionId).toBe(
+      true,
+    );
+
+    describe('Tests for message CRUD', async () => {
+      const creationTime = await createMessage(
+        newSessionId,
+        'this is a test message',
+        Role.user,
+        false,
+      );
+      const messages = await db
+        .select()
+        .from(Message)
+        .where(and(eq(Message.createdAt, creationTime), eq(Message.sessionId, newSessionId)));
+
+      test('message created must have a unique key (sessionId, timestamp)', () => {
+        expect(messages.length === 1).toBe(true);
+      });
+      test('message created must not be undefined', () => {
+        expect(messages[0] == undefined).toBe(false);
+      });
+
+      describe('Tests for getting messages', async () => {
+        const messages = await getMessages(newSessionId);
+        let belongsToSameSession = true;
+        let haveNullSessionId = false;
+
+        for (const msg of messages) {
+          if (msg.sessionId == null) {
+            haveNullSessionId = true;
+          }
+          if (msg.sessionId !== null && msg.sessionId !== newSessionId) {
+            belongsToSameSession = false;
+          }
+        }
+
+        test('all messages must have non null sessionId', () => {
+          expect(haveNullSessionId).toBe(false);
+        });
+        test('getMessages returns all the messages with same sessionId', () => {
+          expect(belongsToSameSession).toBe(true);
+        });
+      });
+      describe('Testing for getting messages after a timestamp', async () => {
+        const timeStamp1 = Date.now();
+        await createMessage(newSessionId, 'this is a test message 1', Role.user, false);
+        const timestamp2 = Date.now();
+        await createMessage(newSessionId, 'this is a test message 2', Role.user, false);
+        await createMessage(newSessionId, 'this is a test message 3', Role.user, false);
+
+        let belongsToSameSession = true;
+        let haveNullSessionId = false;
+        let timeStampConditionVoilated = false;
+        let timestampNull = false;
+        const messagesAfterTS2 = await getMessagesAfterTimestamp(newSessionId, timestamp2);
+        for (const msg of messagesAfterTS2) {
+          if (msg.createdAt == null) {
+            timestampNull = true;
+          }
+          if (msg.sessionId == null) {
+            haveNullSessionId = true;
+          } else if (msg.sessionId !== null && msg.sessionId != newSessionId) {
+            belongsToSameSession = false;
+          } else if (msg.createdAt != null && msg.createdAt <= timestamp2) {
+            timeStampConditionVoilated = true;
+          }
+        }
+        //expect
+        test('all messages must have non null sessionId', () => {
+          expect(haveNullSessionId).toBe(false);
+        });
+        test('getMessages returns all the messages with same sessionId', () => {
+          expect(belongsToSameSession).toBe(true);
+        });
+        test('all messages must have non null timestamp', () => {
+          expect(timestampNull).toBe(false);
+        });
+        test('all messages are strictly created after the given timestamp', () => {
+          expect(timeStampConditionVoilated).toBe(false);
+          expect(messagesAfterTS2.length === 2);
+        });
+        //cleanup
+        await db.delete(Message).where(gte(Message.createdAt, timeStamp1));
+      });
+    });
+  });
+});

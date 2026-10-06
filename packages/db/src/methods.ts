@@ -25,6 +25,7 @@ export async function createMessage(
   role: Role,
   isToolResult?: boolean,
 ) {
+  const creationTime = Date.now();
   await db.transaction(async (tx) => {
     const session = await tx
       .select({
@@ -41,7 +42,7 @@ export async function createMessage(
     await tx.insert(Message).values({
       messageIndex: messageIndex,
       sessionId: sessionId,
-      createdAt: Date.now(), // Fixes the database driver positioning crash
+      createdAt: creationTime, // Fixes the database driver positioning crash
       content: content,
       role: role,
       isToolResult: isToolResult ?? false,
@@ -51,6 +52,7 @@ export async function createMessage(
       .set({ messagesCount: messageIndex + 1 })
       .where(eq(Session.id, sessionId));
   });
+  return creationTime;
 }
 export async function addProvider(details: APIProvider) {
   console.log(details);
