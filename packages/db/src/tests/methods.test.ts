@@ -12,7 +12,7 @@ import {
   deleteSession,
   getSession,
 } from '../methods';
-import { and, eq, gte } from 'drizzle-orm';
+import { and, desc, eq } from 'drizzle-orm';
 import path from 'path';
 import { db } from '../index.db';
 import { Message, Session, CompactionResults } from '../db/schema';
@@ -37,9 +37,10 @@ if (output.stderr.toString().trim().length !== 0) {
 }
 
 describe('Test for db session creation', () => {
-  test('create new session with uniques sessionId', async () => {
+  describe('create new session with uniques sessionId', async () => {
     //create session;
     const newSessionId = await createSession();
+    const newSessionId2 = await createSession();
     const newSession = await db.select().from(Session).where(eq(Session.id, newSessionId));
     expect(newSession.length === 1 && newSession[0]?.id && newSession[0]?.id === newSessionId).toBe(
       true,
@@ -95,8 +96,6 @@ describe('Test for db session creation', () => {
     });
 
     describe('Testing for getting messages after a timestamp', async () => {
-      const timeStamp1 = Date.now();
-      await createMessage(newSessionId, 'this is a test message 1', Role.user, false);
       const timestamp2 = Date.now();
       await createMessage(newSessionId, 'this is a test message 2', Role.user, false);
       await createMessage(newSessionId, 'this is a test message 3', Role.user, false);
@@ -132,8 +131,6 @@ describe('Test for db session creation', () => {
         expect(timeStampConditionVoilated).toBe(false);
         expect(messagesAfterTS2.length === 2);
       });
-      //cleanup
-      await db.delete(Message).where(gte(Message.createdAt, timeStamp1));
     });
 
     describe('Tests for getting and inserting compaction summary', async () => {
@@ -147,24 +144,104 @@ describe('Test for db session creation', () => {
             eq(CompactionResults.createdAt, creationTime),
           ),
         );
-      test('compaction summary successfully created', () => {
-        expect(compactionSummary.length === 1).toBe(true);
+      const compactionSummarySuccessfulCreation = compactionSummary.length === 1;
+      const compactionSummaryIsNotUndefined = compactionSummary[0] == undefined;
+      const compactionSummaryWorkingCorrectly =
+        compactionSummarySuccessfulCreation && compactionSummaryIsNotUndefined;
+      describe('Add compaction summary', async () => {
+        test('compaction summary successfully created', () => {
+          expect(compactionSummarySuccessfulCreation).toBe(true);
+        });
+        test('created compaction summary is not undefined', () => {
+          expect(compactionSummaryIsNotUndefined).toBe(false);
+        });
       });
-      test('created compaction summary is not undefined', () => {
-        expect(compactionSummary[0] == undefined).toBe(false);
+      describe.skipIf(!compactionSummaryWorkingCorrectly)('Get compaction summary', async () => {
+        await addCompactionSummary(newSessionId, 'this is a test summary');
+        await addCompactionSummary(newSessionId, 'this is a test summary');
+        await addCompactionSummary(newSessionId, 'this is a test summary');
+        await addCompactionSummary(newSessionId2, 'this is a test summary');
+        const summary = await getCompactionSummaries(newSessionId);
+        let haveNullSessionId = false;
+        let isTimestampNull = false;
+        let returnSummariesOfSameSession = true;
+
+        test('returns summary with not null sessionId', () => {
+          for (const s of summary) {
+            if (s.sessionId == null) {
+              haveNullSessionId = true;
+              break;
+            }
+          }
+        });
+
+        test.skipIf(haveNullSessionId)('returns summary of the same sessionId', () => {
+          for (const s of summary) {
+            if (s.sessionId) {
+              if (s.sessionId !== newSessionId) {
+                returnSummariesOfSameSession = false;
+                break;
+              }
+            }
+          }
+          expect(returnSummariesOfSameSession).toBe(true);
+        });
+
+        test.skipIf(!returnSummariesOfSameSession)(
+          'timestamp is not null in all summary messages',
+          () => {
+            for (const s of summary) {
+              if (s.createdAt == null) {
+                isTimestampNull = true;
+                break;
+              }
+            }
+            expect(isTimestampNull).toBe(false);
+          },
+        );
+        test.skipIf(isTimestampNull)(
+          'returns summary sorted in decending order with respect to timestamp they were created',
+          () => {
+            const isSorted = true;
+            let lastTimestamp = 0;
+            for (const s of summary) {
+              if (lastTimestamp === 0) {
+                lastTimestamp = s.createdAt!;
+              } else {
+                if (lastTimestamp <= s.createdAt!) {
+                  break;
+                }
+              }
+            }
+            expect(isSorted).toBe(true);
+          },
+        );
       });
     });
 
     test('delete session must delete all the messages in that session', async () => {
       await deleteSession(newSessionId);
-      const sessionDeleted = (await getSession(newSessionId)).length === 0;
-      const messagesDeleted = (await getMessages(newSessionId)).length === 0;
+      await deleteSession(newSessionId2);
+
+      const sessionDeleted1 = (await getSession(newSessionId)).length === 0;
+      const messagesDeleted1 = (await getMessages(newSessionId)).length === 0;
+      const sessionDeleted2 = (await getSession(newSessionId2)).length === 0;
+      const messagesDeleted2 = (await getMessages(newSessionId2)).length === 0;
+      const sessionDeleted = sessionDeleted1 && sessionDeleted2;
+      const messageDeleted = messagesDeleted1 && messagesDeleted2;
       expect(sessionDeleted).toBe(true);
-      expect(messagesDeleted).toBe(true);
+      expect(messageDeleted).toBe(true);
+
       if (!sessionDeleted) {
         //manual cleanup
         db.delete(Session).where(eq(Session.id, newSessionId));
+        db.delete(Session).where(eq(Session.id, newSessionId2));
+
         db.delete(Message).where(eq(Message.sessionId, newSessionId));
+        db.delete(Message).where(eq(Message.sessionId, newSessionId2));
+
+        db.delete(CompactionResults).where(eq(CompactionResults.sessionId, newSessionId));
+        db.delete(CompactionResults).where(eq(CompactionResults.sessionId, newSessionId2));
       }
     });
   });

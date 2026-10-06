@@ -33,7 +33,7 @@ export async function createMessage(
       })
       .from(Session)
       .where(eq(Session.id, sessionId));
-    console.log(`session:`, session);
+    // console.log(`session:`, session);
     if (!session[0] || session[0].messageCount === null) {
       tx.rollback();
       throw new Error(`Unable to find Session`);
@@ -55,7 +55,7 @@ export async function createMessage(
   return creationTime;
 }
 export async function addProvider(details: APIProvider) {
-  console.log(details);
+  // console.log(details);
   try {
     await db.insert(ApiKeys).values({
       provider: details.provider,
@@ -64,7 +64,7 @@ export async function addProvider(details: APIProvider) {
     });
     return true;
   } catch (err) {
-    console.log(`Error occred while adding provider, ${err}`);
+    // console.log(`Error occred while adding provider, ${err}`);
     throw new Error(`Error occred while adding provider`, { cause: err });
   }
 }
