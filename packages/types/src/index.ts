@@ -85,13 +85,13 @@ export enum LogType {
   cli = 'cli.log',
 }
 
-export const ServerStreamChunkSchema = z.object({
-  contentType: z.enum(ContentType),
-  content: z.string(),
-  // isStopper:z.boolean().default(false)
-});
+// export const ServerStreamChunkSchema = z.object({
+//   contentType: z.enum(ContentType),
+//   content: z.string(),
+//   // isStopper:z.boolean().default(false)
+// });
 
-export type ServerStreamChunkSchemaType = z.infer<typeof ServerStreamChunkSchema>;
+// export type ServerStreamChunkSchemaType = z.infer<typeof ServerStreamChunkSchema>;
 
 export const UserPermissionSchema = z.object({
   toolCallId: z.string(),
@@ -126,12 +126,19 @@ export const WsEventMessageSchema = z.discriminatedUnion('eventType', [
   BaseSchema.extend({
     eventType: z.literal(WsEventTypeSchema.enum.always_allow),
   }),
-  BaseSchema.extend({
-    eventType: z.literal(WsEventTypeSchema.enum.message),
-    role: z.enum(Role),
-    contentType: z.enum(ContentType),
-    content: z.string(),
-  }),
+  z.discriminatedUnion('role', [
+    BaseSchema.extend({
+      eventType: z.literal(WsEventTypeSchema.enum.message),
+      role: z.enum(Role).exclude([Role.assistant]),
+      content: z.string(),
+    }),
+    BaseSchema.extend({
+      eventType: z.literal(WsEventTypeSchema.enum.message),
+      role: z.literal(Role.assistant),
+      contentType: z.enum(ContentType),
+      content: z.string(),
+    }),
+  ]),
 ]);
 
 export type WsEventMessage = z.infer<typeof WsEventMessageSchema>;

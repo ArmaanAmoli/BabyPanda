@@ -4,7 +4,7 @@ import {writeLogs} from '@baby-panda/utils';
 import {getProjectName} from '@baby-panda/utils';
 import {LogType} from '@baby-panda/types';
 
-export default function useSession() {
+export function useSession() {
 	const sessionContext = useContext(SessionContext);
 	if (!sessionContext) {
 		writeLogs(

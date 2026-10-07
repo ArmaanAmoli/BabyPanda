@@ -1,13 +1,16 @@
 import React, {useEffect, createContext, useRef, useState} from 'react';
 import {ReactChildPropInterface} from '../types';
-import useSession from '../hooks/useSession';
+import {useSession} from '../hooks/useSession';
 import {writeLogs} from '@baby-panda/utils';
 import {LogType} from '@baby-panda/types';
 import {UserPermissionSchema} from '@baby-panda/types';
 import usePendingPermissionMessages from '../hooks/usePendingPermissionMessages';
 import {setTimeout} from 'node:timers';
+import {getProjectName} from '@baby-panda/utils';
 
 export const SocketContext = createContext<WebSocket | null>(null);
+
+const projectName = getProjectName();
 
 export function SocketProvider({children}: ReactChildPropInterface) {
 	const [socket, setSocket] = useState<WebSocket | null>(null);
@@ -44,12 +47,15 @@ export function SocketProvider({children}: ReactChildPropInterface) {
 				const data = event.data;
 				const parsed = UserPermissionSchema.parse(JSON.parse(data));
 				permissions?.setPendingPermissionMessages(prev => [...prev, parsed]);
+
+				// create a context of message array
+				// a message handler which will use the context of session message array
 			};
 
 			socketInstance.onerror = event => {
 				writeLogs(
 					LogType.cli,
-					process.cwd().replaceAll('/', '-').replace('-', ''),
+					projectName,
 					session.sessionId,
 					`[SOCKET]: error ${event.type}`,
 				);

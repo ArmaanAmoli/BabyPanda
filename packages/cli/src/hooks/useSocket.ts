@@ -1,6 +1,6 @@
 import {useContext} from 'react';
 import {SocketContext} from '../context/webSocket';
-import useSession from '../hooks/useSession';
+import {useSession} from '../hooks/useSession';
 import {writeLogs} from '@baby-panda/utils';
 import {LogType} from '@baby-panda/types';
 
@@ -14,6 +14,7 @@ export default function useSocket() {
 			session ? session.sessionId : 'global',
 			`[ERROR]: useSocket Hook not provided with SocketContext`,
 		);
+		throw new Error(`[ERROR]: useSocket Hook not provided with SocketContext`);
 	}
 	writeLogs(
 		LogType.cli,

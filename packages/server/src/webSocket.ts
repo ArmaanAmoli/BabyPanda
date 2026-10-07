@@ -3,10 +3,12 @@ import { agentStore, wsCollection } from './index';
 import type { Context, Next } from 'hono';
 import { writeLogs } from '@baby-panda/utils';
 import { LogType, WsEventMessageSchema, WsEventTypes } from '@baby-panda/types';
+import type { WsEventMessage } from '@baby-panda/types';
+
 import { BabyPandaAgent } from '@baby-panda/agent';
 import { cleanMessageHistroy, type MessageHistory } from './utils/cleanMessageHistory';
 import { ContentType, Role } from '@baby-panda/types';
-import type { UserPermission, ServerStreamChunkSchemaType } from '@baby-panda/types';
+// import type { UserPermission } from '@baby-panda/types';
 
 const cwd = process.cwd().replaceAll('/', '-').replace('-', '');
 const websocketHandler = (c: Context, next: Next) => {
@@ -31,9 +33,8 @@ const websocketHandler = (c: Context, next: Next) => {
         }
         //attach event listners
         const babyPanda = agentStore.get(sessionId)!;
-        const queue: string[] = [];
 
-        const onAskForPermission = (permissionObject: UserPermission) => {
+        const onAskForPermission = (permissionObject: WsEventMessage) => {
           const ws = wsCollection.get(sessionId);
           ws?.send(JSON.stringify(permissionObject));
         };
@@ -48,7 +49,7 @@ const websocketHandler = (c: Context, next: Next) => {
               content = content.concat(content ? '\n' : '', msg.content);
             }
           });
-          const chunk: ServerStreamChunkSchemaType = {
+          const chunk: WsEventMessage = {
             contentType: ContentType.tool_call,
             content,
           };
@@ -59,7 +60,7 @@ const websocketHandler = (c: Context, next: Next) => {
         const handlers: Record<string, (data: string) => void> = {};
         const onData = (eventName: ContentType, data: string) => {
           writeLogs(LogType.server, cwd, sessionId, '[/message]: Received a data chunk');
-          const chunk: ServerStreamChunkSchemaType = {
+          const chunk: WsEventMessage = {
             contentType: eventName,
             content: data,
           };
@@ -68,7 +69,7 @@ const websocketHandler = (c: Context, next: Next) => {
         };
 
         const onEnd = (contentType: ContentType) => {
-          const stopper: ServerStreamChunkSchemaType = {
+          const stopper: WsEventMessage = {
             contentType: contentType,
             content: '',
           };
