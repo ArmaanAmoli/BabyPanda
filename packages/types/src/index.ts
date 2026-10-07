@@ -101,7 +101,12 @@ export const UserPermissionSchema = z.object({
 
 export type UserPermission = z.infer<typeof UserPermissionSchema>;
 
-export const WsEventTypeSchema = z.enum(['permission', 'ask_permission', 'always_allow']);
+export const WsEventTypeSchema = z.enum([
+  'permission',
+  'ask_permission',
+  'always_allow',
+  'message',
+]);
 
 export const WsEventTypes = WsEventTypeSchema.enum;
 
@@ -120,6 +125,12 @@ export const WsEventMessageSchema = z.discriminatedUnion('eventType', [
   }),
   BaseSchema.extend({
     eventType: z.literal(WsEventTypeSchema.enum.always_allow),
+  }),
+  BaseSchema.extend({
+    eventType: z.literal(WsEventTypeSchema.enum.message),
+    role: z.enum(Role),
+    contentType: z.enum(ContentType),
+    content: z.string(),
   }),
 ]);
 
