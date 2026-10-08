@@ -64,7 +64,7 @@ const websocketHandler = (c: Context, next: Next) => {
             }
           });
           const chunk: ServerStreamChunkSchemaType = {
-            contentType: ContentType.tool_call,
+            role: Role.tool,
             content,
           };
           writeLogs(LogType.server, cwd, sessionId, `[/message]: Final tool content ${content}`);
@@ -76,7 +76,7 @@ const websocketHandler = (c: Context, next: Next) => {
         const onData = (eventName: ContentType, data: string) => {
           writeLogs(LogType.server, cwd, sessionId, '[/message]: Received a data chunk');
           const chunk: ServerStreamChunkSchemaType = {
-            contentType: eventName,
+            role: eventName === ContentType.answer ? Role.assistant : Role.thought,
             content: data,
           };
           const msg: WsCommonMessage = { eventType: WsEventTypes.message, payload: chunk };

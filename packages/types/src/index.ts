@@ -86,7 +86,7 @@ export enum LogType {
 }
 
 export const ServerStreamChunkSchema = z.object({
-  contentType: z.enum(ContentType),
+  role: z.enum(Role),
   content: z.string(),
 });
 

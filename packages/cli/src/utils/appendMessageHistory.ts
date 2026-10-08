@@ -1,10 +1,9 @@
 import {useMessageHistory} from '../hooks/useMessageHistroy';
-import type {WsEventMessage} from '@baby-panda/types';
-import {WsEventTypes} from '@baby-panda/types';
+import type {ServerStreamChunkSchemaType} from '@baby-panda/types';
 
-type WsUserMessage = WsEventMessage & {eventType: typeof WsEventTypes.message};
+// type WsUserMessage = WsEventMessage & {eventType: typeof WsEventTypes.message};
 
-export function appendMessageHistory(chunk: WsUserMessage) {
+export function appendMessageHistory(chunk: ServerStreamChunkSchemaType) {
 	const {messageHistory, setMessageHistory} = useMessageHistory();
 	const lastRole = messageHistory.at(messageHistory.length - 1)?.role ?? null;
 	if (lastRole == null || lastRole != chunk.role) {
