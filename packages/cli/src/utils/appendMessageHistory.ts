@@ -1,15 +1,15 @@
-import type {ServerStreamChunkSchemaType} from '@baby-panda/types';
+import {LogType, type ServerStreamChunkSchemaType} from '@baby-panda/types';
 import type {MessagesContext} from '../types';
-
-// type WsUserMessage = WsEventMessage & {eventType: typeof WsEventTypes.message};
+import {writeLogs, getProjectName} from '@baby-panda/utils';
 
 export function appendMessageHistory(
 	chunk: ServerStreamChunkSchemaType,
 	messageContext: MessagesContext,
 ) {
-	const {messageHistory, setMessageHistory} = messageContext;
-	const lastRole = messageHistory.at(messageHistory.length - 1)?.role ?? null;
-	if (lastRole == null || lastRole != chunk.role) {
+	const {setMessageHistory, lastRole} = messageContext;
+	writeLogs(LogType.cli, getProjectName(), 'test', lastRole.current as string);
+	if (lastRole.current == null || lastRole.current != chunk.role) {
+		lastRole.current = chunk.role;
 		setMessageHistory(prev => [
 			...prev,
 			{

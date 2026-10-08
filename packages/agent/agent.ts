@@ -34,7 +34,7 @@ const cwd = process.cwd();
 const instructionsFilePath = path.join(__dirname, 'memory', 'BabyPanda', 'BabyPanda.md');
 
 // let compact = true;
-type MessageHistory = Awaited<ReturnType<typeof getMessages>>;
+// type MessageHistory = Awaited<ReturnType<typeof getMessages>>;
 
 export class BabyPandaAgent extends EventEmitter {
   client: BabyPandaClient;
@@ -173,15 +173,15 @@ export class BabyPandaAgent extends EventEmitter {
       const userInput = this.messageQueue.at(0);
 
       if (
-        userInput !== MessageQueueEvents.toolCallDone &&
         userInput !== MessageQueueEvents.errorInLastIteration &&
         userInput !== MessageQueueEvents.lastReplyFromLLMWasEmpty &&
-        userInput !== MessageQueueEvents.lastReplyFromLLMWasThought
+        userInput !== MessageQueueEvents.answerMessageBreakPreventer
       ) {
         const queuedMessage = this.userMessageQueue.at(0);
         if (queuedMessage) {
           await createMessage(this.sessionId, queuedMessage.content, Role.user);
           this.userMessageQueue.splice(0, 1);
+          this.messageQueue.push(MessageQueueEvents.answerMessageBreakPreventer);
         }
       }
       this.messageQueue.splice(0, 1);
@@ -352,13 +352,12 @@ export class BabyPandaAgent extends EventEmitter {
                 replyJson = MessageContentSchema.parse(JSON.parse(fullReply));
               } catch (err) {
                 reject('parsing error');
-                // this.messageQueue.push(MessageQueueSpecialElement.errorInLastIteration);
                 createMessage(
                   this.sessionId,
                   `Their is an issue in the reply structure that you gave ${err}`,
                   Role.system,
                   false,
-                ); // add new feild isError to prevent this from coming in frontend
+                );
                 return;
               }
               if (replyJson) {
@@ -395,7 +394,6 @@ export class BabyPandaAgent extends EventEmitter {
                             false,
                           );
                         } else {
-                          // send event to hono and hono put it in websocket -> CLI -> User -> CLI -> websocket (Hono) -> Agent
                           const permissionObject: UserPermission = {
                             toolCallId: call.id,
                             permission: false,

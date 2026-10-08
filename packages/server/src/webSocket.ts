@@ -3,7 +3,6 @@ import { agentStore, wsCollection } from './index';
 import type { Context, Next } from 'hono';
 import { writeLogs } from '@baby-panda/utils';
 import { LogType, PermissionsEnums, WsEventMessageSchema, WsEventTypes } from '@baby-panda/types';
-
 import { BabyPandaAgent } from '@baby-panda/agent';
 import { cleanMessageHistroy, type MessageHistory } from './utils/cleanMessageHistory';
 import { ContentType, Role } from '@baby-panda/types';
@@ -83,19 +82,14 @@ const websocketHandler = (c: Context, next: Next) => {
           ws.send(JSON.stringify(msg));
         };
 
-        const onEnd = (contentType: ContentType) => {
-          // const stopper:ServerStreamChunkSchemaType  = {
-          //   contentType: contentType,
-          //   content: '',
-          // };
-          // const stringStopper = JSON.stringify(stopper);
-          writeLogs(
-            LogType.server,
-            cwd,
-            sessionId,
-            `[/message]: Ended stream content type ${contentType}`,
-          );
-        };
+        // const onEnd = (contentType: ContentType) => {
+        //   writeLogs(
+        //     LogType.server,
+        //     cwd,
+        //     sessionId,
+        //     `[/message]: Ended stream content type ${contentType}`,
+        //   );
+        // };
 
         const onError = (err: Error) => {
           console.error('[AGENT:STREAM ERROR] ', err);
@@ -110,7 +104,7 @@ const websocketHandler = (c: Context, next: Next) => {
           });
           babyPanda.off(ContentType.permission, onAskForPermission);
           babyPanda.off(ContentType.tool_call, onToolData);
-          babyPanda.off('end', onEnd);
+          // babyPanda.off('end', onEnd);
           babyPanda.off('error', onError);
           writeLogs(LogType.server, cwd, sessionId, '[/message]: Aborting stream...');
         };
@@ -121,7 +115,7 @@ const websocketHandler = (c: Context, next: Next) => {
         });
         babyPanda.on(ContentType.tool_call, onToolData);
         babyPanda.on(ContentType.permission, onAskForPermission);
-        babyPanda.on('end', onEnd);
+        // babyPanda.on('end', onEnd);
         babyPanda.on('error', onError);
 
         writeLogs(

@@ -1,6 +1,8 @@
 import type {Message, CleanedMessage} from '@baby-panda/types';
 import type {SetStateAction} from 'react';
-import type {Key} from 'ink';
+import React from 'react';
+import {Role} from '@baby-panda/types';
+import {RefObject} from 'hono/jsx';
 export interface PromptBoxArgs {
 	placeholder: string;
 	value: string;
@@ -33,4 +35,5 @@ export enum ComponentName {
 export interface MessagesContext {
 	messageHistory: CleanedMessage[];
 	setMessageHistory: React.Dispatch<SetStateAction<CleanedMessage[]>>;
+	lastRole: RefObject<Role | null>;
 }

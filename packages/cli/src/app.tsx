@@ -20,7 +20,7 @@ export default function App() {
 	const sessionState = useSession();
 	const {pendingPermissionMessages} = usePendingPermissionMessages();
 	const sessionId = sessionState.sessionId;
-	const {messageHistory, setMessageHistory} = useMessageHistory();
+	const {messageHistory, setMessageHistory, lastRole} = useMessageHistory();
 	const [prompt, setPrompt] = useState('');
 	const onChange = (value: string) => setPrompt(value);
 
@@ -32,6 +32,7 @@ export default function App() {
 			...prev,
 			{role: Role.user, content: prompt, createdAt: Date.now()},
 		]);
+		lastRole.current = Role.user;
 		setPrompt('');
 
 		const wsMessage: WsEventMessage = {
