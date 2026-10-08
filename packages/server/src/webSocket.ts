@@ -2,13 +2,16 @@ import { upgradeWebSocket } from '@hono/bun';
 import { agentStore, wsCollection } from './index';
 import type { Context, Next } from 'hono';
 import { writeLogs } from '@baby-panda/utils';
-import { LogType, WsEventMessageSchema, WsEventTypes } from '@baby-panda/types';
-import type { WsEventMessage } from '@baby-panda/types';
+import { LogType, PermissionsEnums, WsEventMessageSchema, WsEventTypes } from '@baby-panda/types';
 
 import { BabyPandaAgent } from '@baby-panda/agent';
 import { cleanMessageHistroy, type MessageHistory } from './utils/cleanMessageHistory';
 import { ContentType, Role } from '@baby-panda/types';
-// import type { UserPermission } from '@baby-panda/types';
+import type {
+  UserPermission,
+  WsCommonMessage,
+  ServerStreamChunkSchemaType,
+} from '@baby-panda/types';
 
 const cwd = process.cwd().replaceAll('/', '-').replace('-', '');
 const websocketHandler = (c: Context, next: Next) => {
@@ -34,9 +37,20 @@ const websocketHandler = (c: Context, next: Next) => {
         //attach event listners
         const babyPanda = agentStore.get(sessionId)!;
 
-        const onAskForPermission = (permissionObject: WsEventMessage) => {
+        const onAskForPermission = (permissionObject: UserPermission) => {
           const ws = wsCollection.get(sessionId);
-          ws?.send(JSON.stringify(permissionObject));
+
+          /*
+          just keep the permission event within that event payload define if ts a alwas , deny , allow once
+          send all objects with eventType labels to prepare a clean switch case in frontend ws handler
+          */
+
+          ws?.send(
+            JSON.stringify({
+              eventType: WsEventTypes.permission,
+              payload: permissionObject,
+            } as WsCommonMessage),
+          );
         };
 
         const onToolData = (data: MessageHistory) => {
@@ -49,43 +63,43 @@ const websocketHandler = (c: Context, next: Next) => {
               content = content.concat(content ? '\n' : '', msg.content);
             }
           });
-          const chunk: WsEventMessage = {
+          const chunk: ServerStreamChunkSchemaType = {
             contentType: ContentType.tool_call,
             content,
           };
           writeLogs(LogType.server, cwd, sessionId, `[/message]: Final tool content ${content}`);
-          queue.push(JSON.stringify(chunk));
+          const msg: WsCommonMessage = { eventType: WsEventTypes.message, payload: chunk };
+          ws.send(JSON.stringify(msg));
         };
 
         const handlers: Record<string, (data: string) => void> = {};
         const onData = (eventName: ContentType, data: string) => {
           writeLogs(LogType.server, cwd, sessionId, '[/message]: Received a data chunk');
-          const chunk: WsEventMessage = {
+          const chunk: ServerStreamChunkSchemaType = {
             contentType: eventName,
             content: data,
           };
-          const stringChunk = JSON.stringify(chunk);
-          queue.push(stringChunk);
+          const msg: WsCommonMessage = { eventType: WsEventTypes.message, payload: chunk };
+          ws.send(JSON.stringify(msg));
         };
 
         const onEnd = (contentType: ContentType) => {
-          const stopper: WsEventMessage = {
-            contentType: contentType,
-            content: '',
-          };
-          const stringStopper = JSON.stringify(stopper);
-          writeLogs(LogType.server, cwd, sessionId, '[/message]: Ended stream');
-          queue.push(stringStopper);
+          // const stopper:ServerStreamChunkSchemaType  = {
+          //   contentType: contentType,
+          //   content: '',
+          // };
+          // const stringStopper = JSON.stringify(stopper);
+          writeLogs(
+            LogType.server,
+            cwd,
+            sessionId,
+            `[/message]: Ended stream content type ${contentType}`,
+          );
         };
 
         const onError = (err: Error) => {
-          // isDone = true;
           console.error('[AGENT:STREAM ERROR] ', err);
           writeLogs(LogType.server, cwd, sessionId, `[/message]: Stream error ${err}`);
-        };
-
-        const onAbort = () => {
-          // isDone = true;
         };
 
         cleanup = () => {
@@ -98,7 +112,6 @@ const websocketHandler = (c: Context, next: Next) => {
           babyPanda.off(ContentType.tool_call, onToolData);
           babyPanda.off('end', onEnd);
           babyPanda.off('error', onError);
-          babyPanda.off('abort', onAbort);
           writeLogs(LogType.server, cwd, sessionId, '[/message]: Aborting stream...');
         };
 
@@ -110,7 +123,6 @@ const websocketHandler = (c: Context, next: Next) => {
         babyPanda.on(ContentType.permission, onAskForPermission);
         babyPanda.on('end', onEnd);
         babyPanda.on('error', onError);
-        babyPanda.on('abort', onAbort);
 
         writeLogs(
           LogType.server,
@@ -120,6 +132,7 @@ const websocketHandler = (c: Context, next: Next) => {
         );
       },
       onMessage(event) {
+        const agent = agentStore.get(sessionId);
         const payload = JSON.parse(event.data.toString());
         writeLogs(
           LogType.server,
@@ -130,25 +143,19 @@ const websocketHandler = (c: Context, next: Next) => {
         const parse = WsEventMessageSchema.parse(payload);
         switch (parse.eventType) {
           case WsEventTypes.permission: {
-            const { permissionGranted, toolCallId } = parse;
-            const agent = agentStore.get(sessionId); // here is the agent object
-            agent?.setPermission(toolCallId, permissionGranted);
+            switch (parse.permission) {
+              case PermissionsEnums.allowAlways: {
+                agent?.setAllowAlwaysTrue();
+                break;
+              }
+              case PermissionsEnums.deny || PermissionsEnums.allowOnce: {
+                const { permissionGranted, toolCallId } = parse;
+                agent?.setPermission(toolCallId, permissionGranted);
+                break;
+              }
+            }
             break;
           }
-
-          case WsEventTypes.ask_permission: {
-            const { toolCallId, toolCallContent } = parse;
-            const ws = wsCollection.get(sessionId);
-            ws?.send(JSON.stringify({ toolCallContent, toolCallId }));
-            break;
-          }
-
-          case WsEventTypes.always_allow: {
-            const agent = agentStore.get(sessionId);
-            agent?.setAllowAlwaysTrue();
-            break;
-          }
-
           case WsEventTypes.message: {
             const agent = agentStore.get(sessionId);
             agent?.message({ content: parse.content, role: parse.role });
@@ -156,12 +163,11 @@ const websocketHandler = (c: Context, next: Next) => {
           }
         }
       },
+
       onClose(event, ws) {
         ws.send('closed');
         cleanup();
         wsCollection.delete(sessionId);
-
-        // Event listner cleanup code here
       },
     };
   });
