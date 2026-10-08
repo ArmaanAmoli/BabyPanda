@@ -1,11 +1,12 @@
 import type { Message } from '@baby-panda/types';
 import { z } from 'zod';
 
-export enum MessageQueueSpecialElement {
+export enum MessageQueueEvents {
   toolCallDone = 'tool-call-done',
   errorInLastIteration = 'error-in-last-iteration',
   lastReplyFromLLMWasEmpty = 'last-reply-from-llm-was-empty',
   lastReplyFromLLMWasThought = 'last-reply-from-llm-was-thought',
+  answerMessageBreakPreventer = 'answer-message-break-preventer',
 }
 
 export enum ReasoningEffort {

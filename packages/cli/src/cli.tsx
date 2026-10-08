@@ -9,6 +9,7 @@ import {SessionProvider} from './context/sessionDetails';
 import {PendingPermissionMessagesProvider} from './context/pendingPermissionMessages';
 import {SocketProvider} from './context/webSocket';
 import {ActiveComponetsContextProvider} from './context/compontActiveState';
+import {MessageHistoryProvider} from './context/messageHistory';
 
 const server = Bun.serve(honoServer);
 if (typeof Bun !== 'undefined') {
@@ -43,13 +44,15 @@ if (initialSessionId === null) {
 const {waitUntilExit} = render(
 	<>
 		<SessionProvider id={initialSessionId}>
-			<PendingPermissionMessagesProvider>
-				<SocketProvider>
-					<ActiveComponetsContextProvider>
-						<App />
-					</ActiveComponetsContextProvider>
-				</SocketProvider>
-			</PendingPermissionMessagesProvider>
+			<MessageHistoryProvider>
+				<PendingPermissionMessagesProvider>
+					<SocketProvider>
+						<ActiveComponetsContextProvider>
+							<App />
+						</ActiveComponetsContextProvider>
+					</SocketProvider>
+				</PendingPermissionMessagesProvider>
+			</MessageHistoryProvider>
 		</SessionProvider>
 	</>,
 	{

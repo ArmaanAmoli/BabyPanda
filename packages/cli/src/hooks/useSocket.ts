@@ -1,6 +1,6 @@
 import {useContext} from 'react';
 import {SocketContext} from '../context/webSocket';
-import useSession from '../hooks/useSession';
+import {useSession} from '../hooks/useSession';
 import {writeLogs} from '@baby-panda/utils';
 import {LogType} from '@baby-panda/types';
 

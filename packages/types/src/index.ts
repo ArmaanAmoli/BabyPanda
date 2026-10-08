@@ -86,9 +86,8 @@ export enum LogType {
 }
 
 export const ServerStreamChunkSchema = z.object({
-  contentType: z.enum(ContentType),
+  role: z.enum(Role),
   content: z.string(),
-  // isStopper:z.boolean().default(false)
 });
 
 export type ServerStreamChunkSchemaType = z.infer<typeof ServerStreamChunkSchema>;
@@ -101,26 +100,56 @@ export const UserPermissionSchema = z.object({
 
 export type UserPermission = z.infer<typeof UserPermissionSchema>;
 
-export const WsEventTypeSchema = z.enum(['permission', 'ask_permission', 'always_allow']);
+export const WsEventTypeSchema = z.enum(['permission', 'message']);
 
 export const WsEventTypes = WsEventTypeSchema.enum;
+
+export const PermissionsEnumsSchema = z.enum(['allowOnce', 'allowAlways']);
+export const PermissionsEnums = PermissionsEnumsSchema.enum;
 
 const BaseSchema = z.object({});
 
 export const WsEventMessageSchema = z.discriminatedUnion('eventType', [
-  BaseSchema.extend({
-    eventType: z.literal(WsEventTypeSchema.enum.permission),
-    permissionGranted: z.boolean(),
-    toolCallId: z.string(),
-  }),
-  BaseSchema.extend({
-    eventType: z.literal(WsEventTypeSchema.enum.ask_permission),
-    toolCallContent: z.string(),
-    toolCallId: z.string(),
-  }),
-  BaseSchema.extend({
-    eventType: z.literal(WsEventTypeSchema.enum.always_allow),
-  }),
+  z.discriminatedUnion('permission', [
+    BaseSchema.extend({
+      eventType: z.literal(WsEventTypeSchema.enum.permission),
+      permission: z.enum(PermissionsEnums).exclude([PermissionsEnums.allowAlways]),
+      permissionGranted: z.boolean(),
+      toolCallId: z.string(),
+    }),
+    BaseSchema.extend({
+      eventType: z.literal(WsEventTypeSchema.enum.permission),
+      permission: z.literal(PermissionsEnums.allowAlways),
+    }),
+  ]),
+  // BaseSchema.extend({
+  //   eventType: z.literal(WsEventTypeSchema.enum.ask_permission),
+  //   toolCallContent: z.string(),
+  //   toolCallId: z.string(),
+  // }),
+  // BaseSchema.extend({
+  //   eventType: z.literal(WsEventTypeSchema.enum.always_allow),
+  // }),
+  z.discriminatedUnion('role', [
+    BaseSchema.extend({
+      eventType: z.literal(WsEventTypeSchema.enum.message),
+      role: z.enum(Role).exclude([Role.assistant]),
+      content: z.string(),
+    }),
+    BaseSchema.extend({
+      eventType: z.literal(WsEventTypeSchema.enum.message),
+      role: z.literal(Role.assistant),
+      contentType: z.enum(ContentType),
+      content: z.string(),
+    }),
+  ]),
 ]);
 
 export type WsEventMessage = z.infer<typeof WsEventMessageSchema>;
+
+export const WsCommonMessageSchema = z.object({
+  eventType: z.enum(WsEventTypes),
+  payload: z.unknown(),
+});
+
+export type WsCommonMessage = z.infer<typeof WsCommonMessageSchema>;

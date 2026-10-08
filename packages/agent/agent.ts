@@ -3,7 +3,7 @@ import type { Message, MessageAPI, MessageContent, UserPermission } from '@baby-
 import { ContentType, LogType, MessageContentSchema } from '@baby-panda/types';
 import { Role } from '@baby-panda/types';
 import type { UrlApi, Tool, ToolResult } from './types';
-import { MessageQueueSpecialElement, ReasoningEffort, ShellCallSchema } from './types';
+import { MessageQueueEvents, ReasoningEffort, ShellCallSchema } from './types';
 import { readFileSync, existsSync, lstatSync, mkdirSync, writeFileSync } from 'fs';
 import { EventEmitter } from 'events';
 import { MCPClient } from './mcp/client';
@@ -34,12 +34,13 @@ const cwd = process.cwd();
 const instructionsFilePath = path.join(__dirname, 'memory', 'BabyPanda', 'BabyPanda.md');
 
 // let compact = true;
-type MessageHistory = Awaited<ReturnType<typeof getMessages>>;
+// type MessageHistory = Awaited<ReturnType<typeof getMessages>>;
 
 export class BabyPandaAgent extends EventEmitter {
   client: BabyPandaClient;
   private isRunning = false;
-  private messageQueue: (MessageAPI | MessageQueueSpecialElement)[] = [];
+  private messageQueue: MessageQueueEvents[] = [];
+  private userMessageQueue: Message[] = [];
   private messagesHistory: MessageAPI[] = [];
   private mcpClient: MCPClient;
   private cwd = cwd;
@@ -158,9 +159,33 @@ export class BabyPandaAgent extends EventEmitter {
   }
 
   private async loop() {
-    while (this.messageQueue.length !== 0) {
+    let finalBreak: boolean = false;
+    while (finalBreak === false) {
       console.log('in the loop');
       this.isRunning = true;
+
+      if (!this.messageQueue.at(0) && !this.userMessageQueue.at(0)) {
+        this.messageQueue.splice(0, 1);
+        console.error('message undefined');
+        continue;
+      }
+
+      const userInput = this.messageQueue.at(0);
+
+      if (
+        userInput !== MessageQueueEvents.errorInLastIteration &&
+        userInput !== MessageQueueEvents.lastReplyFromLLMWasEmpty &&
+        userInput !== MessageQueueEvents.answerMessageBreakPreventer
+      ) {
+        const queuedMessage = this.userMessageQueue.at(0);
+        if (queuedMessage) {
+          await createMessage(this.sessionId, queuedMessage.content, Role.user);
+          this.userMessageQueue.splice(0, 1);
+          this.messageQueue.push(MessageQueueEvents.answerMessageBreakPreventer);
+        }
+      }
+      this.messageQueue.splice(0, 1);
+
       const messages: MessageAPI[] = await this.createContext();
       // console.log(messages)
       if (this.contextWindowUsed >= this.contextWindow * 0.75) {
@@ -173,29 +198,10 @@ export class BabyPandaAgent extends EventEmitter {
           continue;
         } catch (err) {
           console.log(err);
-          break;
+          continue;
         }
       }
 
-      if (!this.messageQueue[0]) {
-        this.messageQueue.splice(0, 1);
-        console.error('message undefined');
-        continue;
-      }
-
-      const userInput = this.messageQueue[0];
-
-      if (
-        userInput !== MessageQueueSpecialElement.toolCallDone &&
-        userInput !== MessageQueueSpecialElement.errorInLastIteration &&
-        userInput !== MessageQueueSpecialElement.lastReplyFromLLMWasEmpty &&
-        userInput !== MessageQueueSpecialElement.lastReplyFromLLMWasThought
-      ) {
-        messages.push(userInput);
-        await createMessage(this.sessionId, userInput.content as string, Role.user);
-      }
-      this.messageQueue.splice(0, 1);
-      // console.log('MESSAGES' , messages)
       writeLogs(
         LogType.agent,
         this.projectDirectoryName,
@@ -211,8 +217,7 @@ export class BabyPandaAgent extends EventEmitter {
           this.sessionId,
           `Request failed: ${response.error} restarting loop...`,
         );
-        this.isRunning = false;
-        this.messageQueue.push(MessageQueueSpecialElement.errorInLastIteration);
+        this.messageQueue.push(MessageQueueEvents.errorInLastIteration);
         continue;
       }
 
@@ -288,7 +293,7 @@ export class BabyPandaAgent extends EventEmitter {
                     this.sessionId,
                     'received a thought',
                   );
-                  this.messageQueue.push(MessageQueueSpecialElement.lastReplyFromLLMWasThought);
+                  this.messageQueue.push(MessageQueueEvents.lastReplyFromLLMWasThought);
                 }
                 lineBuffer.push(content);
               } else {
@@ -323,7 +328,7 @@ export class BabyPandaAgent extends EventEmitter {
               this.sessionId,
               'Reply received was empty retrying...',
             );
-            this.messageQueue.push(MessageQueueSpecialElement.lastReplyFromLLMWasEmpty);
+            this.messageQueue.push(MessageQueueEvents.lastReplyFromLLMWasEmpty);
             toBreak = false;
             resolve('empty reply');
             return;
@@ -347,19 +352,17 @@ export class BabyPandaAgent extends EventEmitter {
                 replyJson = MessageContentSchema.parse(JSON.parse(fullReply));
               } catch (err) {
                 reject('parsing error');
-                this.messageQueue.push(MessageQueueSpecialElement.errorInLastIteration);
                 createMessage(
                   this.sessionId,
                   `Their is an issue in the reply structure that you gave ${err}`,
                   Role.system,
                   false,
-                ); // add new feild isError to prevent this from coming in frontend
+                );
                 return;
               }
               if (replyJson) {
                 const toolCalls = replyJson.content.tool_call;
                 if (!toolCalls) {
-                  // MessageQueueSpecialElement.toolCallDone;
                   resolve('no tool call');
                   return;
                 }
@@ -391,12 +394,12 @@ export class BabyPandaAgent extends EventEmitter {
                             false,
                           );
                         } else {
-                          // send event to hono and hono put it in websocket -> CLI -> User -> CLI -> websocket (Hono) -> Agent
                           const permissionObject: UserPermission = {
                             toolCallId: call.id,
                             permission: false,
                             content: parsed.data.command,
                           };
+                          // eslint-disable-next-line no-useless-assignment
                           let granted: boolean = false;
                           if (this.alwaysAllowBash === true) granted = true;
                           else {
@@ -465,14 +468,14 @@ export class BabyPandaAgent extends EventEmitter {
                       ]);
                       this.numberOfMessages += 1;
                     } catch (err) {
-                      reject(new Error(`Unable to store tool message to database: ${err}`));
+                      throw new Error(`Unable to store tool message to database`, { cause: err });
                     }
                   }
                   i += 1;
                 }
                 toolResults.length = 0;
                 i = 0;
-                this.messageQueue.push(MessageQueueSpecialElement.toolCallDone);
+                this.messageQueue.push(MessageQueueEvents.toolCallDone);
               }
               // to-do save messages code below this
             } catch (err) {
@@ -485,45 +488,48 @@ export class BabyPandaAgent extends EventEmitter {
                 `[TOOL CALL ERROR]: Informing LLM about it, \n${fullErrMessage}`,
               );
               createMessage(this.sessionId, fullErrMessage, Role.user);
-              this.messageQueue.push(MessageQueueSpecialElement.errorInLastIteration);
+              // this.messageQueue.push(MessageQueueSpecialElement.errorInLastIteration);
               reject(err);
             }
           }
-          toolCall = false;
-          fullReply = '';
-          this.emit('end', contentType);
+          // toolCall = false;
+          // fullReply = '';
+          // this.emit('end', contentType);
           resolve('single iteration of loop done.');
         });
         response.response?.data.on('error', (err: Error) => {
-          console.error('Stream error:', err);
-          this.isRunning = false;
-          reject(err);
-        });
-      })
-        .then(() => {
-          this.isRunning = false;
-        })
-        .catch((err) => {
-          // console.log("[ERROR]: ", err);
           writeLogs(
             LogType.agent,
             this.projectDirectoryName,
             this.sessionId,
-            `[PROMISE ERROR]: ${err}`,
+            `Stream error: ${err}`,
           );
-          this.messageQueue.push(MessageQueueSpecialElement.errorInLastIteration);
+          reject(err);
         });
-      if (toBreak) {
+      }).catch((err) => {
+        writeLogs(
+          LogType.agent,
+          this.projectDirectoryName,
+          this.sessionId,
+          `[PROMISE ERROR]: ${err}`,
+        );
+        this.messageQueue.push(MessageQueueEvents.errorInLastIteration);
+      });
+
+      // only abort if userMessage queue is empty
+      if (this.userMessageQueue.length === 0 && toBreak) {
         this.isRunning = false;
-        this.emit('abort');
+        // this.emit('abort');
+        writeLogs(LogType.agent, this.projectDirectoryName, this.sessionId, `Loop has ended`);
+        // eslint-disable-next-line no-useless-assignment
+        finalBreak = true;
         break;
       }
     }
-    writeLogs(LogType.agent, this.projectDirectoryName, this.sessionId, `Loop has ended`);
   }
 
   async message(msg: Message) {
-    this.messageQueue.push(msg);
+    this.userMessageQueue.push(msg);
     if (this.isRunning) {
       return;
     } else {

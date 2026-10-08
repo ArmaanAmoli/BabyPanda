@@ -1,5 +1,5 @@
 import React, {SetStateAction, useEffect} from 'react';
-import {createContext, useRef, useState} from 'react';
+import {createContext, useState} from 'react';
 import {ComponentName} from '../types';
 
 interface ActivationState {

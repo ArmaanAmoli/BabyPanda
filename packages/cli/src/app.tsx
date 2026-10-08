@@ -4,29 +4,25 @@ import BigText from 'ink-big-text';
 import {useState, useEffect} from 'react';
 import PromptBox from './components/promptBox';
 import {ChatBox} from './components/ChatBox';
-import {
-	LogType,
-	Role,
-	type CleanedMessage,
-	ServerStreamChunkSchema,
-	ContentType,
-} from '@baby-panda/types';
-import {getMessages, sendMessage} from './services/requests';
-import {writeLogs, getProjectName} from '@baby-panda/utils';
-import useSession from './hooks/useSession';
+import {Role, WsEventTypes} from '@baby-panda/types';
+import type {WsEventMessage} from '@baby-panda/types';
+import {getMessages} from './services/requests';
+import {useSession} from './hooks/useSession';
 import {PermissionBox} from './components/permissionBox';
 import usePendingPermissionMessages from './hooks/usePendingPermissionMessages';
 import {useActiveComponentState} from './hooks/useActiveComponentState';
+import {useMessageHistory} from './hooks/useMessageHistroy';
 import {ComponentName} from './types';
+import useSocket from './hooks/useSocket';
 
 export default function App() {
+	const socket = useSocket();
 	const sessionState = useSession();
 	const {pendingPermissionMessages} = usePendingPermissionMessages();
 	const sessionId = sessionState.sessionId;
-	const [messageHistory, setMessageHistory] = useState<CleanedMessage[]>([]);
+	const {messageHistory, setMessageHistory, lastRole} = useMessageHistory();
 	const [prompt, setPrompt] = useState('');
 	const onChange = (value: string) => setPrompt(value);
-	const projectName = getProjectName();
 
 	const onSubmit = async () => {
 		if (prompt.trim().length === 0) {
@@ -36,93 +32,15 @@ export default function App() {
 			...prev,
 			{role: Role.user, content: prompt, createdAt: Date.now()},
 		]);
+		lastRole.current = Role.user;
 		setPrompt('');
-		const reader = await sendMessage({
+
+		const wsMessage: WsEventMessage = {
+			eventType: WsEventTypes.message,
 			role: Role.user,
 			content: prompt,
-			sessionId: sessionId,
-		});
-		const textDecoder = new TextDecoder();
-		// let reply = "";
-		let lastRole: Role | null = null;
-		while (true) {
-			const {done, value} = await reader.read();
-			if (done) {
-				const reply = textDecoder.decode();
-				writeLogs(
-					LogType.cli,
-					projectName,
-					sessionId,
-					`CLI got the complete stream reply ${reply}`,
-				);
-				break;
-			} else {
-				if (value) {
-					try {
-						const decodedText = textDecoder.decode(value, {stream: true});
-						writeLogs(
-							LogType.cli,
-							projectName,
-							sessionId,
-							`Chunk recieved trying to parse... ${decodedText}`,
-						);
-						const parsed = ServerStreamChunkSchema.safeParse(
-							JSON.parse(decodedText),
-						);
-						if (!parsed.success) {
-							writeLogs(
-								LogType.cli,
-								projectName,
-								sessionId,
-								`[PARSING ERROR]: ${parsed.error.issues}`,
-							);
-							continue;
-						}
-						writeLogs(LogType.cli, projectName, sessionId, `Chunk parsed`);
-						const currentContentType = parsed.data?.contentType;
-						const role =
-							currentContentType === ContentType.tool_call
-								? Role.tool
-								: currentContentType === ContentType.thought
-									? Role.thought
-									: Role.assistant;
-
-						if (lastRole == null || lastRole != role) {
-							setMessageHistory(prev => [
-								...prev,
-								{
-									role: role,
-									content: parsed.data!.content,
-									createdAt: Date.now(),
-								},
-							]);
-							lastRole = role;
-						} else {
-							setMessageHistory(prev => {
-								if (prev.length === 0) return prev;
-								return prev.map((msg, index) => {
-									if (index === prev.length - 1) {
-										return {
-											...msg,
-											content: msg.content + (parsed.data.content ?? ''),
-										};
-									}
-									return msg;
-								});
-							});
-						}
-					} catch (err) {
-						writeLogs(
-							LogType.cli,
-							projectName,
-							sessionId,
-							`[STREAM PROCESSING ERROR]: ${err}`,
-						);
-						continue;
-					}
-				}
-			}
-		}
+		};
+		socket?.send(JSON.stringify(wsMessage));
 	};
 
 	const {stdout} = useStdout();
@@ -187,12 +105,7 @@ export default function App() {
 					)}
 					<ChatBox
 						messageHistory={messageHistory}
-						isActive={isActive}
-						// height={
-						// 	pendingPermissionMessages.length == 0
-						// 		? dimensions.rows
-						// 		: dimensions.rows - 12
-						// }
+						isActive={isActive ?? false}
 					/>
 				</Box>
 				{pendingPermissionMessages.length > 0 && (
