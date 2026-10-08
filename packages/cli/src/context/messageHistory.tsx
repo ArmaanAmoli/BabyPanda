@@ -1,13 +1,9 @@
-import React, {SetStateAction, useEffect} from 'react';
+import React, {useEffect} from 'react';
 import {useState, createContext} from 'react';
 import type {CleanedMessage} from '@baby-panda/types';
 import {useSession} from '../hooks/useSession';
 import {getMessages} from '../services/requests';
-
-interface MessagesContext {
-	messageHistory: CleanedMessage[];
-	setMessageHistory: React.Dispatch<SetStateAction<CleanedMessage[]>>;
-}
+import {MessagesContext} from '../types';
 
 export const MessageHistoryContext = createContext<MessagesContext | null>(
 	null,

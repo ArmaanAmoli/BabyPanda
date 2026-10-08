@@ -164,13 +164,13 @@ export class BabyPandaAgent extends EventEmitter {
       console.log('in the loop');
       this.isRunning = true;
 
-      if (!this.messageQueue[0]) {
+      if (!this.messageQueue.at(0) && !this.userMessageQueue.at(0)) {
         this.messageQueue.splice(0, 1);
         console.error('message undefined');
         continue;
       }
 
-      const userInput = this.messageQueue[0];
+      const userInput = this.messageQueue.at(0);
 
       if (
         userInput !== MessageQueueEvents.toolCallDone &&
@@ -178,7 +178,7 @@ export class BabyPandaAgent extends EventEmitter {
         userInput !== MessageQueueEvents.lastReplyFromLLMWasEmpty &&
         userInput !== MessageQueueEvents.lastReplyFromLLMWasThought
       ) {
-        const queuedMessage = this.userMessageQueue[0];
+        const queuedMessage = this.userMessageQueue.at(0);
         if (queuedMessage) {
           await createMessage(this.sessionId, queuedMessage.content, Role.user);
           this.userMessageQueue.splice(0, 1);

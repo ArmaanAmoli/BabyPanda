@@ -14,7 +14,6 @@ export default function useSocket() {
 			session ? session.sessionId : 'global',
 			`[ERROR]: useSocket Hook not provided with SocketContext`,
 		);
-		throw new Error(`[ERROR]: useSocket Hook not provided with SocketContext`);
 	}
 	writeLogs(
 		LogType.cli,

@@ -104,7 +104,7 @@ export const WsEventTypeSchema = z.enum(['permission', 'message']);
 
 export const WsEventTypes = WsEventTypeSchema.enum;
 
-export const PermissionsEnumsSchema = z.enum(['allowOnce', 'allowAlways', 'deny']);
+export const PermissionsEnumsSchema = z.enum(['allowOnce', 'allowAlways']);
 export const PermissionsEnums = PermissionsEnumsSchema.enum;
 
 const BaseSchema = z.object({});

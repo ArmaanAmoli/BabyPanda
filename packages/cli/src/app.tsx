@@ -39,7 +39,7 @@ export default function App() {
 			role: Role.user,
 			content: prompt,
 		};
-		socket.send(JSON.stringify(wsMessage));
+		socket?.send(JSON.stringify(wsMessage));
 	};
 
 	const {stdout} = useStdout();

@@ -148,7 +148,7 @@ const websocketHandler = (c: Context, next: Next) => {
                 agent?.setAllowAlwaysTrue();
                 break;
               }
-              case PermissionsEnums.deny || PermissionsEnums.allowOnce: {
+              case PermissionsEnums.allowOnce: {
                 const { permissionGranted, toolCallId } = parse;
                 agent?.setPermission(toolCallId, permissionGranted);
                 break;

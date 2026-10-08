@@ -1,4 +1,5 @@
-import type {Message} from '@baby-panda/types';
+import type {Message, CleanedMessage} from '@baby-panda/types';
+import type {SetStateAction} from 'react';
 import type {Key} from 'ink';
 export interface PromptBoxArgs {
 	placeholder: string;
@@ -27,4 +28,9 @@ export type MessageStatusElement = Message & {sended: boolean};
 export enum ComponentName {
 	chatBox = 'chatBox',
 	promptBox = 'promptBox',
+}
+
+export interface MessagesContext {
+	messageHistory: CleanedMessage[];
+	setMessageHistory: React.Dispatch<SetStateAction<CleanedMessage[]>>;
 }
