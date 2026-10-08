@@ -62,21 +62,6 @@ async function registerProvider(details: APIProvider) {
 	}
 }
 
-export async function sendMessage(msg: MessageRegular) {
-	const req = new Request('http://localhost:3000/message', {
-		method: 'POST',
-		body: JSON.stringify(msg),
-	});
-	const res = await app.fetch(req);
-	writeLogs(LogType.cli, cwd, msg.sessionId, res.statusText);
-	const stream = res.body;
-	if (!stream) {
-		throw new Error('Got null response from server');
-	}
-	const reader = stream.getReader();
-	return reader;
-}
-
 async function getAllSessions(): Promise<Session[]> {
 	const req = new Request('http://localhost:3000/get-session', {
 		method: 'POST',
