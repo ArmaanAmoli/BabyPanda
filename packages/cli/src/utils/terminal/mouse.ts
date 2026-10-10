@@ -29,7 +29,10 @@ export interface MouseEvent {
 	button: 'left' | 'middle' | 'right' | 'none';
 }
 
-export type MouseHandler = (event: MouseEvent) => void;
+export const DOUBLE_CLICK_THRESHOLD_MS = 400;
+export const DOUBLE_CLICK_DISTANCE_TOLERANCE = 2;
+
+export type MouseHandler = (event: MouseEvent) => void | boolean;
 
 export function getMouseEventName(
 	buttonCode: number,
