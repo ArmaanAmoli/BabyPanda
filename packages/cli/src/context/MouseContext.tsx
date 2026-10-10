@@ -15,7 +15,7 @@ interface MouseContextValue {
 	unsubscribe: (handler: MouseHandler) => void;
 }
 const MAX_MOUSE_BUFFER_SIZE = 4096;
-const MouseContext = createContext<MouseContextValue | null>(null);
+export const MouseContext = createContext<MouseContextValue | null>(null);
 
 export function MouseProvider({
 	children,
