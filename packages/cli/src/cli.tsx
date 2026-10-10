@@ -10,24 +10,23 @@ import {PendingPermissionMessagesProvider} from './context/pendingPermissionMess
 import {SocketProvider} from './context/webSocket';
 import {ActiveComponetsContextProvider} from './context/compontActiveState';
 import {MessageHistoryProvider} from './context/messageHistory';
-
+import {
+	activateAlternateScreenBuffer,
+	deactivateAlternateScreenBuffer,
+} from './utils/terminal/io';
 const server = Bun.serve(honoServer);
 if (typeof Bun !== 'undefined') {
 	process.stdin.resume();
 	process.stdin.setRawMode?.(true);
 }
 
-// since we are using incrimental rendering we need to disable terminal history which we can do by switching the terminal to temporary fullscreen view
-
-// 1. Immediately switch to the Alternate Screen Buffer
-process.stdout.write('\x1b[?1049h');
-// process.stdout.write('\x1B[?1006h'); // SGR mouse encoding
-// process.stdout.write('\x1B[?1000h'); // Button press/release only
-// 2. Automatically clean up and return to normal screen when the process exits
+/*since we are using incrimental rendering we need to disable terminal history
+which we can do by switching the terminal to temporary fullscreen view
+	1. Immediately switch to the Alternate Screen Buffer
+*/
+activateAlternateScreenBuffer();
 process.on('exit', () => {
-	process.stdout.write('\x1b[?1049l');
-	// process.stdout.write('\x1B[?1000l');
-	// process.stdout.write('\x1B[?1006l');
+	deactivateAlternateScreenBuffer();
 });
 
 const getInitialSessionId = () => {
