@@ -1,5 +1,5 @@
 import {useContext} from 'react';
-import {PendingPermissionMessagesContext} from '../context/pendingPermissionMessages';
+import {PendingPermissionMessagesContext} from '../context/PendingPermissionMessages';
 
 export default function usePendingPermissionMessages() {
 	const pendingPermissionMessagesObject = useContext(

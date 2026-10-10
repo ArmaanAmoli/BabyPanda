@@ -5,14 +5,18 @@ import App from './app';
 import Bun from 'bun';
 import {startSession} from './services/requests';
 import honoServer from '@baby-panda/server';
-import {SessionProvider} from './context/sessionDetails';
-import {PendingPermissionMessagesProvider} from './context/pendingPermissionMessages';
-import {SocketProvider} from './context/webSocket';
-import {ActiveComponetsContextProvider} from './context/compontActiveState';
-import {MessageHistoryProvider} from './context/messageHistory';
+import {SessionProvider} from './context/SessionDetails';
+import {PendingPermissionMessagesProvider} from './context/PendingPermissionMessages';
+import {SocketProvider} from './context/WebSocket';
+import {ActiveComponetsContextProvider} from './context/CompontActiveState';
+import {MessageHistoryProvider} from './context/MessageHistory';
 import {
 	activateAlternateScreenBuffer,
 	deactivateAlternateScreenBuffer,
+	disableKittyKeyboardProtocol,
+	disableLineWrapping,
+	enableKittyKeyboardProtocol,
+	enableLineWrapping,
 } from './utils/terminal/io';
 const server = Bun.serve(honoServer);
 if (typeof Bun !== 'undefined') {
@@ -20,13 +24,18 @@ if (typeof Bun !== 'undefined') {
 	process.stdin.setRawMode?.(true);
 }
 
-/*since we are using incrimental rendering we need to disable terminal history
-which we can do by switching the terminal to temporary fullscreen view
+/*
+	since we are using incrimental rendering we need to disable terminal history
+	which we can do by switching the terminal to temporary fullscreen view
 	1. Immediately switch to the Alternate Screen Buffer
 */
 activateAlternateScreenBuffer();
+enableKittyKeyboardProtocol();
+enableLineWrapping();
 process.on('exit', () => {
 	deactivateAlternateScreenBuffer();
+	disableKittyKeyboardProtocol();
+	disableLineWrapping();
 });
 
 const getInitialSessionId = () => {

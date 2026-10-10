@@ -14,17 +14,33 @@ export function writeToStdErr(
 }
 
 export function enableMouseEvents() {
-	writeToStdOut('\u001b[?1002h\u001b[?1006h');
+	writeToStdOut('\x1b[?1002h\u001b[?1006h');
 }
 
 export function disableMouseEvents() {
-	writeToStdOut('\u001b[?1006l\u001b[1002l');
+	writeToStdOut('\x1b[?1006l\u001b[1002l');
 }
 
 export function activateAlternateScreenBuffer() {
-	writeToStdOut('\u001b[\x1b[?1049h');
+	writeToStdOut('\x1b[\x1b[?1049h');
 }
 
 export function deactivateAlternateScreenBuffer() {
-	writeToStdOut('\u001b[\x1b[?1049l');
+	writeToStdOut('\x1b[?1049l');
+}
+
+export function enableKittyKeyboardProtocol() {
+	writeToStdOut('\x1b[>1u');
+}
+
+export function disableKittyKeyboardProtocol() {
+	writeToStdOut('\x1b[<u');
+}
+
+export function enableLineWrapping() {
+	writeToStdOut('\x1b[?7h');
+}
+
+export function disableLineWrapping() {
+	writeToStdOut('\x1b[?7l');
 }

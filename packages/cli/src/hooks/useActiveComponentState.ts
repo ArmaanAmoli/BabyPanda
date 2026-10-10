@@ -1,5 +1,5 @@
 import {useContext} from 'react';
-import {ActiveComponentsContext} from '../context/compontActiveState';
+import {ActiveComponentsContext} from '../context/CompontActiveState';
 
 export function useActiveComponentState() {
 	const activeComponentStates = useContext(ActiveComponentsContext);
