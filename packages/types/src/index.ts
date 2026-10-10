@@ -122,14 +122,6 @@ export const WsEventMessageSchema = z.discriminatedUnion('eventType', [
       permission: z.literal(PermissionsEnums.allowAlways),
     }),
   ]),
-  // BaseSchema.extend({
-  //   eventType: z.literal(WsEventTypeSchema.enum.ask_permission),
-  //   toolCallContent: z.string(),
-  //   toolCallId: z.string(),
-  // }),
-  // BaseSchema.extend({
-  //   eventType: z.literal(WsEventTypeSchema.enum.always_allow),
-  // }),
   z.discriminatedUnion('role', [
     BaseSchema.extend({
       eventType: z.literal(WsEventTypeSchema.enum.message),

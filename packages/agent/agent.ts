@@ -177,11 +177,11 @@ export class BabyPandaAgent extends EventEmitter {
         userInput !== MessageQueueEvents.lastReplyFromLLMWasEmpty &&
         userInput !== MessageQueueEvents.answerMessageBreakPreventer
       ) {
-        const queuedMessage = this.userMessageQueue.at(0);
-        if (queuedMessage) {
-          await createMessage(this.sessionId, queuedMessage.content, Role.user);
-          this.userMessageQueue.splice(0, 1);
-          this.messageQueue.push(MessageQueueEvents.answerMessageBreakPreventer);
+        if (this.userMessageQueue.length >= 1) {
+          this.userMessageQueue.forEach(async (msg) => {
+            await createMessage(this.sessionId, msg.content, Role.user);
+            this.messageQueue.push(MessageQueueEvents.answerMessageBreakPreventer);
+          });
         }
       }
       this.messageQueue.splice(0, 1);
@@ -545,7 +545,7 @@ export class BabyPandaAgent extends EventEmitter {
 
   setAllowAlwaysTrue() {
     this.alwaysAllowBash = true;
-    for (const [toolCallId, resolve] of this.permissionWaiters) {
+    for (const resolve of this.permissionWaiters.values()) {
       resolve(true);
     }
     this.permissionWaiters.clear();
