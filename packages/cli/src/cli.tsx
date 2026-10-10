@@ -17,7 +17,7 @@ import {
 	disableLineWrapping,
 	enableKittyKeyboardProtocol,
 	enableLineWrapping,
-} from './utils/terminal/io';
+} from './utils/terminal/stdio';
 const server = Bun.serve(honoServer);
 if (typeof Bun !== 'undefined') {
 	process.stdin.resume();

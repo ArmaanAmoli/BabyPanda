@@ -1,32 +1,7 @@
 import {useStdin} from 'ink';
 import React, {useCallback, useEffect} from 'react';
 import {createContext, useRef} from 'react';
-
-type MouseEventName =
-	| 'double-click'
-	| 'left-press'
-	| 'left-release'
-	| 'middle-press'
-	| 'middle-release'
-	| 'move'
-	| 'right-press'
-	| 'right-release'
-	| 'scroll-down'
-	| 'scroll-left'
-	| 'scroll-right'
-	| 'scroll-up';
-
-interface MouseEvent {
-	name: MouseEventName;
-	col: number;
-	row: number;
-	shift: boolean;
-	ctrl: boolean;
-	meta: boolean;
-	button: 'left' | 'middle' | 'right' | 'none';
-}
-
-type MouseHandler = (event: MouseEvent) => void;
+import type {MouseHandler} from '../utils/terminal/mouse';
 
 interface MouseContextValue {
 	subscribe: (handler: MouseHandler) => void;
@@ -62,15 +37,22 @@ export function MouseProvider({
 		[subscribers],
 	);
 
+	let mouseBuffer = '';
 	useEffect(() => {
-		const handleData = (data: Buffer | string) => {};
+		if (!mouseEventEnabled) {
+			return;
+		}
+		const handleData = (data: Buffer | string) => {
+			mouseBuffer += typeof data === 'string' ? data : data.toString();
+			// parse mouse event.
+		};
 
 		stdin.on('data', handleData);
 
 		return () => {
 			stdin.removeListener('data', handleData);
 		};
-	}, []);
+	}, [stdin, subscribers, mouseEventEnabled]);
 
 	return (
 		<MouseContext.Provider value={{subscribe, unsubscribe}}>
