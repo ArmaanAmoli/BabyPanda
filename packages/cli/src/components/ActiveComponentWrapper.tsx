@@ -15,13 +15,17 @@ export function ActiveComponentWrapper({
 	const scrollRef = useRef<ScrollViewRef>(null);
 	const handler: MouseHandler = (event: MouseEvent) => {
 		if (
-			(event.name === 'scroll-down', event.row >= start && event.row <= end)
+			event.name === 'scroll-down' &&
+			event.row >= start &&
+			event.row <= end
 		) {
-			scrollRef.current?.scrollBy(3);
+			scrollRef.current?.scrollBy(10);
 		} else if (
-			(event.name === 'scroll-up', event.row >= start && event.row <= end)
+			event.name === 'scroll-up' &&
+			event.row >= start &&
+			event.row <= end
 		) {
-			scrollRef.current?.scrollBy(-3);
+			scrollRef.current?.scrollBy(-10);
 		}
 	};
 	useMouse(handler);

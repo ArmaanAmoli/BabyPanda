@@ -15,8 +15,10 @@ import {
 	deactivateAlternateScreenBuffer,
 	disableKittyKeyboardProtocol,
 	disableLineWrapping,
+	disableMouseEvents,
 	enableKittyKeyboardProtocol,
 	enableLineWrapping,
+	enableMouseEvents,
 } from './utils/terminal/stdio';
 import {MouseProvider} from './context/MouseContext';
 import {TerminalProvider} from './context/Terminal';
@@ -35,10 +37,12 @@ if (typeof Bun !== 'undefined') {
 activateAlternateScreenBuffer();
 enableKittyKeyboardProtocol();
 enableLineWrapping();
+enableMouseEvents();
 process.on('exit', () => {
 	deactivateAlternateScreenBuffer();
 	disableKittyKeyboardProtocol();
 	disableLineWrapping();
+	disableMouseEvents();
 });
 
 const getInitialSessionId = () => {
