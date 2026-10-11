@@ -68,7 +68,7 @@ const {waitUntilExit} = render(
 					</MessageHistoryProvider>
 				</SessionProvider>
 			</MouseProvider>
-		</TerminalProvider>{' '}
+		</TerminalProvider>
 	</>,
 	{
 		alternateScreen: true,

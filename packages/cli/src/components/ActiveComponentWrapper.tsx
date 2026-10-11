@@ -1,36 +1,30 @@
 import React, {useRef} from 'react';
-import {useInput} from 'ink';
 import {type ScrollViewRef, ScrollView} from 'ink-scroll-view';
+import {useMouse} from '../hooks/useMouse';
+import {MouseEvent, MouseHandler} from '../utils/terminal/mouse';
 
 export function ActiveComponentWrapper({
-	isActive,
-	// setIsActive,
+	start,
+	end,
 	children,
 }: {
-	isActive: boolean;
+	start: number;
+	end: number;
 	children: React.ReactNode;
 }) {
 	const scrollRef = useRef<ScrollViewRef>(null);
-	useInput(
-		(input, key) => {
-			if (key.upArrow) {
-				scrollRef.current?.scrollBy(-3); // Scroll up 1 line
-			}
-			if (key.downArrow) {
-				scrollRef.current?.scrollBy(3); // Scroll down 1 line
-			}
-			if (key.pageUp) {
-				// Scroll up by viewport height
-				const height = scrollRef.current?.getViewportHeight() || 1;
-				scrollRef.current?.scrollBy(-height);
-			}
-			if (key.pageDown) {
-				const height = scrollRef.current?.getViewportHeight() || 1;
-				scrollRef.current?.scrollBy(height);
-			}
-		},
-		{isActive},
-	);
+	const handler: MouseHandler = (event: MouseEvent) => {
+		if (
+			(event.name === 'scroll-down', event.row >= start && event.row <= end)
+		) {
+			scrollRef.current?.scrollBy(3);
+		} else if (
+			(event.name === 'scroll-up', event.row >= start && event.row <= end)
+		) {
+			scrollRef.current?.scrollBy(-3);
+		}
+	};
+	useMouse(handler);
 
 	return (
 		<ScrollView ref={scrollRef} flexGrow={1} flexDirection="column" gap={2}>

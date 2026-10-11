@@ -1,4 +1,4 @@
-import {useContext} from 'react';
+import {useContext, useEffect} from 'react';
 import {MouseContext} from '../context/MouseContext';
 import {MouseHandler} from '../utils/terminal/mouse';
 
@@ -12,11 +12,13 @@ export function useMouseContext() {
 
 export function useMouse(handler: MouseHandler, {isActive = true} = {}) {
 	const {subscribe, unsubscribe} = useMouseContext();
-	if (!isActive) {
-		return;
-	}
-	subscribe(handler);
-	return () => {
-		unsubscribe(handler);
-	};
+	useEffect(() => {
+		if (!isActive) return;
+
+		subscribe(handler);
+
+		return () => {
+			unsubscribe(handler); // React handles this automatically now
+		};
+	}, [isActive, handler, subscribe, unsubscribe]);
 }

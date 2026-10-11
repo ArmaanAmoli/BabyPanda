@@ -1,5 +1,5 @@
 import React from 'react';
-import {Box, useStdout, useInput} from 'ink';
+import {Box, useInput} from 'ink';
 import BigText from 'ink-big-text';
 import {useState, useEffect} from 'react';
 import PromptBox from './components/promptBox';
@@ -10,12 +10,11 @@ import {getMessages} from './services/requests';
 import {useSession} from './hooks/useSession';
 import {PermissionBox} from './components/permissionBox';
 import usePendingPermissionMessages from './hooks/usePendingPermissionMessages';
-import {useActiveComponentState} from './hooks/useActiveComponentState';
 import {useMessageHistory} from './hooks/useMessageHistroy';
-import {ComponentName} from './types';
 import useSocket from './hooks/useSocket';
-import {useMouse} from './hooks/useMouse';
 import {useTerminal} from './hooks/useTerminal';
+
+export const HEIGHT_OF_PROMPT_BOX = 6;
 
 export default function App() {
 	const socket = useSocket();
@@ -46,19 +45,6 @@ export default function App() {
 		socket?.send(JSON.stringify(wsMessage));
 	};
 
-	const activeComponentState = useActiveComponentState();
-	const isActive = activeComponentState.get(ComponentName.chatBox)?.isActive;
-	const setIsActive = activeComponentState.get(
-		ComponentName.chatBox,
-	)?.setIsActive;
-
-	useInput((input, key) => {
-		if (key.tab) {
-			if (setIsActive !== undefined) {
-				setIsActive(!isActive);
-			}
-		}
-	});
 	useEffect(() => {
 		const getHistory = async () => {
 			setMessageHistory(await getMessages(sessionId));
@@ -84,10 +70,7 @@ export default function App() {
 							colors={['white']}
 						/>
 					)}
-					<ChatBox
-						messageHistory={messageHistory}
-						isActive={isActive ?? false}
-					/>
+					<ChatBox messageHistory={messageHistory} />
 				</Box>
 				{pendingPermissionMessages.length > 0 && (
 					<Box height={12} width="50%">
@@ -95,14 +78,12 @@ export default function App() {
 					</Box>
 				)}
 				<Box
-					height={6}
-					minHeight={6}
+					height={HEIGHT_OF_PROMPT_BOX}
 					margin={0}
 					width="100%"
 					backgroundColor={'#242424'}
 				>
 					<PromptBox
-						isActive={!isActive}
 						placeholder={'Write a message... '}
 						value={prompt}
 						onChange={onChange}
