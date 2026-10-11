@@ -14,6 +14,7 @@ import {useActiveComponentState} from './hooks/useActiveComponentState';
 import {useMessageHistory} from './hooks/useMessageHistroy';
 import {ComponentName} from './types';
 import useSocket from './hooks/useSocket';
+import {useMouse} from './hooks/useMouse';
 
 export default function App() {
 	const socket = useSocket();

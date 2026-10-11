@@ -18,6 +18,9 @@ import {
 	enableKittyKeyboardProtocol,
 	enableLineWrapping,
 } from './utils/terminal/stdio';
+import {MouseProvider} from './context/MouseContext';
+import {TerminalProvider} from './context/Terminal';
+
 const server = Bun.serve(honoServer);
 if (typeof Bun !== 'undefined') {
 	process.stdin.resume();
@@ -51,17 +54,21 @@ if (initialSessionId === null) {
 
 const {waitUntilExit} = render(
 	<>
-		<SessionProvider id={initialSessionId}>
-			<MessageHistoryProvider>
-				<PendingPermissionMessagesProvider>
-					<SocketProvider>
-						<ActiveComponetsContextProvider>
-							<App />
-						</ActiveComponetsContextProvider>
-					</SocketProvider>
-				</PendingPermissionMessagesProvider>
-			</MessageHistoryProvider>
-		</SessionProvider>
+		<TerminalProvider>
+			<MouseProvider mouseEventEnabled={true}>
+				<SessionProvider id={initialSessionId}>
+					<MessageHistoryProvider>
+						<PendingPermissionMessagesProvider>
+							<SocketProvider>
+								<ActiveComponetsContextProvider>
+									<App />
+								</ActiveComponetsContextProvider>
+							</SocketProvider>
+						</PendingPermissionMessagesProvider>
+					</MessageHistoryProvider>
+				</SessionProvider>
+			</MouseProvider>
+		</TerminalProvider>{' '}
 	</>,
 	{
 		alternateScreen: true,
