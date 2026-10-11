@@ -15,6 +15,7 @@ import {useMessageHistory} from './hooks/useMessageHistroy';
 import {ComponentName} from './types';
 import useSocket from './hooks/useSocket';
 import {useMouse} from './hooks/useMouse';
+import {useTerminal} from './hooks/useTerminal';
 
 export default function App() {
 	const socket = useSocket();
@@ -23,6 +24,7 @@ export default function App() {
 	const sessionId = sessionState.sessionId;
 	const {messageHistory, setMessageHistory, lastRole} = useMessageHistory();
 	const [prompt, setPrompt] = useState('');
+	const {rows, columns} = useTerminal();
 	const onChange = (value: string) => setPrompt(value);
 
 	const onSubmit = async () => {
@@ -44,12 +46,6 @@ export default function App() {
 		socket?.send(JSON.stringify(wsMessage));
 	};
 
-	const {stdout} = useStdout();
-	const [dimensions, setDimensions] = useState({
-		columns: stdout?.columns || 80,
-		rows: stdout?.rows || 24,
-	});
-
 	const activeComponentState = useActiveComponentState();
 	const isActive = activeComponentState.get(ComponentName.chatBox)?.isActive;
 	const setIsActive = activeComponentState.get(
@@ -63,22 +59,6 @@ export default function App() {
 			}
 		}
 	});
-
-	useEffect(() => {
-		//an Eventlistner to automatically resize the cli in case of user resize their terminal window
-		if (!stdout) return;
-		const handleResize = () => {
-			setDimensions({
-				columns: stdout?.columns || 80,
-				rows: stdout?.rows || 24,
-			});
-		};
-		stdout.on('resize', handleResize);
-		return () => {
-			stdout.off('resize', handleResize);
-		};
-	}, [stdout]);
-
 	useEffect(() => {
 		const getHistory = async () => {
 			setMessageHistory(await getMessages(sessionId));
@@ -89,8 +69,8 @@ export default function App() {
 	return (
 		<Box
 			flexDirection="column"
-			width={dimensions.columns}
-			height={dimensions.rows}
+			width={columns}
+			height={rows}
 			padding={0}
 			backgroundColor={'black'}
 		>
