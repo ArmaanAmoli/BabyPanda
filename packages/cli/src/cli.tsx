@@ -38,13 +38,19 @@ activateAlternateScreenBuffer();
 enableKittyKeyboardProtocol();
 enableLineWrapping();
 enableMouseEvents();
-process.on('exit', () => {
-	deactivateAlternateScreenBuffer();
+const cleanup = () => {
+	disableMouseEvents();
 	disableKittyKeyboardProtocol();
 	disableLineWrapping();
-	disableMouseEvents();
-});
-
+	if (process.stdin.isTTY) {
+		process.stdin.setRawMode?.(false);
+	}
+	deactivateAlternateScreenBuffer();
+};
+process.on('exit', cleanup);
+process.on('SIGTERM', cleanup);
+process.on('SIGINT', cleanup);
+process.on('SIGHUP', cleanup);
 const getInitialSessionId = () => {
 	if (typeof process !== 'undefined' && process.argv && process.argv[2]) {
 		return process.argv[2];

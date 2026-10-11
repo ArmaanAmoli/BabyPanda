@@ -61,7 +61,7 @@ export default function App() {
 			backgroundColor={'black'}
 		>
 			<Box height="100%" width="100%" paddingX={2} flexDirection="column">
-				<Box flexGrow={1} flexDirection="column">
+				<Box height={rows - HEIGHT_OF_PROMPT_BOX} flexDirection="column">
 					{messageHistory.length === 0 && (
 						<BigText
 							text="BABY PANDA"

@@ -14,11 +14,13 @@ export function writeToStdErr(
 }
 
 export function enableMouseEvents() {
-	writeToStdOut('\x1b[?1002h\u001b[?1006h');
+	writeToStdOut('\x1b[?1002h\x1b[?1006h');
 }
 
 export function disableMouseEvents() {
-	writeToStdOut('\x1b[?1006l\u001b[1002l');
+	writeToStdOut(
+		'\x1b[?1000l\x1b[?1002l\x1b[?1003l\x1b[?1006l\x1b[?25h\x1b[?7h',
+	);
 }
 
 export function activateAlternateScreenBuffer() {
