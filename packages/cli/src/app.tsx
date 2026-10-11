@@ -13,7 +13,8 @@ import usePendingPermissionMessages from './hooks/usePendingPermissionMessages';
 import {useMessageHistory} from './hooks/useMessageHistroy';
 import useSocket from './hooks/useSocket';
 import {useTerminal} from './hooks/useTerminal';
-
+import {couldBeMouseSequence} from './utils/terminal/input';
+import {SGR_MOUSE_REGEX, X11_MOUSE_REGEX} from './utils/terminal/input';
 export const HEIGHT_OF_PROMPT_BOX = 6;
 
 export default function App() {
@@ -24,7 +25,11 @@ export default function App() {
 	const {messageHistory, setMessageHistory, lastRole} = useMessageHistory();
 	const [prompt, setPrompt] = useState('');
 	const {rows, columns} = useTerminal();
-	const onChange = (value: string) => setPrompt(value);
+	const onChange = (value: string) => {
+		if (SGR_MOUSE_REGEX.test(value) || X11_MOUSE_REGEX.test(value)) {
+			setPrompt(value);
+		}
+	};
 
 	const onSubmit = async () => {
 		if (prompt.trim().length === 0) {
