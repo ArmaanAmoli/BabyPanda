@@ -1,5 +1,5 @@
 import React from 'react';
-import {Box, useInput} from 'ink';
+import {Box} from 'ink';
 import BigText from 'ink-big-text';
 import {useState, useEffect} from 'react';
 import PromptBox from './components/promptBox';
@@ -13,7 +13,6 @@ import usePendingPermissionMessages from './hooks/usePendingPermissionMessages';
 import {useMessageHistory} from './hooks/useMessageHistroy';
 import useSocket from './hooks/useSocket';
 import {useTerminal} from './hooks/useTerminal';
-import {couldBeMouseSequence} from './utils/terminal/input';
 import {SGR_MOUSE_REGEX, X11_MOUSE_REGEX} from './utils/terminal/input';
 export const HEIGHT_OF_PROMPT_BOX = 6;
 

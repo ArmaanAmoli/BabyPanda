@@ -9,12 +9,14 @@ import {setTimeout} from 'node:timers';
 import {getProjectName} from '@baby-panda/utils';
 import {appendMessageHistory} from '../utils/appendMessageHistory';
 import {useMessageHistory} from '../hooks/useMessageHistroy';
+import {useTerminal} from '../hooks/useTerminal';
 
 export const SocketContext = createContext<WebSocket | null>(null);
 
 const projectName = getProjectName();
 
 export function SocketProvider({children}: ReactChildPropInterface) {
+	const {columns} = useTerminal();
 	const {sessionId} = useSession();
 	const messageContext = useMessageHistory();
 	const [socket, setSocket] = useState<WebSocket | null>(null);
@@ -43,6 +45,7 @@ export function SocketProvider({children}: ReactChildPropInterface) {
 				switch (parsed.eventType) {
 					case WsEventTypes.message: {
 						const chunk = ServerStreamChunkSchema.parse(payload);
+						chunk.content = Bun.markdown.ansi(chunk.content, {columns});
 						appendMessageHistory(chunk, messageContext);
 						break;
 					}

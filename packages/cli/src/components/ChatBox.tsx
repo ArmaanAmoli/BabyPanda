@@ -13,12 +13,7 @@ export function ChatBox({messageHistory}: {messageHistory: CleanedMessage[]}) {
 	How to figure out the length of the sliding window ?
 	How to figure out the length of the message in terms of terminal
 	rows and columns ? <- by finding this we will get the length of the sliding window
-	
-	problem can be solved by Bun.markdown.ansi(text, {columns:60})
 	*/
-
-	const rowsRef = useRef<number>(0);
-
 	return (
 		<ActiveComponentWrapper
 			start={0}
@@ -33,7 +28,6 @@ export function ChatBox({messageHistory}: {messageHistory: CleanedMessage[]}) {
 								content={message.content as string}
 								role={message.role}
 								createdAt={message.createdAt}
-								rowsRef={rowsRef}
 							/>
 						);
 					})}

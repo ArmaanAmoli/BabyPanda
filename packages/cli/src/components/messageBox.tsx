@@ -1,8 +1,7 @@
-import React, {useEffect, useState} from 'react';
+import React from 'react';
 import {Box} from 'ink';
 import {Role} from '@baby-panda/types';
 import type {CleanedMessage} from '@baby-panda/types';
-import {useTerminal} from '../hooks/useTerminal';
 import {Markdown} from './markdown';
 
 function getColor(role: Role) {
@@ -17,19 +16,8 @@ function getColor(role: Role) {
 	}
 }
 
-export function MessageBox({
-	role,
-	content,
-	rowsRef,
-}: CleanedMessage & {rowsRef: React.MutableRefObject<number>}) {
+export function MessageBox({role, content}: CleanedMessage) {
 	const color = getColor(role);
-	const {columns} = useTerminal();
-	const [wrappedText, setWrappedText] = useState('');
-	const totalRows = wrappedText.split('\n').length;
-	useEffect(() => {
-		setWrappedText(Bun.markdown.ansi(content, {columns}));
-		rowsRef.current += totalRows;
-	}, [content, rowsRef, columns]);
 	return (
 		<Box
 			width="100%"
@@ -45,7 +33,7 @@ export function MessageBox({
 		>
 			<Markdown
 				isThought={role === Role.thought ? true : false}
-			>{`${wrappedText}`}</Markdown>
+			>{`${content}`}</Markdown>
 		</Box>
 	);
 }
