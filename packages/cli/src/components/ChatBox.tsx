@@ -27,9 +27,11 @@ export function ChatBox({messageHistory}: {messageHistory: CleanedMessage[]}) {
 		stop the rendering.
 	. Reverse message array rendering
 	. We need to know the range from where to render
-	. create a inViewPortMessages() -> returns messages in currentViewPort
+	. create a inViewPortMessages(framesize , framecount) -> returns messages in currentViewPort
 		manage message slicing inside that for example if a message can completely fit
 		we need to just return the fitted part and slice/remove the overflow.
+		start by frameCount 0 -> most recent messages
+		as the frameCount+=1 -> shift the window by -> SCROLL_COLUMNS
 	. We can generate all possible frames ? traverse a window of size 80 rows
 		over the message history array.
 	*/
