@@ -4,7 +4,7 @@ import type {CleanedMessage} from '@baby-panda/types';
 import {MessageBox} from './messageBox';
 import type {MouseEvent, MouseHandler} from '../utils/terminal/mouse';
 import {useMouse} from '../hooks/useMouse';
-import {inViewPortMessages} from '../utils/inViewPortMessages';
+import {inViewPortMessages, SCROLL_ROWS} from '../utils/inViewPortMessages';
 import {useViewPortMessage} from '../hooks/useViewPortMessage';
 import {useRef} from 'react';
 export function ChatBox({
@@ -14,7 +14,7 @@ export function ChatBox({
 }: {messageHistory: CleanedMessage[]} & {start: number; end: number}) {
 	let i = 0;
 	const {viewPortMessages, setViewPortMessages} = useViewPortMessage();
-	const offset = useRef(0);
+	const offset = useRef<number>(0);
 	// const revsedMessageHistory =[...messageHistory].reverse();
 
 	/*
@@ -46,24 +46,29 @@ export function ChatBox({
 	const handler: React.MutableRefObject<MouseHandler> = useRef<
 		(event: MouseEvent) => void
 	>((event: MouseEvent) => {
+		const lastLineIdx = viewPortMessages.length - 1;
+		const rows = end - start + 1;
+		let i = viewPortMessages.length - 1;
+		let j = i + rows - 1;
+
 		if (
 			event.name === 'scroll-down' &&
 			event.row >= start &&
 			event.row <= end
 		) {
-			offset.current -= 1;
-			setViewPortMessages(
-				inViewPortMessages(messageHistory, end - start, offset.current),
-			);
+			offset.current += 1;
+			j = Math.min(lastLineIdx, j + offset.current * SCROLL_ROWS);
+			i = j - rows + 1;
+			setViewPortMessages(viewPortMessages.slice(i, j + 1));
 		} else if (
 			event.name === 'scroll-up' &&
 			event.row >= start &&
 			event.row <= end
 		) {
-			offset.current += 1;
-			setViewPortMessages(
-				inViewPortMessages(messageHistory, end - start, offset.current),
-			);
+			offset.current -= 1;
+			i = Math.max(start, i - offset.current * SCROLL_ROWS);
+			j = i - rows - 1;
+			setViewPortMessages(viewPortMessages.slice(i, j + 1));
 		}
 	});
 	useMouse(handler.current);

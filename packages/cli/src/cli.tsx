@@ -22,6 +22,7 @@ import {
 } from './utils/terminal/stdio';
 import {MouseProvider} from './context/MouseContext';
 import {TerminalProvider} from './context/Terminal';
+import {ViewPortMessageProvider} from './context/ViewPortMessage';
 
 const server = Bun.serve(honoServer);
 if (typeof Bun !== 'undefined') {
@@ -69,11 +70,13 @@ const {waitUntilExit} = render(
 				<SessionProvider id={initialSessionId}>
 					<MessageHistoryProvider>
 						<PendingPermissionMessagesProvider>
-							<SocketProvider>
-								<ActiveComponetsContextProvider>
-									<App />
-								</ActiveComponetsContextProvider>
-							</SocketProvider>
+							<ViewPortMessageProvider>
+								<SocketProvider>
+									<ActiveComponetsContextProvider>
+										<App />
+									</ActiveComponetsContextProvider>
+								</SocketProvider>
+							</ViewPortMessageProvider>
 						</PendingPermissionMessagesProvider>
 					</MessageHistoryProvider>
 				</SessionProvider>
