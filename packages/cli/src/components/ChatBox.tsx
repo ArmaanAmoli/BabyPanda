@@ -53,14 +53,19 @@ export function ChatBox({
 			event.row >= start &&
 			event.row <= end
 		) {
-			//
+			offset.current -= 1;
+			setViewPortMessages(
+				inViewPortMessages(messageHistory, rows, offset.current),
+			);
 		} else if (
 			event.name === 'scroll-up' &&
 			event.row >= start &&
 			event.row <= end
 		) {
 			offset.current += 1;
-			inViewPortMessages(messageHistory, rows, offset.current);
+			setViewPortMessages(
+				inViewPortMessages(messageHistory, rows, offset.current),
+			);
 		}
 	});
 	useMouse(handler.current);
@@ -71,8 +76,8 @@ export function ChatBox({
 		// 	end={terminal.rows - HEIGHT_OF_PROMPT_BOX}
 		// >
 		<Box flexGrow={1} flexDirection="column">
-			{messageHistory.length > 0 &&
-				messageHistory.map(message => {
+			{viewPortMessages.length > 0 &&
+				viewPortMessages.map(message => {
 					return (
 						<MessageBox
 							key={i++}

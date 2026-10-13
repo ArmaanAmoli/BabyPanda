@@ -41,6 +41,7 @@ export function inViewPortMessages(
 		// selection part
 
 		if (skipBuffer > 0) {
+			// scroll-up
 			if (skipBuffer >= h) {
 				skipBuffer -= h;
 				continue;
@@ -52,6 +53,7 @@ export function inViewPortMessages(
 				result.push(trimedMessage);
 			}
 		} else {
+			// window finishing
 			// creating part
 			if (height + h < terminalRows) {
 				result.push(message);
