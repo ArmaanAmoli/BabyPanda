@@ -1,13 +1,22 @@
-import React, {useRef} from 'react';
+import React from 'react';
 import {Box} from 'ink';
-import {ActiveComponentWrapper} from './ActiveComponentWrapper';
 import type {CleanedMessage} from '@baby-panda/types';
 import {MessageBox} from './messageBox';
+import type {MouseEvent, MouseHandler} from '../utils/terminal/mouse';
+import {useMouse} from '../hooks/useMouse';
+import {inViewPortMessages} from '../utils/inViewPortMessages';
+import {useViewPortMessage} from '../hooks/useViewPortMessage';
+import {useRef} from 'react';
 import {useTerminal} from '../hooks/useTerminal';
-import {HEIGHT_OF_PROMPT_BOX} from '../app';
-export function ChatBox({messageHistory}: {messageHistory: CleanedMessage[]}) {
+export function ChatBox({
+	messageHistory,
+	start,
+	end,
+}: {messageHistory: CleanedMessage[]} & {start: number; end: number}) {
 	let i = 0;
-	const terminal = useTerminal();
+	const {viewPortMessages, setViewPortMessages} = useViewPortMessage();
+	const {rows} = useTerminal();
+	const offset = useRef(0);
 	// const revsedMessageHistory =[...messageHistory].reverse();
 
 	/*
@@ -35,24 +44,45 @@ export function ChatBox({messageHistory}: {messageHistory: CleanedMessage[]}) {
 	. We can generate all possible frames ? traverse a window of size 80 rows
 		over the message history array.
 	*/
+
+	const handler: React.MutableRefObject<MouseHandler> = useRef<
+		(event: MouseEvent) => void
+	>((event: MouseEvent) => {
+		if (
+			event.name === 'scroll-down' &&
+			event.row >= start &&
+			event.row <= end
+		) {
+			//
+		} else if (
+			event.name === 'scroll-up' &&
+			event.row >= start &&
+			event.row <= end
+		) {
+			offset.current += 1;
+			inViewPortMessages(messageHistory, rows, offset.current);
+		}
+	});
+	useMouse(handler.current);
+
 	return (
-		<ActiveComponentWrapper
-			start={0}
-			end={terminal.rows - HEIGHT_OF_PROMPT_BOX}
-		>
-			<Box flexGrow={1} flexDirection="column">
-				{messageHistory.length > 0 &&
-					messageHistory.map(message => {
-						return (
-							<MessageBox
-								key={i++}
-								content={message.content as string}
-								role={message.role}
-								createdAt={message.createdAt}
-							/>
-						);
-					})}
-			</Box>
-		</ActiveComponentWrapper>
+		// <ActiveComponentWrapper
+		// 	start={0}
+		// 	end={terminal.rows - HEIGHT_OF_PROMPT_BOX}
+		// >
+		<Box flexGrow={1} flexDirection="column">
+			{messageHistory.length > 0 &&
+				messageHistory.map(message => {
+					return (
+						<MessageBox
+							key={i++}
+							content={message.content as string}
+							role={message.role}
+							createdAt={message.createdAt}
+						/>
+					);
+				})}
+		</Box>
+		// </ActiveComponentWrapper>
 	);
 }

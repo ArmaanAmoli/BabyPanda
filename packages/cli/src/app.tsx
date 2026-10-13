@@ -14,6 +14,7 @@ import {useMessageHistory} from './hooks/useMessageHistroy';
 import useSocket from './hooks/useSocket';
 import {useTerminal} from './hooks/useTerminal';
 import {SGR_MOUSE_REGEX, X11_MOUSE_REGEX} from './utils/terminal/input';
+import {ViewPortMessageProvider} from './context/ViewPortMessage';
 export const HEIGHT_OF_PROMPT_BOX = 6;
 
 export default function App() {
@@ -74,7 +75,13 @@ export default function App() {
 							colors={['white']}
 						/>
 					)}
-					<ChatBox messageHistory={messageHistory} />
+					<ViewPortMessageProvider>
+						<ChatBox
+							messageHistory={messageHistory}
+							start={0}
+							end={rows - HEIGHT_OF_PROMPT_BOX}
+						/>
+					</ViewPortMessageProvider>
 				</Box>
 				{pendingPermissionMessages.length > 0 && (
 					<Box height={12} width="50%">
