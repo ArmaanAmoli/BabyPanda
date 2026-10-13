@@ -1,13 +1,17 @@
-import {CleanedMessage} from '@baby-panda/types';
 import React, {SetStateAction, useEffect, useState} from 'react';
 import {createContext} from 'react';
 import {useMessageHistory} from '../hooks/useMessageHistroy';
-import {inViewPortMessages} from '../utils/inViewPortMessages';
 import {useTerminal} from '../hooks/useTerminal';
+import {breakMessageIntoLines, type MessageLine} from '../utils/breakIntoLines';
+import {
+	MARGIN_TOP_MESSAGE_BOX,
+	PADDING_MESSAGE_BOX,
+} from '../components/messageBox';
+import {PADDING_APP} from '../app';
 
 export interface ViewPortMessageContextValue {
-	viewPortMessages: CleanedMessage[];
-	setViewPortMessages: React.Dispatch<SetStateAction<CleanedMessage[]>>;
+	viewPortMessages: MessageLine[];
+	setViewPortMessages: React.Dispatch<SetStateAction<MessageLine[]>>;
 }
 
 export const ViewPortMessageContext =
@@ -18,15 +22,23 @@ export function ViewPortMessageProvider({
 }: {
 	children: React.ReactNode;
 }) {
-	const [viewPortMessages, setViewPortMessages] = useState<CleanedMessage[]>(
-		[],
-	);
+	const [viewPortMessages, setViewPortMessages] = useState<MessageLine[]>([]);
 	const {messageHistory} = useMessageHistory();
-	const {rows, columns} = useTerminal();
+	const {columns} = useTerminal();
 
 	useEffect(() => {
-		setViewPortMessages(inViewPortMessages(messageHistory, rows, 0));
-	}, [messageHistory, rows, columns]);
+		const maxWidth =
+			columns -
+			(MARGIN_TOP_MESSAGE_BOX + 2 * PADDING_APP + 2 * PADDING_MESSAGE_BOX);
+		let tempViewPortMessages: MessageLine[] = [];
+		messageHistory.forEach(message => {
+			tempViewPortMessages = [
+				...tempViewPortMessages,
+				...breakMessageIntoLines(message, maxWidth),
+			];
+		});
+		setViewPortMessages(tempViewPortMessages);
+	}, [columns]);
 
 	return (
 		<ViewPortMessageContext.Provider

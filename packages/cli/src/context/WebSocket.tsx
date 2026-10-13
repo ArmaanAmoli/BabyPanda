@@ -29,6 +29,10 @@ export function SocketProvider({children}: ReactChildPropInterface) {
 	const reconnectDelayRef = useRef(1000);
 	const permissions = usePendingPermissionMessages();
 	useEffect(() => {
+		const maxWidth =
+			columns -
+			(MARGIN_TOP_MESSAGE_BOX + 2 * PADDING_APP + 2 * PADDING_MESSAGE_BOX);
+
 		let isMounted = true;
 		const url = new URL('ws://localhost:3000/ws');
 
