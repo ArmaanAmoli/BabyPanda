@@ -7,14 +7,14 @@ import {UserPermissionSchema, ServerStreamChunkSchema} from '@baby-panda/types';
 import usePendingPermissionMessages from '../hooks/usePendingPermissionMessages';
 import {setTimeout} from 'node:timers';
 import {getProjectName} from '@baby-panda/utils';
-import {appendMessageHistory} from '../utils/appendMessageHistory';
-import {useMessageHistory} from '../hooks/useMessageHistroy';
 import {useTerminal} from '../hooks/useTerminal';
 import {
 	MARGIN_TOP_MESSAGE_BOX,
 	PADDING_MESSAGE_BOX,
 } from '../components/messageBox';
 import {PADDING_APP} from '../app';
+import {useViewPortMessage} from '../hooks/useViewPortMessage';
+import {appendMessageLine} from '../utils/appendMessageHistory';
 
 export const SocketContext = createContext<WebSocket | null>(null);
 
@@ -23,7 +23,8 @@ const projectName = getProjectName();
 export function SocketProvider({children}: ReactChildPropInterface) {
 	const {columns} = useTerminal();
 	const {sessionId} = useSession();
-	const messageContext = useMessageHistory();
+	// const messageContext = useMessageHistory();
+	const viewPortContext = useViewPortMessage();
 	const [socket, setSocket] = useState<WebSocket | null>(null);
 	const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 	const reconnectDelayRef = useRef(1000);
@@ -61,7 +62,7 @@ export function SocketProvider({children}: ReactChildPropInterface) {
 									2 * PADDING_APP +
 									2 * PADDING_MESSAGE_BOX),
 						});
-						appendMessageHistory(chunk, messageContext);
+						appendMessageLine(chunk, viewPortContext, maxWidth);
 						break;
 					}
 					case WsEventTypes.permission: {
@@ -113,6 +114,3 @@ export function SocketProvider({children}: ReactChildPropInterface) {
 		<SocketContext.Provider value={socket}>{children}</SocketContext.Provider>
 	);
 }
-
-// permission pending array
-// on message for permission => push in pending permission array => if pending Permission array not empty => show the permission pannel
