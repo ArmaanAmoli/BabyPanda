@@ -7,7 +7,6 @@ import {useMouse} from '../hooks/useMouse';
 import {inViewPortMessages} from '../utils/inViewPortMessages';
 import {useViewPortMessage} from '../hooks/useViewPortMessage';
 import {useRef} from 'react';
-import {useTerminal} from '../hooks/useTerminal';
 export function ChatBox({
 	messageHistory,
 	start,
@@ -15,7 +14,6 @@ export function ChatBox({
 }: {messageHistory: CleanedMessage[]} & {start: number; end: number}) {
 	let i = 0;
 	const {viewPortMessages, setViewPortMessages} = useViewPortMessage();
-	const {rows} = useTerminal();
 	const offset = useRef(0);
 	// const revsedMessageHistory =[...messageHistory].reverse();
 
@@ -55,7 +53,7 @@ export function ChatBox({
 		) {
 			offset.current -= 1;
 			setViewPortMessages(
-				inViewPortMessages(messageHistory, rows, offset.current),
+				inViewPortMessages(messageHistory, end - start, offset.current),
 			);
 		} else if (
 			event.name === 'scroll-up' &&
@@ -64,7 +62,7 @@ export function ChatBox({
 		) {
 			offset.current += 1;
 			setViewPortMessages(
-				inViewPortMessages(messageHistory, rows, offset.current),
+				inViewPortMessages(messageHistory, end - start, offset.current),
 			);
 		}
 	});

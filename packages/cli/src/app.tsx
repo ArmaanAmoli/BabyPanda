@@ -15,7 +15,9 @@ import useSocket from './hooks/useSocket';
 import {useTerminal} from './hooks/useTerminal';
 import {SGR_MOUSE_REGEX, X11_MOUSE_REGEX} from './utils/terminal/input';
 import {ViewPortMessageProvider} from './context/ViewPortMessage';
+
 export const HEIGHT_OF_PROMPT_BOX = 6;
+export const PADDING_APP = 2;
 
 export default function App() {
 	const socket = useSocket();
@@ -65,7 +67,12 @@ export default function App() {
 			padding={0}
 			backgroundColor={'black'}
 		>
-			<Box height="100%" width="100%" paddingX={2} flexDirection="column">
+			<Box
+				height="100%"
+				width="100%"
+				paddingX={PADDING_APP}
+				flexDirection="column"
+			>
 				<Box height={rows - HEIGHT_OF_PROMPT_BOX} flexDirection="column">
 					{messageHistory.length === 0 && (
 						<BigText

@@ -34,7 +34,8 @@
 		"marked": "^18.0.11",
 		"meow": "^11.0.0",
 		"react": "^19.2.8",
-		"react-dom": "^19.2.8"
+		"react-dom": "^19.2.8",
+		"ts-wcwidth": "^2.0.3"
 	},
 	"devDependencies": {
 		"@sindresorhus/tsconfig": "^3.0.1",

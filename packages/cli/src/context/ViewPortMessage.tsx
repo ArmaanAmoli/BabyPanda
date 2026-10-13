@@ -22,11 +22,11 @@ export function ViewPortMessageProvider({
 		[],
 	);
 	const {messageHistory} = useMessageHistory();
-	const {rows} = useTerminal();
+	const {rows, columns} = useTerminal();
 
 	useEffect(() => {
 		setViewPortMessages(inViewPortMessages(messageHistory, rows, 0));
-	}, []);
+	}, [messageHistory, rows, columns]);
 
 	return (
 		<ViewPortMessageContext.Provider

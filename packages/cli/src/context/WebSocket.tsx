@@ -10,6 +10,11 @@ import {getProjectName} from '@baby-panda/utils';
 import {appendMessageHistory} from '../utils/appendMessageHistory';
 import {useMessageHistory} from '../hooks/useMessageHistroy';
 import {useTerminal} from '../hooks/useTerminal';
+import {
+	MARGIN_TOP_MESSAGE_BOX,
+	PADDING_MESSAGE_BOX,
+} from '../components/messageBox';
+import {PADDING_APP} from '../app';
 
 export const SocketContext = createContext<WebSocket | null>(null);
 
@@ -45,7 +50,13 @@ export function SocketProvider({children}: ReactChildPropInterface) {
 				switch (parsed.eventType) {
 					case WsEventTypes.message: {
 						const chunk = ServerStreamChunkSchema.parse(payload);
-						chunk.content = Bun.markdown.ansi(chunk.content, {columns});
+						chunk.content = Bun.markdown.ansi(chunk.content, {
+							columns:
+								columns -
+								(MARGIN_TOP_MESSAGE_BOX +
+									2 * PADDING_APP +
+									2 * PADDING_MESSAGE_BOX),
+						});
 						appendMessageHistory(chunk, messageContext);
 						break;
 					}

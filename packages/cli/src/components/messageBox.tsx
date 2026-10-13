@@ -4,6 +4,9 @@ import {Role} from '@baby-panda/types';
 import type {CleanedMessage} from '@baby-panda/types';
 import {Markdown} from './markdown';
 
+export const PADDING_MESSAGE_BOX = 1;
+export const MARGIN_TOP_MESSAGE_BOX = 1;
+
 function getColor(role: Role) {
 	if (role === Role.thought) {
 		return '#863737';
@@ -26,8 +29,8 @@ export function MessageBox({role, content}: CleanedMessage) {
 			borderTop={false}
 			borderBottom={false}
 			borderRight={false}
-			padding={1}
-			marginTop={1}
+			padding={PADDING_MESSAGE_BOX}
+			marginTop={MARGIN_TOP_MESSAGE_BOX}
 			borderStyle={'bold'}
 			backgroundColor={'#111111b0'}
 		>
