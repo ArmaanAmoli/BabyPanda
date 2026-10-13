@@ -1,20 +1,26 @@
-import React from 'react';
+import React, {useEffect, useState} from 'react';
 import {Box} from 'ink';
 import type {CleanedMessage} from '@baby-panda/types';
 import {MessageBox} from './messageBox';
 import type {MouseEvent, MouseHandler} from '../utils/terminal/mouse';
 import {useMouse} from '../hooks/useMouse';
-import {inViewPortMessages, SCROLL_ROWS} from '../utils/inViewPortMessages';
+import {SCROLL_ROWS} from '../utils/inViewPortMessages';
 import {useViewPortMessage} from '../hooks/useViewPortMessage';
 import {useRef} from 'react';
+import {combineLinesToMessage} from '../utils/combineLinesToMessage';
 export function ChatBox({
-	messageHistory,
 	start,
 	end,
 }: {messageHistory: CleanedMessage[]} & {start: number; end: number}) {
 	let i = 0;
 	const {viewPortMessages, setViewPortMessages} = useViewPortMessage();
+	const [messageArray, setMessageArray] = useState<CleanedMessage[]>([]);
+
 	const offset = useRef<number>(0);
+
+	useEffect(() => {
+		setMessageArray(combineLinesToMessage(viewPortMessages));
+	}, [viewPortMessages]);
 	// const revsedMessageHistory =[...messageHistory].reverse();
 
 	/*
@@ -80,7 +86,7 @@ export function ChatBox({
 		// >
 		<Box flexGrow={1} flexDirection="column">
 			{viewPortMessages.length > 0 &&
-				viewPortMessages.map(message => {
+				messageArray.map(message => {
 					return (
 						<MessageBox
 							key={i++}
