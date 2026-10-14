@@ -12,7 +12,7 @@ export function combineLinesToMessage(lines: MessageLine[]): CleanedMessage[] {
 				createdAt: line.createdAt,
 			});
 		} else {
-			lastMessage.content += `${line.content}`;
+			lastMessage.content += `${line.content.trim()}\n`;
 		}
 	});
 	return result;

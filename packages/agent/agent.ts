@@ -178,15 +178,21 @@ export class BabyPandaAgent extends EventEmitter {
         userInput !== MessageQueueEvents.answerMessageBreakPreventer
       ) {
         if (this.userMessageQueue.length >= 1) {
-          this.userMessageQueue.forEach(async (msg) => {
+          for (const msg of this.userMessageQueue) {
             await createMessage(this.sessionId, msg.content, Role.user);
-            this.messageQueue.push(MessageQueueEvents.answerMessageBreakPreventer);
-          });
+            writeLogs(
+              LogType.agent,
+              this.projectDirectoryName,
+              this.sessionId,
+              `[USER]: ${msg.content}`,
+            );
+          }
+          this.userMessageQueue.length = 0;
+          this.messageQueue.push(MessageQueueEvents.answerMessageBreakPreventer);
         }
       }
       this.messageQueue.splice(0, 1);
 
-      const messages: MessageAPI[] = await this.createContext();
       // console.log(messages)
       if (this.contextWindowUsed >= this.contextWindow * 0.75) {
         try {
@@ -201,6 +207,8 @@ export class BabyPandaAgent extends EventEmitter {
           continue;
         }
       }
+
+      const messages: MessageAPI[] = await this.createContext();
 
       writeLogs(
         LogType.agent,
@@ -352,7 +360,7 @@ export class BabyPandaAgent extends EventEmitter {
                 replyJson = MessageContentSchema.parse(JSON.parse(fullReply));
               } catch (err) {
                 reject('parsing error');
-                createMessage(
+                await createMessage(
                   this.sessionId,
                   `Their is an issue in the reply structure that you gave ${err}`,
                   Role.system,
@@ -487,7 +495,7 @@ export class BabyPandaAgent extends EventEmitter {
                 this.sessionId,
                 `[TOOL CALL ERROR]: Informing LLM about it, \n${fullErrMessage}`,
               );
-              createMessage(this.sessionId, fullErrMessage, Role.user);
+              await createMessage(this.sessionId, fullErrMessage, Role.user);
               // this.messageQueue.push(MessageQueueSpecialElement.errorInLastIteration);
               reject(err);
             }

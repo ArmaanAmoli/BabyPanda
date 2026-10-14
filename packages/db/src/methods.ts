@@ -42,7 +42,7 @@ export async function createMessage(
     await tx.insert(Message).values({
       messageIndex: messageIndex,
       sessionId: sessionId,
-      createdAt: creationTime, // Fixes the database driver positioning crash
+      createdAt: creationTime,
       content: content,
       role: role,
       isToolResult: isToolResult ?? false,
