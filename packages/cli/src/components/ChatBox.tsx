@@ -2,11 +2,10 @@ import React, {useCallback, useEffect, useState} from 'react';
 import {Box} from 'ink';
 import type {CleanedMessage} from '@baby-panda/types';
 import {MessageBox} from './messageBox';
-import type {MouseEvent, MouseHandler} from '../utils/terminal/mouse';
+import type {MouseEvent} from '../utils/terminal/mouse';
 import {useMouse} from '../hooks/useMouse';
 import {SCROLL_ROWS} from '../utils/inViewPortMessages';
 import {useViewPortMessage} from '../hooks/useViewPortMessage';
-import {useRef} from 'react';
 import {combineLinesToMessage} from '../utils/combineLinesToMessage';
 import {MessageLine} from '../utils/breakIntoLines';
 export function ChatBox({
@@ -43,7 +42,7 @@ export function ChatBox({
 				setCurrentlyVisibleArray(viewPortMessages.slice(i, j + 1));
 			}
 		},
-		[viewPortMessages],
+		[viewPortMessages, start, end, rows, i, j],
 	);
 
 	// const offset = useRef<number>(0);

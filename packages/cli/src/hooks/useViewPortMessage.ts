@@ -1,4 +1,4 @@
-import React, {useContext} from 'react';
+import {useContext} from 'react';
 import {ViewPortMessageContext} from '../context/ViewPortMessage';
 
 export function useViewPortMessage() {

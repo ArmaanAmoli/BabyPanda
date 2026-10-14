@@ -13,11 +13,12 @@ import usePendingPermissionMessages from './hooks/usePendingPermissionMessages';
 import {useMessageHistory} from './hooks/useMessageHistroy';
 import useSocket from './hooks/useSocket';
 import {useTerminal} from './hooks/useTerminal';
-import {SGR_MOUSE_REGEX, X11_MOUSE_REGEX} from './utils/terminal/input';
+// import {SGR_MOUSE_REGEX, X11_MOUSE_REGEX} from './utils/terminal/input';
 
 export const HEIGHT_OF_PROMPT_BOX = 6;
 export const PADDING_APP = 2;
-
+// eslint-disable-next-line no-control-regex
+export const MOUSE_INPUT_REGEX = /(?:\x1b)?(?:\[<\d+;\d+;\d+[mM]|\[M[\s\S]{3})/;
 export default function App() {
 	const socket = useSocket();
 	const sessionState = useSession();
@@ -27,7 +28,12 @@ export default function App() {
 	const [prompt, setPrompt] = useState('');
 	const {rows, columns} = useTerminal();
 	const onChange = (value: string) => {
-		if (SGR_MOUSE_REGEX.test(value) || X11_MOUSE_REGEX.test(value)) {
+		if (value.length > prompt.length) {
+			const newChars = value.slice(prompt.length);
+			if (!MOUSE_INPUT_REGEX.test(newChars)) {
+				setPrompt(prev => prev + newChars);
+			}
+		} else {
 			setPrompt(value);
 		}
 	};
