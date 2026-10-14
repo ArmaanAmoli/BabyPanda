@@ -489,15 +489,7 @@ export class BabyPandaAgent extends EventEmitter {
               // to-do save messages code below this
             } catch (err) {
               const fullErrMessage = `An error occured while resolving tool call at agent.ts: ${err}`;
-              // console.log(fullErrMessage, "Sending error to llm");
-              // writeLogs(
-              //   LogType.agent,
-              //   this.projectDirectoryName,
-              //   this.sessionId,
-              //   `[TOOL CALL ERROR]: Informing LLM about it, \n${fullErrMessage}`,
-              // );
               await createMessage(this.sessionId, fullErrMessage, Role.user);
-              // this.messageQueue.push(MessageQueueSpecialElement.errorInLastIteration);
               reject(fullErrMessage);
             }
           }
