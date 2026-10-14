@@ -7,33 +7,21 @@ import {UserPermissionSchema, ServerStreamChunkSchema} from '@baby-panda/types';
 import usePendingPermissionMessages from '../hooks/usePendingPermissionMessages';
 import {setTimeout} from 'node:timers';
 import {getProjectName} from '@baby-panda/utils';
-import {useTerminal} from '../hooks/useTerminal';
-import {
-	MARGIN_TOP_MESSAGE_BOX,
-	PADDING_MESSAGE_BOX,
-} from '../components/messageBox';
-import {PADDING_APP} from '../app';
-import {useViewPortMessage} from '../hooks/useViewPortMessage';
-import {appendMessageLine} from '../utils/appendMessageHistory';
+import {useMessageHistory} from '../hooks/useMessageHistroy';
+import {appendMessageHistory} from '../utils/appendMessageHistory';
 
 export const SocketContext = createContext<WebSocket | null>(null);
 
 const projectName = getProjectName();
 
 export function SocketProvider({children}: ReactChildPropInterface) {
-	const {columns} = useTerminal();
 	const {sessionId} = useSession();
-	// const messageContext = useMessageHistory();
-	const viewPortContext = useViewPortMessage();
+	const messageContext = useMessageHistory();
 	const [socket, setSocket] = useState<WebSocket | null>(null);
 	const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 	const reconnectDelayRef = useRef(1000);
 	const permissions = usePendingPermissionMessages();
 	useEffect(() => {
-		const maxWidth =
-			columns -
-			(MARGIN_TOP_MESSAGE_BOX + 2 * PADDING_APP + 2 * PADDING_MESSAGE_BOX);
-
 		let isMounted = true;
 		const url = new URL('ws://localhost:3000/ws');
 
@@ -55,14 +43,7 @@ export function SocketProvider({children}: ReactChildPropInterface) {
 				switch (parsed.eventType) {
 					case WsEventTypes.message: {
 						const chunk = ServerStreamChunkSchema.parse(payload);
-						// chunk.content = Bun.markdown.ansi(chunk.content, {
-						// 	columns:
-						// 		columns -
-						// 		(MARGIN_TOP_MESSAGE_BOX +
-						// 			2 * PADDING_APP +
-						// 			2 * PADDING_MESSAGE_BOX),
-						// });
-						appendMessageLine(chunk, viewPortContext, maxWidth);
+						appendMessageHistory(chunk, messageContext);
 						break;
 					}
 					case WsEventTypes.permission: {

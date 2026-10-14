@@ -4,10 +4,11 @@ import type {CleanedMessage} from '@baby-panda/types';
 import {MessageBox} from './messageBox';
 import type {MouseEvent} from '../utils/terminal/mouse';
 import {useMouse} from '../hooks/useMouse';
-import {SCROLL_ROWS} from '../utils/inViewPortMessages';
 import {useViewPortMessage} from '../hooks/useViewPortMessage';
 import {combineLinesToMessage} from '../utils/combineLinesToMessage';
 import {MessageLine} from '../utils/breakIntoLines';
+
+const SCROLL_ROWS = 2;
 export function ChatBox({
 	start,
 	end,
@@ -57,10 +58,6 @@ export function ChatBox({
 	}, [currentlyVisibleArray]);
 
 	return (
-		// <ActiveComponentWrapper
-		// 	start={0}
-		// 	end={terminal.rows - HEIGHT_OF_PROMPT_BOX}
-		// >
 		<Box flexGrow={1} flexDirection="column">
 			{messageArray.length > 0 &&
 				messageArray.map(message => {
@@ -74,6 +71,5 @@ export function ChatBox({
 					);
 				})}
 		</Box>
-		// </ActiveComponentWrapper>
 	);
 }

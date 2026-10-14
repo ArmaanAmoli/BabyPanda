@@ -13,18 +13,11 @@ import usePendingPermissionMessages from './hooks/usePendingPermissionMessages';
 import {useMessageHistory} from './hooks/useMessageHistroy';
 import useSocket from './hooks/useSocket';
 import {useTerminal} from './hooks/useTerminal';
-import {appendMessageLine} from './utils/appendMessageHistory';
-import {useViewPortMessage} from './hooks/useViewPortMessage';
-import {
-	MARGIN_TOP_MESSAGE_BOX,
-	PADDING_MESSAGE_BOX,
-} from './components/messageBox';
 
 export const HEIGHT_OF_PROMPT_BOX = 6;
 export const PADDING_APP = 2;
 export default function App() {
 	const socket = useSocket();
-	const viewPort = useViewPortMessage();
 	const sessionState = useSession();
 	const {pendingPermissionMessages} = usePendingPermissionMessages();
 	const sessionId = sessionState.sessionId;
@@ -34,16 +27,16 @@ export default function App() {
 	const onChange = (value: string) => {
 		setPrompt(value);
 	};
-	const maxWidth =
-		columns -
-		(MARGIN_TOP_MESSAGE_BOX + 2 * PADDING_APP + 2 * PADDING_MESSAGE_BOX);
-
 	const onSubmit = async () => {
 		if (prompt.trim().length === 0) {
 			return;
 		}
 		//Update this....
-		appendMessageLine({role: Role.user, content: prompt}, viewPort, maxWidth);
+		// appendMessageLine({role: Role.user, content: prompt}, viewPort, maxWidth);
+		setMessageHistory(prev => [
+			...prev,
+			{role: Role.user, content: prompt, createdAt: Date.now()},
+		]);
 		lastRole.current = Role.user;
 		setPrompt('');
 
@@ -75,6 +68,7 @@ export default function App() {
 				width="100%"
 				paddingX={PADDING_APP}
 				flexDirection="column"
+				gap={1}
 			>
 				<Box height={rows - HEIGHT_OF_PROMPT_BOX} flexDirection="column">
 					{messageHistory.length === 0 && (
@@ -92,14 +86,15 @@ export default function App() {
 						end={rows - HEIGHT_OF_PROMPT_BOX}
 					/>
 				</Box>
+
 				{pendingPermissionMessages.length > 0 && (
-					<Box height={12} width="50%">
+					<Box height={12} width="50%" backgroundColor={'#242424'}>
 						<PermissionBox />
 					</Box>
 				)}
+
 				<Box
 					height={HEIGHT_OF_PROMPT_BOX}
-					margin={0}
 					width="100%"
 					backgroundColor={'#242424'}
 				>

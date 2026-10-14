@@ -8,7 +8,6 @@ import honoServer from '@baby-panda/server';
 import {SessionProvider} from './context/SessionDetails';
 import {PendingPermissionMessagesProvider} from './context/PendingPermissionMessages';
 import {SocketProvider} from './context/WebSocket';
-import {ActiveComponetsContextProvider} from './context/CompontActiveState';
 import {MessageHistoryProvider} from './context/MessageHistory';
 import {
 	activateAlternateScreenBuffer,
@@ -74,9 +73,7 @@ const {waitUntilExit} = render(
 						<PendingPermissionMessagesProvider>
 							<ViewPortMessageProvider>
 								<SocketProvider>
-									<ActiveComponetsContextProvider>
-										<App />
-									</ActiveComponetsContextProvider>
+									<App />
 								</SocketProvider>
 							</ViewPortMessageProvider>
 						</PendingPermissionMessagesProvider>
