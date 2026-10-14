@@ -4,7 +4,7 @@ import TextInput from 'ink-text-input';
 import {type PromptBoxArgs} from '../types';
 import {ActiveComponentWrapper} from './ActiveComponentWrapper';
 import {useTerminal} from '../hooks/useTerminal';
-import {HEIGHT_OF_PROMPT_BOX} from '../app';
+import {GAP_CHAT_BOX_PROMPT_BOX, HEIGHT_OF_PROMPT_BOX} from '../app';
 export default function PromptBox({
 	placeholder,
 	value,
@@ -23,7 +23,9 @@ export default function PromptBox({
 			backgroundColor={'#242424'}
 		>
 			<ActiveComponentWrapper
-				start={terminal.rows - HEIGHT_OF_PROMPT_BOX - 1}
+				start={
+					terminal.rows - (HEIGHT_OF_PROMPT_BOX + GAP_CHAT_BOX_PROMPT_BOX) - 1
+				}
 				end={terminal.rows}
 			>
 				<TextInput

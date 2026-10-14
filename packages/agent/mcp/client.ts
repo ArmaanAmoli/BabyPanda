@@ -21,8 +21,8 @@ export class MCPClient {
       }
       console.log('MCP:', cwd);
       this.transport = new StdioClientTransport({
-        command: 'npx',
-        args: ['tsx', serverScriptPath],
+        command: 'bun',
+        args: [serverScriptPath],
         cwd: cwd,
         env: {
           ...process.env,

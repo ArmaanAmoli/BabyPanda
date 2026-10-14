@@ -16,6 +16,7 @@ import {useTerminal} from './hooks/useTerminal';
 
 export const HEIGHT_OF_PROMPT_BOX = 6;
 export const PADDING_APP = 2;
+export const GAP_CHAT_BOX_PROMPT_BOX = 1;
 export default function App() {
 	const socket = useSocket();
 	const sessionState = useSession();
@@ -68,7 +69,7 @@ export default function App() {
 				width="100%"
 				paddingX={PADDING_APP}
 				flexDirection="column"
-				gap={1}
+				gap={GAP_CHAT_BOX_PROMPT_BOX}
 			>
 				<Box height={rows - HEIGHT_OF_PROMPT_BOX} flexDirection="column">
 					{messageHistory.length === 0 && (
