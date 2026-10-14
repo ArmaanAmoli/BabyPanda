@@ -5,7 +5,7 @@ export function combineLinesToMessage(lines: MessageLine[]): CleanedMessage[] {
 	const result: CleanedMessage[] = [];
 	lines.forEach(line => {
 		const lastMessage = result.at(-1);
-		if (!lastMessage || line.role !== lastMessage.role) {
+		if (!lastMessage || (line.role !== lastMessage.role && line.isFirstLine)) {
 			result.push({
 				role: line.role,
 				content: line.content,
