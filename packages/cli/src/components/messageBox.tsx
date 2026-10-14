@@ -1,8 +1,8 @@
 import React from 'react';
-import {Box} from 'ink';
+import {Box, Text} from 'ink';
 import {Role} from '@baby-panda/types';
 import type {CleanedMessage} from '@baby-panda/types';
-import {Markdown} from './markdown';
+// import {Markdown} from './markdown';
 
 export const PADDING_MESSAGE_BOX = 1;
 export const MARGIN_TOP_MESSAGE_BOX = 1;
@@ -34,9 +34,10 @@ export function MessageBox({role, content}: CleanedMessage) {
 			borderStyle={'bold'}
 			backgroundColor={'#111111b0'}
 		>
-			<Markdown
+			{/* <Markdown
 				isThought={role === Role.thought ? true : false}
-			>{`${content}`}</Markdown>
+			>{`${content}`}</Markdown> */}
+			<Text>{`${content}`}</Text>
 		</Box>
 	);
 }
