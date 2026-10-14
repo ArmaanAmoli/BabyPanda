@@ -359,7 +359,8 @@ export class BabyPandaAgent extends EventEmitter {
               try {
                 replyJson = MessageContentSchema.parse(JSON.parse(fullReply));
               } catch (err) {
-                reject('parsing error');
+                reject(`parsing error ${err}`);
+
                 await createMessage(
                   this.sessionId,
                   `Their is an issue in the reply structure that you gave ${err}`,
@@ -489,15 +490,15 @@ export class BabyPandaAgent extends EventEmitter {
             } catch (err) {
               const fullErrMessage = `An error occured while resolving tool call at agent.ts: ${err}`;
               // console.log(fullErrMessage, "Sending error to llm");
-              writeLogs(
-                LogType.agent,
-                this.projectDirectoryName,
-                this.sessionId,
-                `[TOOL CALL ERROR]: Informing LLM about it, \n${fullErrMessage}`,
-              );
+              // writeLogs(
+              //   LogType.agent,
+              //   this.projectDirectoryName,
+              //   this.sessionId,
+              //   `[TOOL CALL ERROR]: Informing LLM about it, \n${fullErrMessage}`,
+              // );
               await createMessage(this.sessionId, fullErrMessage, Role.user);
               // this.messageQueue.push(MessageQueueSpecialElement.errorInLastIteration);
-              reject(err);
+              reject(fullErrMessage);
             }
           }
           // toolCall = false;
