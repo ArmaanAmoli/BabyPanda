@@ -5,25 +5,53 @@ import {
 	type MouseEvent,
 } from './mouse';
 import {ESC} from './input';
+import type {ReadStream} from 'node:tty';
 
 export class FilteredStdin extends PassThrough {
 	private buffer = '';
 
 	private readonly mouseListeners = new Set<(event: MouseEvent) => void>();
 
-	constructor(input: NodeJS.ReadableStream) {
+	public constructor(private readonly source: ReadStream) {
 		super();
 
-		input.on('data', chunk => {
+		source.on('data', chunk => {
 			this.process(chunk.toString());
 		});
 
-		input.on('end', () => {
+		source.on('end', () => {
 			this.end();
 		});
 	}
 
-	onMouse(listener: (event: MouseEvent) => void) {
+	public get isTTY() {
+		return this.source.isTTY;
+	}
+
+	public get isRaw() {
+		return this.source.isRaw;
+	}
+
+	public setRawMode(mode: boolean) {
+		this.source.setRawMode(mode);
+		return this;
+	}
+
+	public ref() {
+		this.source.ref();
+		return this;
+	}
+
+	public unref() {
+		this.source.unref();
+		return this;
+	}
+
+	public destroySoon() {
+		this.destroy();
+	}
+
+	public onMouse(listener: (event: MouseEvent) => void) {
 		this.mouseListeners.add(listener);
 
 		return () => {

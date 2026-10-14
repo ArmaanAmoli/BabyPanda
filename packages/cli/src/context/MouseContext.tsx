@@ -1,33 +1,30 @@
-import {useStdin} from 'ink';
 import React, {useCallback, useEffect} from 'react';
 import {createContext, useRef} from 'react';
 import type {MouseHandler, MouseEvent} from '../utils/terminal/mouse';
-import {ESC} from '../utils/terminal/input';
 import {
-	parseMouseEvent,
 	DOUBLE_CLICK_DISTANCE_TOLERANCE,
 	DOUBLE_CLICK_THRESHOLD_MS,
-	isIncompleteMouseSequence,
 } from '../utils/terminal/mouse';
+import type {FilteredStdin} from '../utils/terminal/filterStdin';
 
 interface MouseContextValue {
 	subscribe: (handler: MouseHandler) => void;
 	unsubscribe: (handler: MouseHandler) => void;
 }
-const MAX_MOUSE_BUFFER_SIZE = 4096;
 export const MouseContext = createContext<MouseContextValue | null>(null);
 
 export function MouseProvider({
 	children,
 	mouseEventEnabled,
+	filteredStdin,
 }: {
 	children: React.ReactNode;
 	mouseEventEnabled: boolean;
+	filteredStdin: FilteredStdin;
 }) {
 	if (!mouseEventEnabled) {
 		return;
 	}
-	const {stdin} = useStdin();
 	const subscribers = useRef<Set<MouseHandler>>(new Set()).current;
 	const lastClickRef = useRef<{
 		time: number;
@@ -53,8 +50,6 @@ export function MouseProvider({
 		if (!mouseEventEnabled) {
 			return;
 		}
-
-		let mouseBuffer = '';
 
 		const broadcast = (event: MouseEvent) => {
 			let handled = false;
@@ -102,46 +97,8 @@ export function MouseProvider({
 			}
 		};
 
-		const handleData = (data: Buffer | string) => {
-			mouseBuffer += typeof data === 'string' ? data : data.toString('utf-8');
-
-			// Safety cap to prevent infinite buffer growth on garbage
-			if (mouseBuffer.length > MAX_MOUSE_BUFFER_SIZE) {
-				mouseBuffer = mouseBuffer.slice(-MAX_MOUSE_BUFFER_SIZE);
-			}
-
-			while (mouseBuffer.length > 0) {
-				const parsed = parseMouseEvent(mouseBuffer);
-
-				if (parsed) {
-					broadcast(parsed.event);
-					mouseBuffer = mouseBuffer.slice(parsed.length);
-					continue;
-				}
-
-				if (isIncompleteMouseSequence(mouseBuffer)) {
-					break; // Wait for more data
-				}
-
-				// Not a valid sequence at start, and not waiting for more data.
-				// Discard garbage until next possible sequence start.
-				const nextEsc = mouseBuffer.indexOf(ESC, 1);
-				if (nextEsc !== -1) {
-					mouseBuffer = mouseBuffer.slice(nextEsc);
-					// Loop continues to try parsing at new location
-				} else {
-					mouseBuffer = '';
-					break;
-				}
-			}
-		};
-
-		stdin.on('data', handleData);
-
-		return () => {
-			stdin.removeListener('data', handleData);
-		};
-	}, [stdin, subscribers, mouseEventEnabled]);
+		return filteredStdin.onMouse(broadcast);
+	}, [filteredStdin, subscribers, mouseEventEnabled]);
 
 	return (
 		<MouseContext.Provider value={{subscribe, unsubscribe}}>

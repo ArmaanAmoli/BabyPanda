@@ -23,7 +23,9 @@ import {
 import {MouseProvider} from './context/MouseContext';
 import {TerminalProvider} from './context/Terminal';
 import {ViewPortMessageProvider} from './context/ViewPortMessage';
+import {FilteredStdin} from './utils/terminal/filterStdin';
 
+const filteredStdin = new FilteredStdin(process.stdin);
 const server = Bun.serve(honoServer);
 if (typeof Bun !== 'undefined') {
 	process.stdin.resume();
@@ -66,7 +68,7 @@ if (initialSessionId === null) {
 const {waitUntilExit} = render(
 	<>
 		<TerminalProvider>
-			<MouseProvider mouseEventEnabled={true}>
+			<MouseProvider mouseEventEnabled={true} filteredStdin={filteredStdin}>
 				<SessionProvider id={initialSessionId}>
 					<MessageHistoryProvider>
 						<PendingPermissionMessagesProvider>
@@ -86,6 +88,7 @@ const {waitUntilExit} = render(
 	{
 		alternateScreen: true,
 		incrementalRendering: true, // we dont want ink to erase the entire terminal and repaint it will cause filckering
+		stdin: filteredStdin as unknown as NodeJS.ReadStream,
 	},
 );
 await waitUntilExit();
