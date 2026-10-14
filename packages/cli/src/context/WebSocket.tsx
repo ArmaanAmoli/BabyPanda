@@ -7,8 +7,8 @@ import {UserPermissionSchema, ServerStreamChunkSchema} from '@baby-panda/types';
 import usePendingPermissionMessages from '../hooks/usePendingPermissionMessages';
 import {setTimeout} from 'node:timers';
 import {getProjectName} from '@baby-panda/utils';
-import {appendMessageHistory} from '../utils/appendMessageHistory';
 import {useMessageHistory} from '../hooks/useMessageHistroy';
+import {appendMessageHistory} from '../utils/appendMessageHistory';
 
 export const SocketContext = createContext<WebSocket | null>(null);
 
@@ -95,6 +95,3 @@ export function SocketProvider({children}: ReactChildPropInterface) {
 		<SocketContext.Provider value={socket}>{children}</SocketContext.Provider>
 	);
 }
-
-// permission pending array
-// on message for permission => push in pending permission array => if pending Permission array not empty => show the permission pannel

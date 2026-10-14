@@ -8,7 +8,6 @@ export interface PromptBoxArgs {
 	value: string;
 	onSubmit: () => void;
 	onChange: (value: string) => void;
-	isActive: boolean;
 }
 
 export interface APIProvider {

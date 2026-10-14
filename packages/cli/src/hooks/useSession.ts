@@ -1,5 +1,5 @@
 import {useContext} from 'react';
-import {SessionContext} from '../context/sessionDetails';
+import {SessionContext} from '../context/SessionDetails';
 import {writeLogs} from '@baby-panda/utils';
 import {getProjectName} from '@baby-panda/utils';
 import {LogType} from '@baby-panda/types';

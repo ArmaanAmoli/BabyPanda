@@ -1,5 +1,5 @@
 import {useContext} from 'react';
-import {MessageHistoryContext} from '../context/messageHistory';
+import {MessageHistoryContext} from '../context/MessageHistory';
 
 export function useMessageHistory() {
 	const messageHistoryContext = useContext(MessageHistoryContext);
