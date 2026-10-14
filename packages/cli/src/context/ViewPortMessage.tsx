@@ -38,7 +38,7 @@ export function ViewPortMessageProvider({
 			];
 		});
 		setViewPortMessages(tempViewPortMessages);
-	}, [columns]);
+	}, [columns, messageHistory]);
 
 	return (
 		<ViewPortMessageContext.Provider

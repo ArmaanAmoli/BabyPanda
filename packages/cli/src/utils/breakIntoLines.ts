@@ -14,7 +14,8 @@ export function breakMessageIntoLines(
 	maxWidth: number,
 ): MessageLine[] {
 	const {content, role, createdAt} = message;
-	const wrappedContent = Bun.markdown.ansi(content, {columns: maxWidth});
+	// const wrappedContent = Bun.markdown.ansi(content, {columns: maxWidth});
+	const wrappedContent = content;
 	const result: MessageLine[] = [];
 	let lineLengthBuffer = 0;
 	let lineBuffer: string = '';

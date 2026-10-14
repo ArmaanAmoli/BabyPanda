@@ -1,7 +1,7 @@
 import {getMessageHeight} from './getMessageHeight';
 import type {CleanedMessage} from '@baby-panda/types';
 
-export const SCROLL_ROWS = 3; // one scroll moves 3 rows
+export const SCROLL_ROWS = 2; // one scroll moves 3 rows
 
 function trimMessageHeight(
 	message: CleanedMessage,

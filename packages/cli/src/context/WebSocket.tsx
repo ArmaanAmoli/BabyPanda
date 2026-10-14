@@ -55,13 +55,13 @@ export function SocketProvider({children}: ReactChildPropInterface) {
 				switch (parsed.eventType) {
 					case WsEventTypes.message: {
 						const chunk = ServerStreamChunkSchema.parse(payload);
-						chunk.content = Bun.markdown.ansi(chunk.content, {
-							columns:
-								columns -
-								(MARGIN_TOP_MESSAGE_BOX +
-									2 * PADDING_APP +
-									2 * PADDING_MESSAGE_BOX),
-						});
+						// chunk.content = Bun.markdown.ansi(chunk.content, {
+						// 	columns:
+						// 		columns -
+						// 		(MARGIN_TOP_MESSAGE_BOX +
+						// 			2 * PADDING_APP +
+						// 			2 * PADDING_MESSAGE_BOX),
+						// });
 						appendMessageLine(chunk, viewPortContext, maxWidth);
 						break;
 					}
