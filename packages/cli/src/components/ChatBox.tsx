@@ -1,4 +1,4 @@
-import React, {useCallback, useEffect, useState} from 'react';
+import React, {useEffect, useRef, useState} from 'react';
 import {Box} from 'ink';
 import type {CleanedMessage} from '@baby-panda/types';
 import {MessageBox} from './messageBox';
@@ -6,70 +6,64 @@ import type {MouseEvent} from '../utils/terminal/mouse';
 import {useMouse} from '../hooks/useMouse';
 import {useViewPortMessage} from '../hooks/useViewPortMessage';
 import {combineLinesToMessage} from '../utils/combineLinesToMessage';
-import {MessageLine} from '../utils/breakIntoLines';
 
 const SCROLL_ROWS = 2;
+
 export function ChatBox({
 	start,
 	end,
 }: {messageHistory: CleanedMessage[]} & {start: number; end: number}) {
-	let k = 0;
 	const {viewPortMessages} = useViewPortMessage();
-	const [messageArray, setMessageArray] = useState<CleanedMessage[]>([]);
-	const [currentlyVisibleArray, setCurrentlyVisibleArray] = useState<
-		MessageLine[]
-	>([]);
-	const rows = end - start + 1;
-	let j = viewPortMessages.length - 1;
-	let i = j - rows - 1;
-	const handler = useCallback<(event: MouseEvent) => void>(
-		(event: MouseEvent) => {
-			const lastLineIdx = viewPortMessages.length - 1;
-			if (
-				event.name === 'scroll-down' &&
-				event.row >= start &&
-				event.row <= end
-			) {
-				j = Math.min(lastLineIdx, j + SCROLL_ROWS);
-				i = j - rows + 1;
-				setCurrentlyVisibleArray(viewPortMessages.slice(i, j + 1));
-			} else if (
-				event.name === 'scroll-up' &&
-				event.row >= start &&
-				event.row <= end
-			) {
-				i = Math.max(start, i - SCROLL_ROWS);
-				j = i + rows - 1;
-				setCurrentlyVisibleArray(viewPortMessages.slice(i, j + 1));
-			}
-		},
-		[viewPortMessages, start, end, rows, i, j],
-	);
 
-	// const offset = useRef<number>(0);
+	const rows = end - start + 1;
+	const lineCount = viewPortMessages.length;
+	const maxStart = Math.max(0, lineCount - rows);
+
+	// `i` is the index of the first visible line. It is the single source of
+	// truth for the scroll position, so the handler never has to read it back.
+	const [i, setI] = useState(maxStart);
+
+	// Pin the viewport to the bottom while output streams in, but keep the
+	// user's scroll position if they have scrolled up.
+	const previousLineCount = useRef(lineCount);
+	useEffect(() => {
+		const previousMaxStart = Math.max(0, previousLineCount.current - rows);
+		setI(previousI =>
+			previousI >= previousMaxStart ? maxStart : Math.min(previousI, maxStart),
+		);
+		previousLineCount.current = lineCount;
+	}, [lineCount, rows, maxStart]);
+
+	const handler = (event: MouseEvent) => {
+		if (
+			(event.name !== 'scroll-up' && event.name !== 'scroll-down') ||
+			event.row < start ||
+			event.row > end
+		) {
+			return;
+		}
+
+		setI(previousI => {
+			const delta = event.name === 'scroll-up' ? -SCROLL_ROWS : SCROLL_ROWS;
+			return Math.max(0, Math.min(maxStart, previousI + delta));
+		});
+	};
 	useMouse(handler);
 
-	useEffect(() => {
-		setCurrentlyVisibleArray(viewPortMessages.slice(i, j + 1));
-	}, [viewPortMessages]);
-
-	useEffect(() => {
-		setMessageArray(combineLinesToMessage(currentlyVisibleArray));
-	}, [currentlyVisibleArray]);
+	const messageArray = combineLinesToMessage(
+		viewPortMessages.slice(i, i + rows),
+	);
 
 	return (
 		<Box flexGrow={1} flexDirection="column">
-			{messageArray.length > 0 &&
-				messageArray.map(message => {
-					return (
-						<MessageBox
-							key={k++}
-							content={message.content as string}
-							role={message.role}
-							createdAt={message.createdAt}
-						/>
-					);
-				})}
+			{messageArray.map((message, index) => (
+				<MessageBox
+					key={index}
+					content={message.content as string}
+					role={message.role}
+					createdAt={message.createdAt}
+				/>
+			))}
 		</Box>
 	);
 }

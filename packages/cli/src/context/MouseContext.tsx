@@ -22,9 +22,9 @@ export function MouseProvider({
 	mouseEventEnabled: boolean;
 	filteredStdin: FilteredStdin;
 }) {
-	if (!mouseEventEnabled) {
-		return;
-	}
+	// if (!mouseEventEnabled) {
+	// 	return;
+	// }
 	const subscribers = useRef<Set<MouseHandler>>(new Set()).current;
 	const lastClickRef = useRef<{
 		time: number;
