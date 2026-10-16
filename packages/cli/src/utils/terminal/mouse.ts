@@ -32,7 +32,10 @@ export interface MouseEvent {
 export const DOUBLE_CLICK_THRESHOLD_MS = 400;
 export const DOUBLE_CLICK_DISTANCE_TOLERANCE = 2;
 
-export type MouseHandler = (event: MouseEvent) => void | boolean;
+// Lines to scroll per wheel notch, shared by every scrollable region.
+export const SCROLL_ROWS = 3;
+
+export type MouseHandler = (event: MouseEvent) => void;
 
 export function getMouseEventName(
 	buttonCode: number,

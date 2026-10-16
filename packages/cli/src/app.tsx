@@ -81,11 +81,10 @@ export default function App() {
 						/>
 					)}
 
-					<ChatBox
-						messageHistory={messageHistory}
-						start={0}
-						end={rows - HEIGHT_OF_PROMPT_BOX}
-					/>
+					{/* Mouse rows are 1-based, so the chat region starts at row 1.
+					    This also keeps the visible line count (end - start + 1)
+					    equal to the container height (rows - HEIGHT_OF_PROMPT_BOX). */}
+					<ChatBox start={1} end={rows - HEIGHT_OF_PROMPT_BOX} />
 				</Box>
 
 				{pendingPermissionMessages.length > 0 && (

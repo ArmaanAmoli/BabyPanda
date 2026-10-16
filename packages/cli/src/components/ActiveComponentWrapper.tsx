@@ -1,7 +1,7 @@
 import React, {useRef} from 'react';
 import {type ScrollViewRef, ScrollView} from 'ink-scroll-view';
 import {useMouse} from '../hooks/useMouse';
-import {MouseEvent, MouseHandler} from '../utils/terminal/mouse';
+import {MouseEvent, MouseHandler, SCROLL_ROWS} from '../utils/terminal/mouse';
 
 export function ActiveComponentWrapper({
 	start,
@@ -19,13 +19,13 @@ export function ActiveComponentWrapper({
 			event.row >= start &&
 			event.row <= end
 		) {
-			scrollRef.current?.scrollBy(10);
+			scrollRef.current?.scrollBy(SCROLL_ROWS);
 		} else if (
 			event.name === 'scroll-up' &&
 			event.row >= start &&
 			event.row <= end
 		) {
-			scrollRef.current?.scrollBy(-10);
+			scrollRef.current?.scrollBy(-SCROLL_ROWS);
 		}
 	};
 	useMouse(handler);

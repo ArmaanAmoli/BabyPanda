@@ -67,7 +67,7 @@ if (initialSessionId === null) {
 const {waitUntilExit} = render(
 	<>
 		<TerminalProvider>
-			<MouseProvider mouseEventEnabled={true} filteredStdin={filteredStdin}>
+			<MouseProvider filteredStdin={filteredStdin}>
 				<SessionProvider id={initialSessionId}>
 					<MessageHistoryProvider>
 						<PendingPermissionMessagesProvider>

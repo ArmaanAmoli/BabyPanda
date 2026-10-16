@@ -1,5 +1,6 @@
 import React, {SetStateAction, useEffect, useState} from 'react';
 import {createContext} from 'react';
+import {Role} from '@baby-panda/types';
 import {useMessageHistory} from '../hooks/useMessageHistroy';
 import {useTerminal} from '../hooks/useTerminal';
 import {breakMessageIntoLines, type MessageLine} from '../utils/breakIntoLines';
@@ -9,9 +10,18 @@ import {
 } from '../components/messageBox';
 import {PADDING_APP} from '../app';
 
+// A single logical message together with its width-wrapped lines. Keeping the
+// grouping lets the viewport budget for the decoration each message box adds
+// (margin + padding) instead of assuming one content line equals one row.
+export interface ViewPortMessage {
+	role: Role;
+	createdAt: number | null;
+	lines: MessageLine[];
+}
+
 export interface ViewPortMessageContextValue {
-	viewPortMessages: MessageLine[];
-	setViewPortMessages: React.Dispatch<SetStateAction<MessageLine[]>>;
+	viewPortMessages: ViewPortMessage[];
+	setViewPortMessages: React.Dispatch<SetStateAction<ViewPortMessage[]>>;
 }
 
 export const ViewPortMessageContext =
@@ -22,7 +32,9 @@ export function ViewPortMessageProvider({
 }: {
 	children: React.ReactNode;
 }) {
-	const [viewPortMessages, setViewPortMessages] = useState<MessageLine[]>([]);
+	const [viewPortMessages, setViewPortMessages] = useState<ViewPortMessage[]>(
+		[],
+	);
 	const {messageHistory} = useMessageHistory();
 	const {columns} = useTerminal();
 
@@ -30,14 +42,13 @@ export function ViewPortMessageProvider({
 		const maxWidth =
 			columns -
 			(MARGIN_TOP_MESSAGE_BOX + 2 * PADDING_APP + 2 * PADDING_MESSAGE_BOX);
-		let tempViewPortMessages: MessageLine[] = [];
-		messageHistory.forEach(message => {
-			tempViewPortMessages = [
-				...tempViewPortMessages,
-				...breakMessageIntoLines(message, maxWidth),
-			];
-		});
-		setViewPortMessages(tempViewPortMessages);
+		setViewPortMessages(
+			messageHistory.map(message => ({
+				role: message.role,
+				createdAt: message.createdAt,
+				lines: breakMessageIntoLines(message, maxWidth),
+			})),
+		);
 	}, [columns, messageHistory]);
 
 	return (
