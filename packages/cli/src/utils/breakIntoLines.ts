@@ -21,8 +21,24 @@ export function breakMessageIntoLines(
 	let lineBuffer: string = '';
 	let isFirstLine = true;
 	for (const char of wrappedContent) {
+		// A newline ends the current line; it must not become part of the next
+		// one or re-joining the lines would inject blank rows.
+		if (char === '\n') {
+			result.push({
+				content: lineBuffer,
+				role,
+				createdAt,
+				isFirstLine,
+				lineLength: lineLengthBuffer,
+			});
+			if (isFirstLine) isFirstLine = false;
+			lineBuffer = '';
+			lineLengthBuffer = 0;
+			continue;
+		}
+
 		const charWidth = wcwidth(char);
-		if (char !== '\n' && lineLengthBuffer + charWidth <= maxWidth) {
+		if (lineLengthBuffer + charWidth <= maxWidth) {
 			lineBuffer += char;
 			lineLengthBuffer += charWidth;
 		} else {
@@ -33,30 +49,20 @@ export function breakMessageIntoLines(
 				isFirstLine,
 				lineLength: lineLengthBuffer,
 			});
-			lineBuffer = char;
-			lineLengthBuffer = wcwidth(char);
 			if (isFirstLine) isFirstLine = false;
+			lineBuffer = char;
+			lineLengthBuffer = charWidth;
 		}
 	}
 	if (lineBuffer.length !== 0) {
-		result.push(
-			lineLengthBuffer === maxWidth
-				? {
-						content: lineBuffer,
-						role,
-						createdAt,
-						lineLength: maxWidth,
-						isFirstLine: true,
-					}
-				: {
-						content: lineBuffer,
-						role,
-						createdAt,
-						isFirstLine: true,
-						isIncomplete: true,
-						lineLength: lineLengthBuffer,
-					},
-		);
+		result.push({
+			content: lineBuffer,
+			role,
+			createdAt,
+			isFirstLine,
+			isIncomplete: lineLengthBuffer !== maxWidth,
+			lineLength: lineLengthBuffer,
+		});
 	}
 	return result;
 }
