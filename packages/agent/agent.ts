@@ -488,7 +488,7 @@ export class BabyPandaAgent extends EventEmitter {
               }
               // to-do save messages code below this
             } catch (err) {
-              const fullErrMessage = `An error occured while resolving tool call at agent.ts: ${err}`;
+              const fullErrMessage = `An error occured while resolving tool call at agent.ts: ${err instanceof Error ? `${err.message} ${err.cause}` : err}`;
               await createMessage(this.sessionId, fullErrMessage, Role.user);
               reject(fullErrMessage);
             }
