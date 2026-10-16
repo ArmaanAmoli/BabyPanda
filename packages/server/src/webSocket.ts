@@ -18,10 +18,10 @@ const websocketHandler = (c: Context, next: Next) => {
   if (!sessionId) {
     return c.text('session id not provided');
   }
-  const handler = upgradeWebSocket((c) => {
+  const handler = upgradeWebSocket(() => {
     let cleanup: () => void;
     return {
-      onOpen(event, ws) {
+      onOpen(_event, ws) {
         wsCollection.set(sessionId, ws);
         if (agentStore.get(sessionId) == undefined) {
           const { url, apikey } = {
@@ -158,7 +158,7 @@ const websocketHandler = (c: Context, next: Next) => {
         }
       },
 
-      onClose(event, ws) {
+      onClose(_event, ws) {
         ws.send('closed');
         cleanup();
         wsCollection.delete(sessionId);

@@ -1,4 +1,4 @@
-import React, {useRef} from 'react';
+import React, {useCallback, useRef} from 'react';
 import {type ScrollViewRef, ScrollView} from 'ink-scroll-view';
 import {useMouse} from '../hooks/useMouse';
 import {MouseEvent, MouseHandler} from '../utils/terminal/mouse';
@@ -13,21 +13,24 @@ export function ActiveComponentWrapper({
 	children: React.ReactNode;
 }) {
 	const scrollRef = useRef<ScrollViewRef>(null);
-	const handler: MouseHandler = (event: MouseEvent) => {
-		if (
-			event.name === 'scroll-down' &&
-			event.row >= start &&
-			event.row <= end
-		) {
-			scrollRef.current?.scrollBy(10);
-		} else if (
-			event.name === 'scroll-up' &&
-			event.row >= start &&
-			event.row <= end
-		) {
-			scrollRef.current?.scrollBy(-10);
-		}
-	};
+	const handler: MouseHandler = useCallback(
+		(event: MouseEvent) => {
+			if (
+				event.name === 'scroll-down' &&
+				event.row >= start &&
+				event.row <= end
+			) {
+				scrollRef.current?.scrollBy(10);
+			} else if (
+				event.name === 'scroll-up' &&
+				event.row >= start &&
+				event.row <= end
+			) {
+				scrollRef.current?.scrollBy(-10);
+			}
+		},
+		[start, end],
+	);
 	useMouse(handler);
 
 	return (

@@ -81,11 +81,7 @@ export default function App() {
 						/>
 					)}
 
-					<ChatBox
-						messageHistory={messageHistory}
-						start={0}
-						end={rows - HEIGHT_OF_PROMPT_BOX}
-					/>
+					<ChatBox start={0} end={rows - HEIGHT_OF_PROMPT_BOX} />
 				</Box>
 
 				{pendingPermissionMessages.length > 0 && (

@@ -24,7 +24,7 @@ export function disableMouseEvents() {
 }
 
 export function activateAlternateScreenBuffer() {
-	writeToStdOut('\x1b[\x1b[?1049h');
+	writeToStdOut('\x1b[?1049h');
 }
 
 export function deactivateAlternateScreenBuffer() {

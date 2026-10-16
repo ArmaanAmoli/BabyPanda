@@ -1,6 +1,5 @@
 import React, {useEffect, useRef, useState} from 'react';
 import {Box} from 'ink';
-import type {CleanedMessage} from '@baby-panda/types';
 import {MessageBox} from './messageBox';
 import type {MouseEvent} from '../utils/terminal/mouse';
 import {useMouse} from '../hooks/useMouse';
@@ -9,10 +8,7 @@ import {combineLinesToMessage} from '../utils/combineLinesToMessage';
 
 const SCROLL_ROWS = 2;
 
-export function ChatBox({
-	start,
-	end,
-}: {messageHistory: CleanedMessage[]} & {start: number; end: number}) {
+export function ChatBox({start, end}: {start: number; end: number}) {
 	const {viewPortMessages} = useViewPortMessage();
 
 	const rows = end - start + 1;
