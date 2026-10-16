@@ -22,9 +22,6 @@ export function MouseProvider({
 	mouseEventEnabled: boolean;
 	filteredStdin: FilteredStdin;
 }) {
-	// if (!mouseEventEnabled) {
-	// 	return;
-	// }
 	const subscribers = useRef<Set<MouseHandler>>(new Set()).current;
 	const lastClickRef = useRef<{
 		time: number;
@@ -51,12 +48,13 @@ export function MouseProvider({
 			return;
 		}
 
+		// Broadcast to every subscriber; each handler self-filters using the
+		// event coordinates. There is intentionally no short-circuit: React
+		// effect subscription order is not deterministic, so a "first handler
+		// wins" scheme would have no stable priority.
 		const broadcast = (event: MouseEvent) => {
-			let handled = false;
 			for (const handler of subscribers) {
-				if (handler(event) === true) {
-					handled = true;
-				}
+				handler(event);
 			}
 
 			if (event.name === 'left-press') {
@@ -80,20 +78,6 @@ export function MouseProvider({
 				} else {
 					lastClickRef.current = {time: now, col: event.col, row: event.row};
 				}
-			}
-
-			if (
-				!handled &&
-				event.name === 'move' &&
-				event.col >= 0 &&
-				event.row >= 0 &&
-				event.button === 'left'
-			) {
-				// Terminal apps only receive mouse move events when the mouse is down
-				// so this always indicates a mouse drag that the user was expecting
-				// would trigger text selection but does not as we are handling mouse
-				// events not the terminal.
-				// appEvents.emit(AppEvent.SelectionWarning);
 			}
 		};
 
