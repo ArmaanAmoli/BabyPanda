@@ -1,4 +1,4 @@
-import {useContext, useEffect} from 'react';
+import {useContext, useEffect, useRef} from 'react';
 import {MouseContext} from '../context/MouseContext';
 import {MouseHandler} from '../utils/terminal/mouse';
 
@@ -10,15 +10,21 @@ export function useMouseContext() {
 	return mouseContext;
 }
 
-export function useMouse(handler: MouseHandler, {isActive = true} = {}) {
+export function useMouse(handler: MouseHandler) {
 	const {subscribe, unsubscribe} = useMouseContext();
-	useEffect(() => {
-		if (!isActive) return;
+	const handlerRef = useRef(handler);
 
-		subscribe(handler);
+	// Keep the latest handler without making it a subscription dependency.
+	useEffect(() => {
+		handlerRef.current = handler;
+	}, [handler]);
+
+	useEffect(() => {
+		const stableHandler: MouseHandler = event => handlerRef.current(event);
+		subscribe(stableHandler);
 
 		return () => {
-			unsubscribe(handler); // React handles this automatically now
+			unsubscribe(stableHandler);
 		};
-	}, [isActive, handler, subscribe, unsubscribe]);
+	}, [subscribe, unsubscribe]);
 }

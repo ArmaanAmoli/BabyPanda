@@ -1,12 +1,10 @@
 import React, {useEffect, useRef, useState} from 'react';
 import {Box} from 'ink';
 import {MessageBox} from './messageBox';
-import type {MouseEvent} from '../utils/terminal/mouse';
+import {SCROLL_ROWS, type MouseEvent} from '../utils/terminal/mouse';
 import {useMouse} from '../hooks/useMouse';
 import {useViewPortMessage} from '../hooks/useViewPortMessage';
 import {combineLinesToMessage} from '../utils/combineLinesToMessage';
-
-const SCROLL_ROWS = 2;
 
 export function ChatBox({start, end}: {start: number; end: number}) {
 	const {viewPortMessages} = useViewPortMessage();

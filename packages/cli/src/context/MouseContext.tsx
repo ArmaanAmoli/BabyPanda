@@ -15,11 +15,9 @@ export const MouseContext = createContext<MouseContextValue | null>(null);
 
 export function MouseProvider({
 	children,
-	mouseEventEnabled,
 	filteredStdin,
 }: {
 	children: React.ReactNode;
-	mouseEventEnabled: boolean;
 	filteredStdin: FilteredStdin;
 }) {
 	const subscribers = useRef<Set<MouseHandler>>(new Set()).current;
@@ -44,10 +42,6 @@ export function MouseProvider({
 	);
 
 	useEffect(() => {
-		if (!mouseEventEnabled) {
-			return;
-		}
-
 		// Broadcast to every subscriber; each handler self-filters using the
 		// event coordinates. There is intentionally no short-circuit: React
 		// effect subscription order is not deterministic, so a "first handler
@@ -82,7 +76,7 @@ export function MouseProvider({
 		};
 
 		return filteredStdin.onMouse(broadcast);
-	}, [filteredStdin, subscribers, mouseEventEnabled]);
+	}, [filteredStdin, subscribers]);
 
 	return (
 		<MouseContext.Provider value={{subscribe, unsubscribe}}>
