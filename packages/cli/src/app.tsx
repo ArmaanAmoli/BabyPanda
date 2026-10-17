@@ -13,11 +13,16 @@ import usePendingPermissionMessages from './hooks/usePendingPermissionMessages';
 import {useMessageHistory} from './hooks/useMessageHistroy';
 import useSocket from './hooks/useSocket';
 import {useTerminal} from './hooks/useTerminal';
+import type {Focused} from './types';
+import {useInput} from 'ink';
+import {useVisibleMessages} from './hooks/useVisibleMessages';
+import {SCROLL_ROWS} from './utils/terminal/mouse';
 
 export const HEIGHT_OF_PROMPT_BOX = 6;
 export const PADDING_APP = 2;
 export const GAP_CHAT_BOX_PROMPT_BOX = 1;
 export default function App() {
+	const [focus, setFocus] = useState<Focused>('ChatBox');
 	const socket = useSocket();
 	const sessionState = useSession();
 	const {pendingPermissionMessages} = usePendingPermissionMessages();
@@ -25,6 +30,7 @@ export default function App() {
 	const {messageHistory, setMessageHistory, lastRole} = useMessageHistory();
 	const [prompt, setPrompt] = useState('');
 	const {rows, columns} = useTerminal();
+	const {offset, setOffset, maxOffset} = useVisibleMessages();
 	const onChange = (value: string) => {
 		setPrompt(value);
 	};
@@ -32,8 +38,6 @@ export default function App() {
 		if (prompt.trim().length === 0) {
 			return;
 		}
-		//Update this....
-		// appendMessageLine({role: Role.user, content: prompt}, viewPort, maxWidth);
 		setMessageHistory(prev => [
 			...prev,
 			{role: Role.user, content: prompt, createdAt: Date.now()},
@@ -55,6 +59,31 @@ export default function App() {
 		};
 		getHistory();
 	}, []);
+
+	useInput((input, key) => {
+		if (key.tab) {
+			const newFocus: Focused = focus === 'ChatBox' ? 'PromptBox' : 'ChatBox';
+			setFocus(newFocus);
+		}
+		if (key.upArrow) {
+			if (focus === 'ChatBox') {
+				const newOffset = Math.max(
+					0,
+					Math.min(maxOffset, offset + SCROLL_ROWS),
+				);
+				setOffset(newOffset);
+			}
+		}
+		if (key.downArrow) {
+			if (focus === 'ChatBox') {
+				const newOffset = Math.max(
+					0,
+					Math.min(maxOffset, offset - SCROLL_ROWS),
+				);
+				setOffset(newOffset);
+			}
+		}
+	});
 
 	return (
 		<Box
@@ -84,7 +113,7 @@ export default function App() {
 					{/* Mouse rows are 1-based, so the chat region starts at row 1.
 					    This also keeps the visible line count (end - start + 1)
 					    equal to the container height (rows - HEIGHT_OF_PROMPT_BOX). */}
-					<ChatBox start={1} end={rows - HEIGHT_OF_PROMPT_BOX} />
+					<ChatBox />
 				</Box>
 
 				{pendingPermissionMessages.length > 0 && (
