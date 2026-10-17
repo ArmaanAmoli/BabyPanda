@@ -29,7 +29,6 @@ export function MessageBox({
 		<Box
 			width="100%"
 			justifyContent={'flex-start'}
-			// borderLeftColor={color}
 			borderColor={color}
 			borderTop={isSelected}
 			borderBottom={isSelected}

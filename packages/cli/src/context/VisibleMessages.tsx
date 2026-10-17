@@ -51,10 +51,9 @@ export function VisibleMessageProvider({
 			(sum, message) => sum + message.lines.length,
 			0,
 		);
-		const bottom = selectVisibleMessages(viewPortMessages, budget, 0);
 		return {
 			totalLines: total,
-			maxOffset: Math.max(0, total - bottom.lineCount),
+			maxOffset: Math.max(0, total - 1),
 		};
 	}, [viewPortMessages, budget]);
 
@@ -100,6 +99,10 @@ export function VisibleMessageProvider({
 		const nextIndex = currentIndex + direction;
 		if (direction === -1 && currentIndex === 0) {
 			focusMessage(viewPortMessages.length - 1);
+			return;
+		}
+		if (direction === 1 && currentIndex === viewPortMessages.length - 1) {
+			focusMessage(0);
 			return;
 		}
 		if (nextIndex < 0 || nextIndex >= viewPortMessages.length) {
