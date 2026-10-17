@@ -20,10 +20,11 @@ export function breakMessageIntoLines(
 	let lineLengthBuffer = 0;
 	let lineBuffer: string = '';
 	let isFirstLine = true;
-	for (const char of wrappedContent) {
+	let index = 0;
+	while (index < wrappedContent.length) {
 		// A newline ends the current line; it must not become part of the next
 		// one or re-joining the lines would inject blank rows.
-		if (char === '\n') {
+		if (wrappedContent[index] === '\n') {
 			result.push({
 				content: lineBuffer,
 				role,
@@ -34,9 +35,39 @@ export function breakMessageIntoLines(
 			if (isFirstLine) isFirstLine = false;
 			lineBuffer = '';
 			lineLengthBuffer = 0;
+			index++;
 			continue;
 		}
 
+		// ANSI escape sequences (colors/styles emitted by Bun.markdown.ansi)
+		// occupy zero terminal columns. Appending them without counting keeps
+		// the width budget equal to the visible width, so lines wrap at the
+		// real box width instead of breaking ~half early.
+		if (wrappedContent.charCodeAt(index) === 27) {
+			// ESC [ <params> <letter>
+			let end = index + 1;
+			if (wrappedContent[end] === '[') {
+				end++;
+				while (
+					end < wrappedContent.length &&
+					((wrappedContent[end] >= '0' && wrappedContent[end] <= '9') ||
+						wrappedContent[end] === ';')
+				) {
+					end++;
+				}
+				if (
+					end < wrappedContent.length &&
+					((wrappedContent[end] >= 'A' && wrappedContent[end] <= 'Z') ||
+						(wrappedContent[end] >= 'a' && wrappedContent[end] <= 'z'))
+				) {
+					lineBuffer += wrappedContent.slice(index, end + 1);
+					index = end + 1;
+					continue;
+				}
+			}
+		}
+
+		const char = wrappedContent[index];
 		const charWidth = wcwidth(char);
 		if (lineLengthBuffer + charWidth <= maxWidth) {
 			lineBuffer += char;
@@ -53,6 +84,7 @@ export function breakMessageIntoLines(
 			lineBuffer = char;
 			lineLengthBuffer = charWidth;
 		}
+		index++;
 	}
 	if (lineBuffer.length !== 0) {
 		result.push({
