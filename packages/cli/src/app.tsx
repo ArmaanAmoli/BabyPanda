@@ -1,5 +1,5 @@
 import React from 'react';
-import {Box} from 'ink';
+import {Box, Text} from 'ink';
 import BigText from 'ink-big-text';
 import {useState, useEffect, useRef} from 'react';
 import PromptBox from './components/promptBox';
@@ -177,11 +177,32 @@ export default function App() {
 						value={prompt}
 						onChange={onChange}
 						onSubmit={onSubmit}
-						status={clipboardStatus}
 						active={focus === 'PromptBox'}
 					/>
 				</Box>
 			</Box>
+			{clipboardStatus && (
+				<Box
+					position="absolute"
+					top={1}
+					right={2}
+					paddingX={1}
+					paddingY={0}
+					borderStyle="round"
+					borderColor={
+						clipboardStatus.startsWith('Copy failed') ? '#d66b6b' : '#7fc7a4'
+					}
+					backgroundColor="#242424"
+				>
+					<Text
+						color={
+							clipboardStatus.startsWith('Copy failed') ? '#f08a8a' : '#9fe3bd'
+						}
+					>
+						{clipboardStatus}
+					</Text>
+				</Box>
+			)}
 		</Box>
 	);
 }

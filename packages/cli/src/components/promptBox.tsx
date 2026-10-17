@@ -10,7 +10,6 @@ export default function PromptBox({
 	value,
 	onChange,
 	onSubmit,
-	status,
 	active = true,
 }: PromptBoxArgs) {
 	const terminal = useTerminal();
@@ -24,7 +23,6 @@ export default function PromptBox({
 			height="100%"
 			backgroundColor={'#242424'}
 		>
-			{status && <Text color="green">{status}</Text>}
 			{active ? (
 				<ActiveComponentWrapper
 					// Starts one row below the ChatBox scroll region (which ends at
