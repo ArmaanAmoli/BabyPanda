@@ -19,16 +19,21 @@ function getColor(role: Role) {
 	}
 }
 
-export function MessageBox({role, content}: CleanedMessage) {
+export function MessageBox({
+	role,
+	content,
+	isSelected,
+}: CleanedMessage & {isSelected: boolean}) {
 	const color = getColor(role);
 	return (
 		<Box
 			width="100%"
 			justifyContent={'flex-start'}
-			borderLeftColor={color}
-			borderTop={false}
-			borderBottom={false}
-			borderRight={false}
+			// borderLeftColor={color}
+			borderColor={color}
+			borderTop={isSelected}
+			borderBottom={isSelected}
+			borderRight={isSelected}
 			padding={PADDING_MESSAGE_BOX}
 			marginTop={MARGIN_TOP_MESSAGE_BOX}
 			borderStyle={'bold'}

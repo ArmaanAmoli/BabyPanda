@@ -22,7 +22,7 @@ export const HEIGHT_OF_PROMPT_BOX = 6;
 export const PADDING_APP = 2;
 export const GAP_CHAT_BOX_PROMPT_BOX = 1;
 export default function App() {
-	const [focus, setFocus] = useState<Focused>('ChatBox');
+	const [focus, setFocus] = useState<Focused | null>('ChatBox');
 	const socket = useSocket();
 	const sessionState = useSession();
 	const {pendingPermissionMessages} = usePendingPermissionMessages();
@@ -30,7 +30,14 @@ export default function App() {
 	const {messageHistory, setMessageHistory, lastRole} = useMessageHistory();
 	const [prompt, setPrompt] = useState('');
 	const {rows, columns} = useTerminal();
-	const {offset, setOffset, maxOffset} = useVisibleMessages();
+	const {
+		visible,
+		offset,
+		setOffset,
+		maxOffset,
+		setFocusedMessageIndex,
+		focusedMessageIndex,
+	} = useVisibleMessages();
 	const onChange = (value: string) => {
 		setPrompt(value);
 	};
@@ -64,23 +71,53 @@ export default function App() {
 		if (key.tab) {
 			const newFocus: Focused = focus === 'ChatBox' ? 'PromptBox' : 'ChatBox';
 			setFocus(newFocus);
+			if (newFocus === 'ChatBox') {
+				setFocusedMessageIndex(visible.length - 1);
+			} else {
+				setFocusedMessageIndex(null);
+			}
 		}
+
 		if (key.upArrow) {
 			if (focus === 'ChatBox') {
-				const newOffset = Math.max(
-					0,
-					Math.min(maxOffset, offset + SCROLL_ROWS),
-				);
-				setOffset(newOffset);
+				const newFocusIndex = focusedMessageIndex
+					? focusedMessageIndex - 1
+					: null;
+
+				if (newFocusIndex && newFocusIndex < 0) {
+					const newOffset = Math.max(
+						0,
+						Math.min(maxOffset, offset + SCROLL_ROWS),
+					);
+					setOffset(newOffset);
+					setFocusedMessageIndex(0);
+				} else {
+					setFocusedMessageIndex(newFocusIndex);
+				}
 			}
 		}
 		if (key.downArrow) {
 			if (focus === 'ChatBox') {
-				const newOffset = Math.max(
-					0,
-					Math.min(maxOffset, offset - SCROLL_ROWS),
-				);
-				setOffset(newOffset);
+				const newFocusIndex = focusedMessageIndex
+					? focusedMessageIndex + 1
+					: null;
+
+				if (newFocusIndex && newFocusIndex >= visible.length) {
+					const newOffset = Math.max(
+						0,
+						Math.min(maxOffset, offset - SCROLL_ROWS),
+					);
+					setOffset(newOffset);
+					setFocusedMessageIndex(visible.length - 1);
+				} else {
+					setFocusedMessageIndex(newFocusIndex);
+				}
+			}
+		}
+		if (key.escape) {
+			if (focus != null) {
+				setFocus(null);
+				setFocusedMessageIndex(null);
 			}
 		}
 	});

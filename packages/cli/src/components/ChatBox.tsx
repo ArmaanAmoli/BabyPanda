@@ -4,15 +4,16 @@ import {MessageBox} from './messageBox';
 import {useVisibleMessages} from '../hooks/useVisibleMessages';
 
 export function ChatBox() {
-	const {visible} = useVisibleMessages();
+	const {visible, focusedMessageIndex} = useVisibleMessages();
 	return (
 		<Box flexGrow={1} flexDirection="column" justifyContent="flex-end">
-			{visible.map(message => (
+			{visible.map((message, index) => (
 				<MessageBox
 					key={message.messageIndex}
 					content={message.content}
 					role={message.role}
 					createdAt={message.createdAt}
+					isSelected={focusedMessageIndex == index}
 				/>
 			))}
 		</Box>

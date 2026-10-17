@@ -19,6 +19,8 @@ interface VisibleMessageContextValue {
 	offset: number;
 	setOffset: React.Dispatch<SetStateAction<number>>;
 	maxOffset: number;
+	setFocusedMessageIndex: React.Dispatch<SetStateAction<number | null>>;
+	focusedMessageIndex: number | null;
 }
 export const VisibleMessageContext =
 	createContext<VisibleMessageContextValue | null>(null);
@@ -35,7 +37,9 @@ export function VisibleMessageProvider({
 	const end = rows - HEIGHT_OF_PROMPT_BOX;
 	const budget = end - start + 1;
 	const [offset, setOffset] = useState(0);
-
+	const [focusedMessageIndex, setFocusedMessageIndex] = useState<number | null>(
+		null,
+	);
 	const {totalLines, maxOffset} = useMemo(() => {
 		const total = viewPortMessages.reduce(
 			(sum, message) => sum + message.lines.length,
@@ -84,7 +88,14 @@ export function VisibleMessageProvider({
 
 	return (
 		<VisibleMessageContext.Provider
-			value={{visible, offset, setOffset, maxOffset}}
+			value={{
+				visible,
+				offset,
+				setOffset,
+				maxOffset,
+				setFocusedMessageIndex,
+				focusedMessageIndex,
+			}}
 		>
 			{children}
 		</VisibleMessageContext.Provider>
