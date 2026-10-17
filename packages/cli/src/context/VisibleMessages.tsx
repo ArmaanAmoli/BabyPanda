@@ -98,6 +98,10 @@ export function VisibleMessageProvider({
 		}
 
 		const nextIndex = currentIndex + direction;
+		if (direction === -1 && currentIndex === 0) {
+			focusMessage(viewPortMessages.length - 1);
+			return;
+		}
 		if (nextIndex < 0 || nextIndex >= viewPortMessages.length) {
 			return;
 		}

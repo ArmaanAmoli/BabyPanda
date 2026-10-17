@@ -1,5 +1,5 @@
 import React from 'react';
-import {Box} from 'ink';
+import {Box, Text} from 'ink';
 import TextInput from 'ink-text-input';
 import {type PromptBoxArgs} from '../types';
 import {ActiveComponentWrapper} from './ActiveComponentWrapper';
@@ -10,6 +10,8 @@ export default function PromptBox({
 	value,
 	onChange,
 	onSubmit,
+	status,
+	active = true,
 }: PromptBoxArgs) {
 	const terminal = useTerminal();
 	return (
@@ -22,20 +24,25 @@ export default function PromptBox({
 			height="100%"
 			backgroundColor={'#242424'}
 		>
-			<ActiveComponentWrapper
-				// Starts one row below the ChatBox scroll region (which ends at
-				// terminal.rows - HEIGHT_OF_PROMPT_BOX) so the two mouse regions
-				// never overlap.
-				start={terminal.rows - HEIGHT_OF_PROMPT_BOX + 1}
-				end={terminal.rows}
-			>
-				<TextInput
-					value={value}
-					placeholder={placeholder}
-					onChange={onChange}
-					onSubmit={onSubmit}
-				/>
-			</ActiveComponentWrapper>
+			{status && <Text color="green">{status}</Text>}
+			{active ? (
+				<ActiveComponentWrapper
+					// Starts one row below the ChatBox scroll region (which ends at
+					// terminal.rows - HEIGHT_OF_PROMPT_BOX) so the two mouse regions
+					// never overlap.
+					start={terminal.rows - HEIGHT_OF_PROMPT_BOX + 1}
+					end={terminal.rows}
+				>
+					<TextInput
+						value={value}
+						placeholder={placeholder}
+						onChange={onChange}
+						onSubmit={onSubmit}
+					/>
+				</ActiveComponentWrapper>
+			) : (
+				<Text dimColor>{placeholder}</Text>
+			)}
 		</Box>
 	);
 }
