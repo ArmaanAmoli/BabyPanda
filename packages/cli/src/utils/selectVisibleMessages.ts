@@ -52,3 +52,31 @@ export function selectVisibleMessages(
 
 	return {visible, lineCount};
 }
+
+export function findOffsetForMessage(
+	messages: ViewPortMessage[],
+	budget: number,
+	messageIndex: number,
+	maxOffset: number,
+): number {
+	const preferredOffset = messages
+		.slice(messageIndex + 1)
+		.reduce((total, message) => total + message.lines.length, 0);
+
+	for (let distance = 0; distance <= maxOffset; distance++) {
+		const candidates = [preferredOffset - distance, preferredOffset + distance];
+
+		for (const candidate of candidates) {
+			if (candidate < 0 || candidate > maxOffset) {
+				continue;
+			}
+
+			const {visible} = selectVisibleMessages(messages, budget, candidate);
+			if (visible.some(message => message.messageIndex === messageIndex)) {
+				return candidate;
+			}
+		}
+	}
+
+	return Math.min(maxOffset, Math.max(0, preferredOffset));
+}

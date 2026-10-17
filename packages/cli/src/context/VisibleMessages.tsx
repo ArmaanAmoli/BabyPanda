@@ -9,7 +9,10 @@ import React, {
 import {SCROLL_ROWS, type MouseEvent} from '../utils/terminal/mouse';
 import {useMouse} from '../hooks/useMouse';
 import {useViewPortMessage} from '../hooks/useViewPortMessage';
-import {selectVisibleMessages} from '../utils/selectVisibleMessages';
+import {
+	findOffsetForMessage,
+	selectVisibleMessages,
+} from '../utils/selectVisibleMessages';
 import type {VisibleMessage} from '../types';
 import {useTerminal} from '../hooks/useTerminal';
 import {HEIGHT_OF_PROMPT_BOX} from '../app';
@@ -19,8 +22,10 @@ interface VisibleMessageContextValue {
 	offset: number;
 	setOffset: React.Dispatch<SetStateAction<number>>;
 	maxOffset: number;
-	setFocusedMessageIndex: React.Dispatch<SetStateAction<number | null>>;
+	setFocusedMessageIndex: (messageIndex: number | null) => void;
 	focusedMessageIndex: number | null;
+	focusMessage: (messageIndex: number | null) => void;
+	moveFocus: (direction: -1 | 1) => void;
 }
 export const VisibleMessageContext =
 	createContext<VisibleMessageContextValue | null>(null);
@@ -40,6 +45,7 @@ export function VisibleMessageProvider({
 	const [focusedMessageIndex, setFocusedMessageIndex] = useState<number | null>(
 		null,
 	);
+	const focusedMessageRef = useRef<number | null>(null);
 	const {totalLines, maxOffset} = useMemo(() => {
 		const total = viewPortMessages.reduce(
 			(sum, message) => sum + message.lines.length,
@@ -70,6 +76,35 @@ export function VisibleMessageProvider({
 		[viewPortMessages, budget, clampedOffset],
 	);
 
+	const focusMessage = (messageIndex: number | null) => {
+		focusedMessageRef.current = messageIndex;
+		setFocusedMessageIndex(messageIndex);
+
+		if (messageIndex !== null) {
+			const nextOffset = findOffsetForMessage(
+				viewPortMessages,
+				budget,
+				messageIndex,
+				maxOffset,
+			);
+			setOffset(nextOffset);
+		}
+	};
+
+	const moveFocus = (direction: -1 | 1) => {
+		const currentIndex = focusedMessageRef.current;
+		if (currentIndex === null) {
+			return;
+		}
+
+		const nextIndex = currentIndex + direction;
+		if (nextIndex < 0 || nextIndex >= viewPortMessages.length) {
+			return;
+		}
+
+		focusMessage(nextIndex);
+	};
+
 	const handler = (event: MouseEvent) => {
 		if (
 			(event.name !== 'scroll-up' && event.name !== 'scroll-down') ||
@@ -93,8 +128,10 @@ export function VisibleMessageProvider({
 				offset,
 				setOffset,
 				maxOffset,
-				setFocusedMessageIndex,
+				setFocusedMessageIndex: focusMessage,
 				focusedMessageIndex,
+				focusMessage,
+				moveFocus,
 			}}
 		>
 			{children}
