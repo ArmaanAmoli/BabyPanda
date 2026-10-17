@@ -8,6 +8,7 @@ export interface PromptBoxArgs {
 	value: string;
 	onSubmit: () => void;
 	onChange: (value: string) => void;
+	active?: boolean;
 }
 
 export interface APIProvider {
@@ -35,4 +36,33 @@ export interface MessagesContext {
 	messageHistory: CleanedMessage[];
 	setMessageHistory: React.Dispatch<SetStateAction<CleanedMessage[]>>;
 	lastRole: RefObject<Role | null>;
+}
+
+export type Focused = 'ChatBox' | 'PromptBox';
+
+export interface VisibleMessage {
+	messageIndex: number;
+	role: Role;
+	createdAt: number | null;
+	content: string;
+}
+
+export interface FlattenedLine {
+	line: MessageLine;
+	messageIndex: number;
+}
+
+export interface MessageLine {
+	role: Role;
+	content: string;
+	isFirstLine: boolean;
+	createdAt: number | null;
+	lineLength: number;
+	isIncomplete?: boolean;
+}
+
+export interface ViewPortMessage {
+	role: Role;
+	createdAt: number | null;
+	lines: MessageLine[];
 }

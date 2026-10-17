@@ -1,7 +1,7 @@
 import React from 'react';
-import {Box} from 'ink';
+import {Box, Text} from 'ink';
 import BigText from 'ink-big-text';
-import {useState, useEffect} from 'react';
+import {useState, useEffect, useRef} from 'react';
 import PromptBox from './components/promptBox';
 import {ChatBox} from './components/ChatBox';
 import {Role, WsEventTypes} from '@baby-panda/types';
@@ -13,18 +13,30 @@ import usePendingPermissionMessages from './hooks/usePendingPermissionMessages';
 import {useMessageHistory} from './hooks/useMessageHistroy';
 import useSocket from './hooks/useSocket';
 import {useTerminal} from './hooks/useTerminal';
+import type {Focused} from './types';
+import {useInput} from 'ink';
+import {useVisibleMessages} from './hooks/useVisibleMessages';
+import {copyToClipboard} from './utils/copyToClipboard';
 
 export const HEIGHT_OF_PROMPT_BOX = 6;
 export const PADDING_APP = 2;
 export const GAP_CHAT_BOX_PROMPT_BOX = 1;
 export default function App() {
+	const [focus, setFocus] = useState<Focused | null>('ChatBox');
 	const socket = useSocket();
 	const sessionState = useSession();
 	const {pendingPermissionMessages} = usePendingPermissionMessages();
 	const sessionId = sessionState.sessionId;
 	const {messageHistory, setMessageHistory, lastRole} = useMessageHistory();
 	const [prompt, setPrompt] = useState('');
+	const [clipboardStatus, setClipboardStatus] = useState<string>();
+	const clipboardStatusTimer = useRef<
+		ReturnType<typeof setTimeout> | undefined
+	>(undefined);
 	const {rows, columns} = useTerminal();
+	const {visible, focusMessage, moveFocus, focusedMessageIndex} =
+		useVisibleMessages();
+
 	const onChange = (value: string) => {
 		setPrompt(value);
 	};
@@ -32,8 +44,6 @@ export default function App() {
 		if (prompt.trim().length === 0) {
 			return;
 		}
-		//Update this....
-		// appendMessageLine({role: Role.user, content: prompt}, viewPort, maxWidth);
 		setMessageHistory(prev => [
 			...prev,
 			{role: Role.user, content: prompt, createdAt: Date.now()},
@@ -55,6 +65,70 @@ export default function App() {
 		};
 		getHistory();
 	}, []);
+
+	useEffect(
+		() => () => {
+			if (clipboardStatusTimer.current) {
+				clearTimeout(clipboardStatusTimer.current);
+			}
+		},
+		[],
+	);
+
+	const showClipboardStatus = (status: string) => {
+		setClipboardStatus(status);
+		if (clipboardStatusTimer.current) {
+			clearTimeout(clipboardStatusTimer.current);
+		}
+		clipboardStatusTimer.current = setTimeout(() => {
+			setClipboardStatus(undefined);
+		}, 2000);
+	};
+
+	useInput((_input, key) => {
+		if (key.tab) {
+			const newFocus: Focused = focus === 'ChatBox' ? 'PromptBox' : 'ChatBox';
+			setFocus(newFocus);
+			const recentMessage = visible.at(visible.length - 1);
+			if (newFocus === 'ChatBox' && recentMessage) {
+				focusMessage(recentMessage.messageIndex);
+			} else if (newFocus === 'PromptBox') {
+				focusMessage(null);
+			}
+		}
+
+		if (key.upArrow) {
+			if (focus === 'ChatBox') {
+				moveFocus(-1);
+			}
+		}
+		if (key.downArrow) {
+			if (focus === 'ChatBox') {
+				moveFocus(1);
+			}
+		}
+		if (_input === 'y' && focus === 'ChatBox') {
+			const selectedMessage =
+				focusedMessageIndex === null
+					? undefined
+					: messageHistory[focusedMessageIndex];
+			if (selectedMessage) {
+				void copyToClipboard(selectedMessage.content)
+					.then(() => {
+						showClipboardStatus('Copied to clipboard');
+					})
+					.catch(error => {
+						showClipboardStatus(`Copy failed: ${String(error)}`);
+					});
+			}
+		}
+		if (key.escape) {
+			if (focus != null) {
+				setFocus(null);
+				focusMessage(null);
+			}
+		}
+	});
 
 	return (
 		<Box
@@ -84,7 +158,7 @@ export default function App() {
 					{/* Mouse rows are 1-based, so the chat region starts at row 1.
 					    This also keeps the visible line count (end - start + 1)
 					    equal to the container height (rows - HEIGHT_OF_PROMPT_BOX). */}
-					<ChatBox start={1} end={rows - HEIGHT_OF_PROMPT_BOX} />
+					<ChatBox />
 				</Box>
 
 				{pendingPermissionMessages.length > 0 && (
@@ -103,9 +177,32 @@ export default function App() {
 						value={prompt}
 						onChange={onChange}
 						onSubmit={onSubmit}
+						active={focus === 'PromptBox'}
 					/>
 				</Box>
 			</Box>
+			{clipboardStatus && (
+				<Box
+					position="absolute"
+					top={1}
+					right={2}
+					paddingX={1}
+					paddingY={0}
+					borderStyle="round"
+					borderColor={
+						clipboardStatus.startsWith('Copy failed') ? '#d66b6b' : '#7fc7a4'
+					}
+					backgroundColor="#242424"
+				>
+					<Text
+						color={
+							clipboardStatus.startsWith('Copy failed') ? '#f08a8a' : '#9fe3bd'
+						}
+					>
+						{clipboardStatus}
+					</Text>
+				</Box>
+			)}
 		</Box>
 	);
 }

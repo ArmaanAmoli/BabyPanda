@@ -22,6 +22,7 @@ import {
 import {MouseProvider} from './context/MouseContext';
 import {TerminalProvider} from './context/Terminal';
 import {ViewPortMessageProvider} from './context/ViewPortMessage';
+import {VisibleMessageProvider} from './context/VisibleMessages';
 import {FilteredStdin} from './utils/terminal/filterStdin';
 
 const filteredStdin = new FilteredStdin(process.stdin);
@@ -72,9 +73,11 @@ const {waitUntilExit} = render(
 					<MessageHistoryProvider>
 						<PendingPermissionMessagesProvider>
 							<ViewPortMessageProvider>
-								<SocketProvider>
-									<App />
-								</SocketProvider>
+								<VisibleMessageProvider start={1}>
+									<SocketProvider>
+										<App />
+									</SocketProvider>
+								</VisibleMessageProvider>
 							</ViewPortMessageProvider>
 						</PendingPermissionMessagesProvider>
 					</MessageHistoryProvider>

@@ -1,9 +1,9 @@
 import React, {SetStateAction, useEffect, useState} from 'react';
 import {createContext} from 'react';
-import {Role} from '@baby-panda/types';
 import {useMessageHistory} from '../hooks/useMessageHistroy';
 import {useTerminal} from '../hooks/useTerminal';
-import {breakMessageIntoLines, type MessageLine} from '../utils/breakIntoLines';
+import {breakMessageIntoLines} from '../utils/breakIntoLines';
+import type {ViewPortMessage} from '../types';
 import {
 	MARGIN_TOP_MESSAGE_BOX,
 	PADDING_MESSAGE_BOX,
@@ -13,11 +13,6 @@ import {PADDING_APP} from '../app';
 // A single logical message together with its width-wrapped lines. Keeping the
 // grouping lets the viewport budget for the decoration each message box adds
 // (margin + padding) instead of assuming one content line equals one row.
-export interface ViewPortMessage {
-	role: Role;
-	createdAt: number | null;
-	lines: MessageLine[];
-}
 
 export interface ViewPortMessageContextValue {
 	viewPortMessages: ViewPortMessage[];
