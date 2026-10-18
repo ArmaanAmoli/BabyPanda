@@ -7,12 +7,14 @@ import {LogType} from '@baby-panda/types';
 export function useSession() {
 	const sessionContext = useContext(SessionContext);
 	if (!sessionContext) {
-		writeLogs(
-			LogType.cli,
-			getProjectName(),
-			'global',
-			'[session hook]: session context not provided',
-		);
+		void (async () => {
+			await writeLogs(
+				LogType.cli,
+				getProjectName(),
+				'global',
+				'[session hook]: session context not provided',
+			);
+		})();
 		throw new Error(`useSession must be used inside SessionProvider`);
 	}
 	return sessionContext;

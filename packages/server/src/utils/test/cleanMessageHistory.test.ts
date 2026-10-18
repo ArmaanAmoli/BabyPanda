@@ -134,8 +134,8 @@ const nullToolResultSchemaMessage = {
 };
 
 describe('Typesafe extraction of tool result and messages', () => {
-  test('extracts bash tool results whose result is a serialized shell response', () => {
-    const result = cleanMessageHistroy(bashInput);
+  test('extracts bash tool results whose result is a serialized shell response', async () => {
+    const result = await cleanMessageHistroy(bashInput);
     expect(result).toEqual([
       {
         role: Role.tool,
@@ -144,8 +144,8 @@ describe('Typesafe extraction of tool result and messages', () => {
       },
     ]);
   });
-  test('extract read tool result whose result is a ToolResult type JSON', () => {
-    const result = cleanMessageHistroy(multipleMessages.slice(1, 2));
+  test('extract read tool result whose result is a ToolResult type JSON', async () => {
+    const result = await cleanMessageHistroy(multipleMessages.slice(1, 2));
     expect(result).toEqual([
       {
         role: Role.tool,
@@ -154,8 +154,8 @@ describe('Typesafe extraction of tool result and messages', () => {
       },
     ]);
   });
-  test('extract thought or answer whose results are simple string', () => {
-    const result = cleanMessageHistroy(multipleMessages.slice(0, 1));
+  test('extract thought or answer whose results are simple string', async () => {
+    const result = await cleanMessageHistroy(multipleMessages.slice(0, 1));
     expect(result).toEqual([
       {
         role: Role.thought,
@@ -164,27 +164,27 @@ describe('Typesafe extraction of tool result and messages', () => {
       },
     ]);
   });
-  test('expect an empty array when passed empty array', () => {
-    const result = cleanMessageHistroy([]);
+  test('expect an empty array when passed empty array', async () => {
+    const result = await cleanMessageHistroy([]);
     expect(result).toEqual([]);
   });
 });
 
 describe('Handling of schema violation', () => {
-  test("expect to ignore invalid JSON's ", () => {
-    const result = cleanMessageHistroy(multipleMessages.slice(2));
+  test("expect to ignore invalid JSON's ", async () => {
+    const result = await cleanMessageHistroy(multipleMessages.slice(2));
     expect(result).toEqual([]);
   });
-  test('expect to ignore message content schema voilation', () => {
-    const result = cleanMessageHistroy([wrongMessageSchemaMessage]);
+  test('expect to ignore message content schema voilation', async () => {
+    const result = await cleanMessageHistroy([wrongMessageSchemaMessage]);
     expect(result).toEqual([]);
   });
-  test('expect to ignore tool result schema voilation', () => {
-    const result = cleanMessageHistroy([wrongToolResultSchemaMessage]);
+  test('expect to ignore tool result schema voilation', async () => {
+    const result = await cleanMessageHistroy([wrongToolResultSchemaMessage]);
     expect(result).toEqual([]);
   });
-  test('expect to ignore if tool result is null', () => {
-    const result = cleanMessageHistroy([nullToolResultSchemaMessage]);
+  test('expect to ignore if tool result is null', async () => {
+    const result = await cleanMessageHistroy([nullToolResultSchemaMessage]);
     expect(result).toEqual([]);
   });
 });

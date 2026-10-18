@@ -8,18 +8,22 @@ export default function useSocket() {
 	const session = useSession();
 	const socket = useContext<WebSocket | null>(SocketContext);
 	if (!socket) {
-		writeLogs(
+		void (async () => {
+			await writeLogs(
+				LogType.cli,
+				process.cwd().replaceAll('/', '-').replace('-', ''),
+				session ? session.sessionId : 'global',
+				`[ERROR]: useSocket Hook not provided with SocketContext`,
+			);
+		})();
+	}
+	void (async () => {
+		await writeLogs(
 			LogType.cli,
 			process.cwd().replaceAll('/', '-').replace('-', ''),
 			session ? session.sessionId : 'global',
-			`[ERROR]: useSocket Hook not provided with SocketContext`,
+			`RETURNING SOCKET`,
 		);
-	}
-	writeLogs(
-		LogType.cli,
-		process.cwd().replaceAll('/', '-').replace('-', ''),
-		session ? session.sessionId : 'global',
-		`RETURNING SOCKET`,
-	);
+	})();
 	return socket;
 }

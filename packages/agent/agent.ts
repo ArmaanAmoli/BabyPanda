@@ -180,7 +180,7 @@ export class BabyPandaAgent extends EventEmitter {
         if (this.userMessageQueue.length >= 1) {
           for (const msg of this.userMessageQueue) {
             await createMessage(this.sessionId, msg.content, Role.user);
-            writeLogs(
+            await writeLogs(
               LogType.agent,
               this.projectDirectoryName,
               this.sessionId,
@@ -210,16 +210,21 @@ export class BabyPandaAgent extends EventEmitter {
 
       const messages: MessageAPI[] = await this.createContext();
 
-      writeLogs(
+      await writeLogs(
         LogType.agent,
         this.projectDirectoryName,
         this.sessionId,
         'message sended waiting for response...',
       );
       const response = await this.client.chatCompletion(messages, this.model);
-      writeLogs(LogType.agent, this.projectDirectoryName, this.sessionId, 'received first chunk');
+      await writeLogs(
+        LogType.agent,
+        this.projectDirectoryName,
+        this.sessionId,
+        'received first chunk',
+      );
       if (response.systemError) {
-        writeLogs(
+        await writeLogs(
           LogType.agent,
           this.projectDirectoryName,
           this.sessionId,
@@ -253,7 +258,7 @@ export class BabyPandaAgent extends EventEmitter {
         const lineBuffer: string[] = [];
         const regex = /^data:\s/;
 
-        response.response?.data.on('data', (chunk: Buffer | string) => {
+        response.response?.data.on('data', async (chunk: Buffer | string) => {
           const encodedChunk = typeof chunk === 'string' ? chunk : chunk.toString('utf-8');
           buffer += encodedChunk;
           const lines = buffer.split('\n');
@@ -272,7 +277,7 @@ export class BabyPandaAgent extends EventEmitter {
                   toolCall = true;
                   contentType = ContentType.tool_call;
                   // console.log("tool called !")
-                  writeLogs(
+                  await writeLogs(
                     LogType.agent,
                     this.projectDirectoryName,
                     this.sessionId,
@@ -283,7 +288,7 @@ export class BabyPandaAgent extends EventEmitter {
                   cleanedReplyForCLI = fullReply.substring(
                     fullReply.indexOf(matchAnswer) + matchAnswer.length,
                   );
-                  writeLogs(
+                  await writeLogs(
                     LogType.agent,
                     this.projectDirectoryName,
                     this.sessionId,
@@ -295,7 +300,7 @@ export class BabyPandaAgent extends EventEmitter {
                   cleanedReplyForCLI = fullReply.substring(
                     fullReply.indexOf(matchThought) + matchThought.length,
                   );
-                  writeLogs(
+                  await writeLogs(
                     LogType.agent,
                     this.projectDirectoryName,
                     this.sessionId,
@@ -322,7 +327,7 @@ export class BabyPandaAgent extends EventEmitter {
           }
         });
         response.response?.data.on('end', async () => {
-          writeLogs(
+          await writeLogs(
             LogType.agent,
             this.projectDirectoryName,
             this.sessionId,
@@ -330,7 +335,7 @@ export class BabyPandaAgent extends EventEmitter {
           );
           fullReply = extractFirstJSON(fullReply) ?? '';
           if (!fullReply) {
-            writeLogs(
+            await writeLogs(
               LogType.agent,
               this.projectDirectoryName,
               this.sessionId,
@@ -341,7 +346,7 @@ export class BabyPandaAgent extends EventEmitter {
             resolve('empty reply');
             return;
           }
-          writeLogs(
+          await writeLogs(
             LogType.agent,
             this.projectDirectoryName,
             this.sessionId,
@@ -448,7 +453,7 @@ export class BabyPandaAgent extends EventEmitter {
                   }
                 };
                 await executeToolCall();
-                writeLogs(
+                await writeLogs(
                   LogType.agent,
                   this.projectDirectoryName,
                   this.sessionId,
@@ -498,8 +503,8 @@ export class BabyPandaAgent extends EventEmitter {
           // this.emit('end', contentType);
           resolve('single iteration of loop done.');
         });
-        response.response?.data.on('error', (err: Error) => {
-          writeLogs(
+        response.response?.data.on('error', async (err: Error) => {
+          await writeLogs(
             LogType.agent,
             this.projectDirectoryName,
             this.sessionId,
@@ -507,8 +512,8 @@ export class BabyPandaAgent extends EventEmitter {
           );
           reject(err);
         });
-      }).catch((err) => {
-        writeLogs(
+      }).catch(async (err) => {
+        await writeLogs(
           LogType.agent,
           this.projectDirectoryName,
           this.sessionId,
@@ -521,7 +526,7 @@ export class BabyPandaAgent extends EventEmitter {
       if (this.userMessageQueue.length === 0 && toBreak) {
         this.isRunning = false;
         // this.emit('abort');
-        writeLogs(LogType.agent, this.projectDirectoryName, this.sessionId, `Loop has ended`);
+        await writeLogs(LogType.agent, this.projectDirectoryName, this.sessionId, `Loop has ended`);
         // eslint-disable-next-line no-useless-assignment
         finalBreak = true;
         break;
@@ -534,7 +539,7 @@ export class BabyPandaAgent extends EventEmitter {
     if (this.isRunning) {
       return;
     } else {
-      writeLogs(LogType.agent, this.projectDirectoryName, this.sessionId, `Called loop`);
+      await writeLogs(LogType.agent, this.projectDirectoryName, this.sessionId, `Called loop`);
       await this.loop();
     }
   }

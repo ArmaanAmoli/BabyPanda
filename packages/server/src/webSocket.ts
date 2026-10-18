@@ -21,7 +21,7 @@ const websocketHandler = (c: Context, next: Next) => {
   const handler = upgradeWebSocket(() => {
     let cleanup: () => void;
     return {
-      onOpen(_event, ws) {
+      async onOpen(_event, ws) {
         wsCollection.set(sessionId, ws);
         if (agentStore.get(sessionId) == undefined) {
           const { url, apikey } = {
@@ -52,10 +52,10 @@ const websocketHandler = (c: Context, next: Next) => {
           );
         };
 
-        const onToolData = (data: MessageHistory) => {
-          writeLogs(LogType.server, cwd, sessionId, `[/message]: Received a tool chunk`);
-          writeLogs(LogType.server, cwd, sessionId, `[/message]: Raw tool chunk ${data}`);
-          const cleaned = cleanMessageHistroy(data);
+        const onToolData = async (data: MessageHistory) => {
+          await writeLogs(LogType.server, cwd, sessionId, `[/message]: Received a tool chunk`);
+          await writeLogs(LogType.server, cwd, sessionId, `[/message]: Raw tool chunk ${data}`);
+          const cleaned = await cleanMessageHistroy(data);
           let content = '';
           cleaned.forEach((msg) => {
             if (msg.role === Role.tool) {
@@ -66,14 +66,19 @@ const websocketHandler = (c: Context, next: Next) => {
             role: Role.tool,
             content,
           };
-          writeLogs(LogType.server, cwd, sessionId, `[/message]: Final tool content ${content}`);
+          await writeLogs(
+            LogType.server,
+            cwd,
+            sessionId,
+            `[/message]: Final tool content ${content}`,
+          );
           const msg: WsCommonMessage = { eventType: WsEventTypes.message, payload: chunk };
           ws.send(JSON.stringify(msg));
         };
 
         const handlers: Record<string, (data: string) => void> = {};
-        const onData = (eventName: ContentType, data: string) => {
-          writeLogs(LogType.server, cwd, sessionId, '[/message]: Received a data chunk');
+        const onData = async (eventName: ContentType, data: string) => {
+          await writeLogs(LogType.server, cwd, sessionId, '[/message]: Received a data chunk');
           const chunk: ServerStreamChunkSchemaType = {
             role: eventName === ContentType.answer ? Role.assistant : Role.thought,
             content: data,
@@ -83,7 +88,7 @@ const websocketHandler = (c: Context, next: Next) => {
         };
 
         // const onEnd = (contentType: ContentType) => {
-        //   writeLogs(
+        //   await writeLogs(
         //     LogType.server,
         //     cwd,
         //     sessionId,
@@ -91,13 +96,13 @@ const websocketHandler = (c: Context, next: Next) => {
         //   );
         // };
 
-        const onError = (err: Error) => {
+        const onError = async (err: Error) => {
           console.error('[AGENT:STREAM ERROR] ', err);
-          writeLogs(LogType.server, cwd, sessionId, `[/message]: Stream error ${err}`);
+          await writeLogs(LogType.server, cwd, sessionId, `[/message]: Stream error ${err}`);
         };
 
-        cleanup = () => {
-          writeLogs(LogType.server, cwd, sessionId, 'Cleanup started');
+        cleanup = async () => {
+          await writeLogs(LogType.server, cwd, sessionId, 'Cleanup started');
 
           Object.entries(handlers).forEach(([eventName, handler]) => {
             babyPanda.off(eventName, handler);
@@ -106,11 +111,13 @@ const websocketHandler = (c: Context, next: Next) => {
           babyPanda.off(ContentType.tool_call, onToolData);
           // babyPanda.off('end', onEnd);
           babyPanda.off('error', onError);
-          writeLogs(LogType.server, cwd, sessionId, '[/message]: Aborting stream...');
+          await writeLogs(LogType.server, cwd, sessionId, '[/message]: Aborting stream...');
         };
 
         [ContentType.answer, ContentType.thought].forEach((eventName) => {
-          handlers[eventName] = (data: string) => onData(eventName, data);
+          handlers[eventName] = (data: string) => {
+            void onData(eventName, data);
+          };
           babyPanda.on(eventName, handlers[eventName]);
         });
         babyPanda.on(ContentType.tool_call, onToolData);
@@ -118,17 +125,17 @@ const websocketHandler = (c: Context, next: Next) => {
         // babyPanda.on('end', onEnd);
         babyPanda.on('error', onError);
 
-        writeLogs(
+        await writeLogs(
           LogType.server,
           process.cwd().replaceAll('/', '-').replace('-', ''),
           sessionId,
           '[WS]: CONNECTED',
         );
       },
-      onMessage(event) {
+      async onMessage(event) {
         const agent = agentStore.get(sessionId);
         const payload = JSON.parse(event.data.toString());
-        writeLogs(
+        await writeLogs(
           LogType.server,
           process.cwd().replaceAll('/', '-').replace('-', ''),
           sessionId,

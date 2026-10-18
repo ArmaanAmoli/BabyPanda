@@ -7,66 +7,68 @@ import { writeLogs } from '@baby-panda/utils';
 export type MessageHistory = Awaited<ReturnType<typeof getMessages>>;
 const cwd = process.cwd().replaceAll('/', '-').replace('-', '');
 
-export function cleanMessageHistroy(messageHistory: MessageHistory) {
-  const result = messageHistory.map((m) => {
-    let role = m.role;
-    // let isThought = false;
-    let content: string;
-    if (!m.content) return;
-    const rawContent = m.content.trim();
-    const isToolResult = m.isToolResult ?? false;
+export async function cleanMessageHistroy(messageHistory: MessageHistory) {
+  const result = await Promise.all(
+    messageHistory.map(async (m) => {
+      let role = m.role;
+      // let isThought = false;
+      let content: string;
+      if (!m.content) return;
+      const rawContent = m.content.trim();
+      const isToolResult = m.isToolResult ?? false;
 
-    if (rawContent.at(0) !== '{') {
-      content = rawContent;
-    } else if (isToolResult) {
-      try {
-        role = Role.tool;
-        const parsed = ToolRawResultSchema.safeParse(JSON.parse(rawContent));
-        if (!parsed.success) {
-          return;
-        }
-        if (parsed.data.result == null) {
-          return;
-        }
-        let argsString = '';
-        Object.entries(parsed.data.arguments).forEach(([key, value]) => {
-          argsString += ` | ${key} : ${value}`;
-        });
-        content = `${parsed.data.name}: ${argsString} \n`;
-      } catch (err) {
-        writeLogs(
-          LogType.server,
-          cwd,
-          m.sessionId!,
-          `[ERROR WHILE CLEAN MESSAGE]: ${err} ${rawContent}`,
-        );
-        return undefined;
-      }
-    } else {
-      try {
-        const parsed = MessageContentSchema.parse(JSON.parse(m.content));
-        if (parsed.content.answer != undefined || parsed.content.thought != undefined) {
-          if (parsed.content.thought) {
-            // isThought = true;
-            role = Role.thought;
+      if (rawContent.at(0) !== '{') {
+        content = rawContent;
+      } else if (isToolResult) {
+        try {
+          role = Role.tool;
+          const parsed = ToolRawResultSchema.safeParse(JSON.parse(rawContent));
+          if (!parsed.success) {
+            return;
           }
-          content = parsed.content.answer ?? parsed.content.thought ?? '';
-          if (content.length === 0) return;
-        } else {
-          return; // ignore tool call message
+          if (parsed.data.result == null) {
+            return;
+          }
+          let argsString = '';
+          Object.entries(parsed.data.arguments).forEach(([key, value]) => {
+            argsString += ` | ${key} : ${value}`;
+          });
+          content = `${parsed.data.name}: ${argsString} \n`;
+        } catch (err) {
+          await writeLogs(
+            LogType.server,
+            cwd,
+            m.sessionId!,
+            `[ERROR WHILE CLEAN MESSAGE]: ${err} ${rawContent}`,
+          );
+          return undefined;
         }
-      } catch (err) {
-        writeLogs(LogType.server, cwd, m.sessionId!, `[ERROR WHILE CLEAN MESSAGE]: ${err}`);
-        return undefined;
+      } else {
+        try {
+          const parsed = MessageContentSchema.parse(JSON.parse(m.content));
+          if (parsed.content.answer != undefined || parsed.content.thought != undefined) {
+            if (parsed.content.thought) {
+              // isThought = true;
+              role = Role.thought;
+            }
+            content = parsed.content.answer ?? parsed.content.thought ?? '';
+            if (content.length === 0) return;
+          } else {
+            return; // ignore tool call message
+          }
+        } catch (err) {
+          await writeLogs(LogType.server, cwd, m.sessionId!, `[ERROR WHILE CLEAN MESSAGE]: ${err}`);
+          return undefined;
+        }
       }
-    }
-    return {
-      role: role ?? Role.user,
-      content: content,
-      createdAt: m.createdAt,
-      // isThought: isThought
-    };
-  });
+      return {
+        role: role ?? Role.user,
+        content: content,
+        createdAt: m.createdAt,
+        // isThought: isThought
+      };
+    }),
+  );
 
   const finalResult: CleanedMessage[] = MergeToolCallMessages(result);
   return finalResult;

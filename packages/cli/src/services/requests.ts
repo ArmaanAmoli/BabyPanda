@@ -92,14 +92,14 @@ async function getAllSessions(): Promise<Session[]> {
 export async function getMessages(
 	sessionId: string,
 ): Promise<CleanedMessage[]> {
-	writeLogs(LogType.cli, cwd, sessionId, 'Fetching Message History...');
+	await writeLogs(LogType.cli, cwd, sessionId, 'Fetching Message History...');
 	const req = new Request('http://localhost:3000/get-messages', {
 		method: 'POST',
 		body: JSON.stringify({sessionId}),
 	});
 	const res = await app.fetch(req);
 	if (!res.ok) {
-		writeLogs(
+		await writeLogs(
 			LogType.cli,
 			cwd,
 			sessionId,
@@ -125,7 +125,7 @@ export async function getMessages(
 	const messagesList = JSON.parse(messages);
 	const parsed = CleanedMessageArraySchema.safeParse(messagesList);
 	if (!parsed.success) {
-		writeLogs(
+		await writeLogs(
 			LogType.cli,
 			cwd,
 			sessionId,

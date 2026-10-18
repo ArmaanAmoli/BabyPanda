@@ -22,8 +22,8 @@ export function PermissionBox() {
 	const {pendingPermissionMessages, setPendingPermissionMessages} =
 		usePendingPermissionMessages();
 	const socket = useSocket();
-	const handleSelect = (item: Item) => {
-		send(item);
+	const handleSelect = async (item: Item) => {
+		await send(item);
 	};
 	const items: Item[] = [
 		{
@@ -39,7 +39,7 @@ export function PermissionBox() {
 			value: true,
 		},
 	];
-	const send = (item: Item) => {
+	const send = async (item: Item) => {
 		const permissionObject = pendingPermissionMessages.at(
 			pendingPermissionMessages.length - 1,
 		);
@@ -57,7 +57,7 @@ export function PermissionBox() {
 							toolCallId: permissionObject.toolCallId,
 						};
 
-			writeLogs(
+			await writeLogs(
 				LogType.cli,
 				getProjectName(),
 				session.sessionId,

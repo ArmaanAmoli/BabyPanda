@@ -30,7 +30,7 @@ app.post('/get-messages', async (c) => {
   }
   try {
     const messages = await getMessages(body.sessionId);
-    const result = cleanMessageHistroy(messages);
+    const result = await cleanMessageHistroy(messages);
     const response = JSON.stringify(result);
     return new Response(response, { status: 200, statusText: 'OK' });
   } catch (err) {

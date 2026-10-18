@@ -31,19 +31,29 @@ export function SocketProvider({children}: ReactChildPropInterface) {
 			const socketInstance: WebSocket = new WebSocket(url.toString());
 			setSocket(socketInstance);
 
-			socketInstance.onopen = () => {
-				writeLogs(LogType.cli, projectName, sessionId, `[SOCKET]: opened`);
+			socketInstance.onopen = async () => {
+				await writeLogs(
+					LogType.cli,
+					projectName,
+					sessionId,
+					`[SOCKET]: opened`,
+				);
 			};
 
-			socketInstance.onmessage = event => {
-				writeLogs(LogType.cli, projectName, sessionId, `[WS]: ${event.data}`);
+			socketInstance.onmessage = async event => {
+				await writeLogs(
+					LogType.cli,
+					projectName,
+					sessionId,
+					`[WS]: ${event.data}`,
+				);
 				const data = event.data;
 				const parsed = WsCommonMessageSchema.parse(JSON.parse(data));
 				const {payload} = parsed;
 				switch (parsed.eventType) {
 					case WsEventTypes.message: {
 						const chunk = ServerStreamChunkSchema.parse(payload);
-						appendMessageHistory(chunk, messageContext);
+						await appendMessageHistory(chunk, messageContext);
 						break;
 					}
 					case WsEventTypes.permission: {
@@ -56,8 +66,8 @@ export function SocketProvider({children}: ReactChildPropInterface) {
 				}
 			};
 
-			socketInstance.onerror = event => {
-				writeLogs(
+			socketInstance.onerror = async event => {
+				await writeLogs(
 					LogType.cli,
 					projectName,
 					sessionId,
@@ -66,10 +76,15 @@ export function SocketProvider({children}: ReactChildPropInterface) {
 				socketInstance.close();
 			};
 
-			socketInstance.onclose = () => {
+			socketInstance.onclose = async () => {
 				if (isMounted) {
 					socketInstance.close();
-					writeLogs(LogType.cli, projectName, sessionId, `[SOCKET]: closed`);
+					await writeLogs(
+						LogType.cli,
+						projectName,
+						sessionId,
+						`[SOCKET]: closed`,
+					);
 					reconnectTimeoutRef.current = setTimeout(() => {
 						connect();
 					}, reconnectDelayRef.current);

@@ -7,8 +7,8 @@ import os from 'os';
 
 describe('logging system test', () => {
   test('should be able to write logs in .babyPanda directory', () => {
-    expect(() =>
-      writeLogs(LogType.agent, 'test', 'test', 'This log file is for testing'),
+    expect(
+      async () => await writeLogs(LogType.agent, 'test', 'test', 'This log file is for testing'),
     ).not.toThrow();
   });
   test('logs folder should exists', () => {
@@ -16,10 +16,10 @@ describe('logging system test', () => {
     const directory_created = existsSync(logDirPath);
     expect(directory_created).toBe(true);
   });
-  test('logs should only be written inside /.babypanda/logs folder', () => {
+  test('logs should only be written inside /.babypanda/logs folder', async () => {
     const logDirPath = path.join(os.homedir(), '.babypanda', 'logs', 'test', 'test');
     rmSync(logDirPath, { recursive: true, force: true });
-    writeLogs(LogType.agent, 'test', 'test', 'This log file is for testing');
+    await writeLogs(LogType.agent, 'test', 'test', 'This log file is for testing');
     const directory_created = existsSync(logDirPath);
     expect(directory_created).toBeTrue();
   });
