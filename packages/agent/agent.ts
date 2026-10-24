@@ -108,11 +108,8 @@ export class BabyPandaAgent extends EventEmitter {
       throw err;
     }
   }
-  private enableSandbox() {
-    this.sandbox = true;
-  }
-  private disableSandbox() {
-    this.sandbox = false;
+  public setSandbox(sandbox: boolean) {
+    this.sandbox = sandbox;
   }
   private async getMessageHistory(createdAt?: number) {
     const messageHistoryFromDb = createdAt
