@@ -18,6 +18,7 @@ import {useInput} from 'ink';
 import {useVisibleMessages} from './hooks/useVisibleMessages';
 import {copyToClipboard} from './utils/copyToClipboard';
 import {executeCommand} from './utils/commands/executeCommands';
+import {useSettings} from './hooks/useSettings';
 
 export const HEIGHT_OF_PROMPT_BOX = 6;
 export const PADDING_APP = 2;
@@ -38,7 +39,7 @@ export default function App() {
 	const {rows, columns} = useTerminal();
 	const {visible, focusMessage, moveFocus, focusedMessageIndex} =
 		useVisibleMessages();
-
+	const settings = useSettings();
 	const onChange = (value: string) => {
 		if (value.at(0) === '/') {
 			// potential command
@@ -57,6 +58,9 @@ export default function App() {
 				eventType: WsEventTypes.setting,
 				setting,
 			};
+			if (setting.sandbox != undefined) {
+				settings.sandbox.setSandBox(setting.sandbox);
+			}
 			socket?.send(JSON.stringify(wsMessage));
 			setPrompt('');
 			return;
@@ -201,7 +205,7 @@ export default function App() {
 			{clipboardStatus && (
 				<Box
 					position="absolute"
-					top={1}
+					top={4}
 					right={2}
 					paddingX={1}
 					paddingY={0}
@@ -218,6 +222,20 @@ export default function App() {
 					>
 						{clipboardStatus}
 					</Text>
+				</Box>
+			)}
+			{settings.sandbox.sandbox && (
+				<Box
+					position="absolute"
+					top={0}
+					right={2}
+					paddingX={1}
+					paddingY={0}
+					borderStyle="round"
+					borderColor="#7fc7a4"
+					backgroundColor="#242424"
+				>
+					<Text color="#9fe3bd">{'Sandboxing Enabled'}</Text>
 				</Box>
 			)}
 		</Box>

@@ -23,6 +23,7 @@ import {MouseProvider} from './context/MouseContext';
 import {TerminalProvider} from './context/Terminal';
 import {ViewPortMessageProvider} from './context/ViewPortMessage';
 import {VisibleMessageProvider} from './context/VisibleMessages';
+import {SettingsProvider} from './context/Settings';
 import {FilteredStdin} from './utils/terminal/filterStdin';
 
 const filteredStdin = new FilteredStdin(process.stdin);
@@ -67,23 +68,25 @@ if (initialSessionId === null) {
 
 const {waitUntilExit} = render(
 	<>
-		<TerminalProvider>
-			<MouseProvider filteredStdin={filteredStdin}>
-				<SessionProvider id={initialSessionId}>
-					<MessageHistoryProvider>
-						<PendingPermissionMessagesProvider>
-							<ViewPortMessageProvider>
-								<VisibleMessageProvider start={1}>
-									<SocketProvider>
-										<App />
-									</SocketProvider>
-								</VisibleMessageProvider>
-							</ViewPortMessageProvider>
-						</PendingPermissionMessagesProvider>
-					</MessageHistoryProvider>
-				</SessionProvider>
-			</MouseProvider>
-		</TerminalProvider>
+		<SettingsProvider>
+			<TerminalProvider>
+				<MouseProvider filteredStdin={filteredStdin}>
+					<SessionProvider id={initialSessionId}>
+						<MessageHistoryProvider>
+							<PendingPermissionMessagesProvider>
+								<ViewPortMessageProvider>
+									<VisibleMessageProvider start={1}>
+										<SocketProvider>
+											<App />
+										</SocketProvider>
+									</VisibleMessageProvider>
+								</ViewPortMessageProvider>
+							</PendingPermissionMessagesProvider>
+						</MessageHistoryProvider>
+					</SessionProvider>
+				</MouseProvider>
+			</TerminalProvider>
+		</SettingsProvider>
 	</>,
 	{
 		alternateScreen: true,
