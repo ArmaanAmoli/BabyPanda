@@ -162,6 +162,13 @@ const websocketHandler = (c: Context, next: Next) => {
             agent?.message({ content: parse.content, role: parse.role });
             break;
           }
+          case WsEventTypes.setting: {
+            const agent = agentStore.get(sessionId);
+            const setting = parse.setting;
+            if (setting.sandbox != undefined) {
+              agent?.setSandbox(setting.sandbox);
+            }
+          }
         }
       },
 

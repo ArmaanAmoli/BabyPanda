@@ -6,7 +6,7 @@ import type { UrlApi } from './types'; // verbatimModuleSyntax
 interface ChatCompletionArgs {
   response?: AxiosResponse;
   systemError?: boolean;
-  error?: any;
+  error?: unknown;
 }
 class BabyPandaClient {
   url: string;
@@ -35,6 +35,7 @@ class BabyPandaClient {
         'content-type': 'application/json',
         authorization: this.token,
       },
+      timeout: 120_000,
       data: {
         model: model,
         temperature: 1,
@@ -56,8 +57,7 @@ class BabyPandaClient {
       console.log(error);
       if (axios.isAxiosError(error)) {
         if (error.status === 429) {
-          await setTimeout(60000);
-          //retry later
+          await setTimeout(5_000);
         } else if (error.status && (error.status >= 500 || error.status === 400)) {
           //bad request stop the client
           console.log('BAD REQUEST');
@@ -69,11 +69,10 @@ class BabyPandaClient {
         isRetrying = true;
       }
       if (isRetrying && retrysDone < this.maxRetrys) {
-        return await this.chatCompletion(messages, model);
+        return await this._attempt(messages, model, true, retrysDone);
       } else {
         if (retrysDone >= this.maxRetrys) {
-          isRetrying = false;
-          retrysDone = 0;
+          console.error('Maximum API retry attempts reached');
         }
         const errorBody = await fetchError(error);
         console.error('🔴 API Gateway Validation Error Details:', errorBody);
@@ -103,7 +102,7 @@ const fetchError = async (error: unknown) => {
         resolve(Buffer.concat(chunks).toString('utf-8'));
         console.log('[AXIOS ERROR]: ', response.status, ' ', response.statusText);
       });
-      response.data.on('error', (e: any) => {
+      response.data.on('error', (e: unknown) => {
         resolve(`Cant collect error stream failed with error: ${e}`);
       });
     });

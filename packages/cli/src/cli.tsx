@@ -23,6 +23,7 @@ import {MouseProvider} from './context/MouseContext';
 import {TerminalProvider} from './context/Terminal';
 import {ViewPortMessageProvider} from './context/ViewPortMessage';
 import {VisibleMessageProvider} from './context/VisibleMessages';
+import {SettingsProvider} from './context/Settings';
 import {FilteredStdin} from './utils/terminal/filterStdin';
 
 const filteredStdin = new FilteredStdin(process.stdin);
@@ -51,9 +52,6 @@ const cleanup = () => {
 	deactivateAlternateScreenBuffer();
 };
 process.on('exit', cleanup);
-process.on('SIGTERM', cleanup);
-process.on('SIGINT', cleanup);
-process.on('SIGHUP', cleanup);
 const getInitialSessionId = () => {
 	if (typeof process !== 'undefined' && process.argv && process.argv[2]) {
 		return process.argv[2];
@@ -65,25 +63,27 @@ if (initialSessionId === null) {
 	initialSessionId = await startSession();
 }
 
-const {waitUntilExit} = render(
+const {waitUntilExit, unmount} = render(
 	<>
-		<TerminalProvider>
-			<MouseProvider filteredStdin={filteredStdin}>
-				<SessionProvider id={initialSessionId}>
-					<MessageHistoryProvider>
-						<PendingPermissionMessagesProvider>
-							<ViewPortMessageProvider>
-								<VisibleMessageProvider start={1}>
-									<SocketProvider>
-										<App />
-									</SocketProvider>
-								</VisibleMessageProvider>
-							</ViewPortMessageProvider>
-						</PendingPermissionMessagesProvider>
-					</MessageHistoryProvider>
-				</SessionProvider>
-			</MouseProvider>
-		</TerminalProvider>
+		<SettingsProvider>
+			<TerminalProvider>
+				<MouseProvider filteredStdin={filteredStdin}>
+					<SessionProvider id={initialSessionId}>
+						<MessageHistoryProvider>
+							<PendingPermissionMessagesProvider>
+								<ViewPortMessageProvider>
+									<VisibleMessageProvider start={1}>
+										<SocketProvider>
+											<App />
+										</SocketProvider>
+									</VisibleMessageProvider>
+								</ViewPortMessageProvider>
+							</PendingPermissionMessagesProvider>
+						</MessageHistoryProvider>
+					</SessionProvider>
+				</MouseProvider>
+			</TerminalProvider>
+		</SettingsProvider>
 	</>,
 	{
 		alternateScreen: true,
@@ -91,6 +91,19 @@ const {waitUntilExit} = render(
 		stdin: filteredStdin as unknown as NodeJS.ReadStream,
 	},
 );
+
+let shuttingDown = false;
+const shutdown = (exitCode: number) => {
+	if (shuttingDown) return;
+	shuttingDown = true;
+	cleanup();
+	server.stop();
+	unmount();
+	process.exit(exitCode);
+};
+process.on('SIGTERM', () => shutdown(0));
+process.on('SIGINT', () => shutdown(0));
+process.on('SIGHUP', () => shutdown(0));
 await waitUntilExit();
 console.log('stopping server');
 server.stop();

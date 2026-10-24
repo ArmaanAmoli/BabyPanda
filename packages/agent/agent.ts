@@ -25,6 +25,8 @@ import { projectDir, memoryFile } from '@agent/memory/constants';
 import { readFromMemory } from '@agent/memory/utils/memory';
 import { writeLogs } from '@baby-panda/utils';
 import { shell } from './mcp/tools/Shell/shell';
+import type { ShellResult } from './mcp/tools/Shell/shell';
+import { runSandboxed, type SandboxResult } from './mcp/tools/Shell/sandbox';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -50,6 +52,7 @@ export class BabyPandaAgent extends EventEmitter {
   private systemInstructions;
   private permissionWaiters = new Map<string, (granted: boolean) => void>(); // tool call id - permissionGranted
   private alwaysAllowBash = false; // when close session we reset this variable thats why not stored in db
+  private sandbox = false;
 
   instructions: string;
   model: ModelsEnum;
@@ -105,7 +108,9 @@ export class BabyPandaAgent extends EventEmitter {
       throw err;
     }
   }
-
+  public setSandbox(sandbox: boolean) {
+    this.sandbox = sandbox;
+  }
   private async getMessageHistory(createdAt?: number) {
     const messageHistoryFromDb = createdAt
       ? await getMessagesAfterTimestamp(this.sessionId, createdAt)
@@ -422,10 +427,25 @@ export class BabyPandaAgent extends EventEmitter {
                           }
 
                           if (granted) {
-                            const rawResult = await shell(
-                              parsed.data.command,
-                              parsed.data.timeout!,
-                            );
+                            // eslint-disable-next-line no-useless-assignment
+                            let rawResult: ShellResult | null | SandboxResult = null;
+
+                            if (this.sandbox) {
+                              rawResult = await runSandboxed({
+                                workspace: process.cwd(),
+                                command: parsed.data.command,
+                                timeoutMs: parsed.data.timeout,
+                              });
+                              await writeLogs(
+                                LogType.agent,
+                                this.projectDirectoryName,
+                                this.sessionId,
+                                `IN SANDBOX EXECUTING ${JSON.stringify(rawResult)}`,
+                              );
+                            } else {
+                              rawResult = await shell(parsed.data.command, parsed.data.timeout!);
+                            }
+
                             const fullResult: ToolResult = {
                               ...call,
                               result: JSON.stringify(rawResult),

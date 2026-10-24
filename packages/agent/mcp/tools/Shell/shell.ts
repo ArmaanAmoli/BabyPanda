@@ -1,7 +1,7 @@
 import os from 'os';
 import { spawn } from 'node:child_process';
 
-interface ShellResult {
+export interface ShellResult {
   stdout: string;
   stderr: string;
   error: string;

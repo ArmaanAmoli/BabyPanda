@@ -17,6 +17,8 @@ import type {Focused} from './types';
 import {useInput} from 'ink';
 import {useVisibleMessages} from './hooks/useVisibleMessages';
 import {copyToClipboard} from './utils/copyToClipboard';
+import {executeCommand} from './utils/commands/executeCommands';
+import {useSettings} from './hooks/useSettings';
 
 export const HEIGHT_OF_PROMPT_BOX = 6;
 export const PADDING_APP = 2;
@@ -29,6 +31,7 @@ export default function App() {
 	const sessionId = sessionState.sessionId;
 	const {messageHistory, setMessageHistory, lastRole} = useMessageHistory();
 	const [prompt, setPrompt] = useState('');
+	const [isCommand, setIsCommand] = useState(false);
 	const [clipboardStatus, setClipboardStatus] = useState<string>();
 	const clipboardStatusTimer = useRef<
 		ReturnType<typeof setTimeout> | undefined
@@ -36,12 +39,31 @@ export default function App() {
 	const {rows, columns} = useTerminal();
 	const {visible, focusMessage, moveFocus, focusedMessageIndex} =
 		useVisibleMessages();
-
+	const settings = useSettings();
 	const onChange = (value: string) => {
+		if (value.at(0) === '/') {
+			// potential command
+			setIsCommand(true);
+		}
 		setPrompt(value);
 	};
 	const onSubmit = async () => {
 		if (prompt.trim().length === 0) {
+			return;
+		}
+		if (isCommand) {
+			// execute command
+			const setting = executeCommand(prompt);
+			const wsMessage: WsEventMessage = {
+				eventType: WsEventTypes.setting,
+				setting,
+			};
+			if (setting.sandbox != undefined) {
+				settings.sandbox.setSandBox(setting.sandbox);
+			}
+			socket?.send(JSON.stringify(wsMessage));
+			setPrompt('');
+			setIsCommand(false);
 			return;
 		}
 		setMessageHistory(prev => [
@@ -184,7 +206,7 @@ export default function App() {
 			{clipboardStatus && (
 				<Box
 					position="absolute"
-					top={1}
+					top={4}
 					right={2}
 					paddingX={1}
 					paddingY={0}
@@ -201,6 +223,20 @@ export default function App() {
 					>
 						{clipboardStatus}
 					</Text>
+				</Box>
+			)}
+			{settings.sandbox.sandbox && (
+				<Box
+					position="absolute"
+					top={0}
+					right={2}
+					paddingX={1}
+					paddingY={0}
+					borderStyle="round"
+					borderColor="#7fc7a4"
+					backgroundColor="#242424"
+				>
+					<Text color="#9fe3bd">{'Sandboxing Enabled'}</Text>
 				</Box>
 			)}
 		</Box>
