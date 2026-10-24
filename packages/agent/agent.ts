@@ -436,6 +436,12 @@ export class BabyPandaAgent extends EventEmitter {
                                 command: parsed.data.command,
                                 timeoutMs: parsed.data.timeout,
                               });
+                              await writeLogs(
+                                LogType.agent,
+                                this.projectDirectoryName,
+                                this.sessionId,
+                                `IN SANDBOX EXECUTING ${JSON.stringify(rawResult)}`,
+                              );
                             } else {
                               rawResult = await shell(parsed.data.command, parsed.data.timeout!);
                             }

@@ -58,6 +58,7 @@ export default function App() {
 				setting,
 			};
 			socket?.send(JSON.stringify(wsMessage));
+			setPrompt('');
 			return;
 		}
 		setMessageHistory(prev => [
