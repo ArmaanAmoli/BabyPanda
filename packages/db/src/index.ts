@@ -10,6 +10,7 @@ import {
   getCompactionSummaries,
   getMostRecentCompactionSummary,
   addCompactionSummary,
+  getMessagesForSummary,
 } from './methods';
 
 export { createSession };
@@ -20,4 +21,9 @@ export { getSessions };
 export { updateSession };
 export { getSession };
 export { getSessionsByProjectDirectory };
-export { getCompactionSummaries, getMostRecentCompactionSummary, addCompactionSummary };
+export {
+  getCompactionSummaries,
+  getMostRecentCompactionSummary,
+  addCompactionSummary,
+  getMessagesForSummary,
+};

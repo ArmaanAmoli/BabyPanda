@@ -1,7 +1,7 @@
 import { db } from './index.db';
 import { Session, Message, ApiKeys, CompactionResults } from './db/schema';
 import type { Role } from '@baby-panda/types';
-import { asc, desc, eq, gte, and } from 'drizzle-orm';
+import { asc, desc, eq, gte, and, gt, lt } from 'drizzle-orm';
 interface APIProvider {
   provider: string;
   endpoint: string;
@@ -129,4 +129,49 @@ export async function getMessagesAfterTimestamp(sessionId: string, timestamp: nu
 
 export async function deleteSession(sessionId: string) {
   await db.delete(Session).where(eq(Session.id, sessionId));
+}
+
+export async function getMessagesForSummary(
+  sessionId: string,
+  compactionSummaryCreatedAt?: number,
+) {
+  const cutoffMessage = await db
+    .select({
+      createdAt: Message.createdAt,
+    })
+    .from(Message)
+    .where(eq(Message.sessionId, sessionId))
+    .orderBy(desc(Message.createdAt))
+    .limit(1)
+    .offset(19);
+  const cutoffTimestamp = cutoffMessage[0]?.createdAt;
+
+  if (cutoffTimestamp == null) {
+    return [];
+  }
+
+  if (compactionSummaryCreatedAt !== undefined) {
+    return db
+      .select()
+      .from(Message)
+      .where(
+        and(
+          eq(Message.sessionId, sessionId),
+          lt(Message.createdAt, cutoffTimestamp),
+          gt(Message.createdAt, compactionSummaryCreatedAt),
+          eq(Message.isToolResult, false),
+        ),
+      );
+  }
+
+  return db
+    .select()
+    .from(Message)
+    .where(
+      and(
+        eq(Message.sessionId, sessionId),
+        lt(Message.createdAt, cutoffTimestamp),
+        eq(Message.isToolResult, false),
+      ),
+    );
 }

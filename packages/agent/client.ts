@@ -56,6 +56,12 @@ class BabyPandaClient {
     } catch (error: unknown) {
       console.log(error);
       if (axios.isAxiosError(error)) {
+        if (error.code === 'ERR_NETWORK') {
+          return { systemError: true, error: 'No internet' };
+        }
+        if (error.status === 401) {
+          return { systemError: true, error: 'Wrong API key' };
+        }
         if (error.status === 429) {
           await setTimeout(5_000);
         } else if (error.status && (error.status >= 500 || error.status === 400)) {
