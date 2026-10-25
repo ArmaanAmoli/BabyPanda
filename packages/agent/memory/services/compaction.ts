@@ -107,7 +107,7 @@ export async function compaction(agent: BabyPandaAgent) {
             throw error;
           });
         });
-        console.log('COMPACTION RESULT:', fullReply);
+        console.log(`COMPACTION RESULT: ${fullReply.length} characters`);
         return fullReply;
       } catch (err) {
         console.log(err);

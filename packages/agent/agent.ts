@@ -209,7 +209,10 @@ export class BabyPandaAgent extends EventEmitter {
             '\n [COMPACTION] start \n',
           );
           const summary = await compaction(this);
-          if (summary) await addCompactionSummary(this.sessionId, summary);
+          if (summary) {
+            await addCompactionSummary(this.sessionId, summary);
+            this.contextWindowUsed = 0;
+          }
           // console.log(summary);
           await writeLogs(
             LogType.agent,
