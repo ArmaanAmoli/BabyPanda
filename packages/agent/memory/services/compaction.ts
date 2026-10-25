@@ -8,6 +8,7 @@ import { jsonrepair } from 'jsonrepair';
 
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { getMostRecentCompactionSummary, getMessagesForSummary } from '@baby-panda/db';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(path.dirname(__filename));
 const compactionInstructionFilePath = path.join(__dirname, 'BabyPanda', 'Compaction.md');
@@ -23,15 +24,47 @@ function cleanMessageArray(messages: MessageAPI[]) {
         console.log('in loop');
         result += `${parsed.role.toUpperCase}: ${pContent.answer ?? pContent.thought}`;
       }
-    } catch (err) {
+    } catch {
       // ignore the message and move on to the next message because it means its a tool result
     }
   });
   return result;
 }
 
-export async function compaction(messages: MessageAPI[], agent: BabyPandaAgent) {
-  const content = `<messages>${cleanMessageArray(messages)}</messages>`;
+export async function compaction(agent: BabyPandaAgent) {
+  type T = Awaited<ReturnType<typeof getMessagesForSummary>>;
+  // eslint-disable-next-line no-useless-assignment
+  let messages: T = [];
+
+  const sessionId = agent.sessionId;
+  // const history =
+  // last compaction summary ka timestamp , 20th most recent message timestamp
+  const compactionSummary = await getMostRecentCompactionSummary(agent.sessionId);
+  if (compactionSummary !== undefined && compactionSummary.createdAt != null) {
+    const csCreatedAt = compactionSummary.createdAt;
+    messages = await getMessagesForSummary(sessionId, csCreatedAt);
+  } else {
+    messages = await getMessagesForSummary(sessionId);
+  }
+
+  // convert to messageAPI type
+  const messages2: MessageAPI[] = [];
+  messages
+    .map((msg) => {
+      if (msg.role && msg.content) {
+        return {
+          role: msg.role,
+          content: msg.content,
+        };
+      }
+    })
+    .forEach((msg) => {
+      if (msg != undefined) {
+        messages2.push(msg);
+      }
+    });
+
+  const content = `<messages>${compactionSummary ?? ''} ${cleanMessageArray(messages2)}</messages>`;
   // console.log(content);
   const systemInstructions = readFileSync(compactionInstructionFilePath).toString();
   const systemMessage: Message = {
@@ -69,7 +102,7 @@ export async function compaction(messages: MessageAPI[], agent: BabyPandaAgent) 
           response.response?.data.on('end', () => {
             resolve(fullReply);
           });
-          response.response?.data.on('error', (error: any) => {
+          response.response?.data.on('error', (error: unknown) => {
             reject(error);
             throw error;
           });
@@ -92,7 +125,7 @@ export async function compaction(messages: MessageAPI[], agent: BabyPandaAgent) 
         }
       }
     } while (isRetrying && retriesDone < maxRetries);
-  } catch (err: any) {
-    throw new Error('compactinon failed ', err);
+  } catch (err: unknown) {
+    throw new Error(`compaction failed: `, { cause: err });
   }
 }

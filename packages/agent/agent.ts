@@ -201,14 +201,32 @@ export class BabyPandaAgent extends EventEmitter {
       // console.log(messages)
       if (this.contextWindowUsed >= this.contextWindow * 0.75) {
         try {
-          console.log('started compacting...');
-          const summary = await compaction(this.messagesHistory, this);
+          // console.log('started compacting...');
+          await writeLogs(
+            LogType.agent,
+            this.projectDirectoryName,
+            this.sessionId,
+            '[COMPACTION] start',
+          );
+          const summary = await compaction(this);
           if (summary) await addCompactionSummary(this.sessionId, summary);
-          console.log(summary);
-          console.log('stopped compacting...');
+          // console.log(summary);
+          await writeLogs(
+            LogType.agent,
+            this.projectDirectoryName,
+            this.sessionId,
+            '[COMPACTION] done',
+          );
+          // console.log('stopped compacting...');
           continue;
         } catch (err) {
-          console.log(err);
+          // console.log(err);
+          await writeLogs(
+            LogType.agent,
+            this.projectDirectoryName,
+            this.sessionId,
+            `[COMPACTION] error while compacting ${err}`,
+          );
           continue;
         }
       }
