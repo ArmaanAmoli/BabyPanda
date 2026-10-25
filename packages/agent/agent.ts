@@ -206,7 +206,7 @@ export class BabyPandaAgent extends EventEmitter {
             LogType.agent,
             this.projectDirectoryName,
             this.sessionId,
-            '[COMPACTION] start',
+            '\n [COMPACTION] start \n',
           );
           const summary = await compaction(this);
           if (summary) await addCompactionSummary(this.sessionId, summary);
@@ -215,7 +215,7 @@ export class BabyPandaAgent extends EventEmitter {
             LogType.agent,
             this.projectDirectoryName,
             this.sessionId,
-            '[COMPACTION] done',
+            '\n [COMPACTION] done \n',
           );
           // console.log('stopped compacting...');
           continue;
@@ -225,7 +225,7 @@ export class BabyPandaAgent extends EventEmitter {
             LogType.agent,
             this.projectDirectoryName,
             this.sessionId,
-            `[COMPACTION] error while compacting ${err}`,
+            `\n [COMPACTION] error while compacting ${err}\n`,
           );
           continue;
         }

@@ -64,7 +64,7 @@ export async function compaction(agent: BabyPandaAgent) {
       }
     });
 
-  const content = `<messages>${compactionSummary ?? ''} ${cleanMessageArray(messages2)}</messages>`;
+  const content = `<messages>${compactionSummary?.content ?? ''} ${cleanMessageArray(messages2)}</messages>`;
   // console.log(content);
   const systemInstructions = readFileSync(compactionInstructionFilePath).toString();
   const systemMessage: Message = {
@@ -72,7 +72,7 @@ export async function compaction(agent: BabyPandaAgent) {
     content: systemInstructions,
   };
   const transcript: Message = { role: Role.user, content: content };
-  console.log(systemInstructions, transcript);
+  // console.log(systemInstructions, transcript);
   const response = await agent.client.chatCompletion([systemMessage, transcript], agent.model);
   let fullReply = '';
   let isRetrying: boolean = false;
