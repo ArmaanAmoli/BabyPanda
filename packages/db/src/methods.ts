@@ -135,7 +135,7 @@ export async function getMessagesForSummary(
   sessionId: string,
   compactionSummaryCreatedAt?: number,
 ) {
-  const sq = db
+  const cutoffMessage = await db
     .select({
       createdAt: Message.createdAt,
     })
@@ -143,33 +143,35 @@ export async function getMessagesForSummary(
     .where(eq(Message.sessionId, sessionId))
     .orderBy(desc(Message.createdAt))
     .limit(1)
-    .offset(19)
-    .as('sq');
-  if (compactionSummaryCreatedAt) {
-    const messages = await db
+    .offset(19);
+  const cutoffTimestamp = cutoffMessage[0]?.createdAt;
+
+  if (cutoffTimestamp == null) {
+    return [];
+  }
+
+  if (compactionSummaryCreatedAt !== undefined) {
+    return db
       .select()
       .from(Message)
       .where(
         and(
           eq(Message.sessionId, sessionId),
-          lt(Message.createdAt, sq),
+          lt(Message.createdAt, cutoffTimestamp),
           gt(Message.createdAt, compactionSummaryCreatedAt),
           eq(Message.isToolResult, false),
         ),
       );
-
-    return messages;
-  } else {
-    const messages = await db
-      .select()
-      .from(Message)
-      .where(
-        and(
-          eq(Message.sessionId, sessionId),
-          lt(Message.createdAt, sq),
-          eq(Message.isToolResult, false),
-        ),
-      );
-    return messages;
   }
+
+  return db
+    .select()
+    .from(Message)
+    .where(
+      and(
+        eq(Message.sessionId, sessionId),
+        lt(Message.createdAt, cutoffTimestamp),
+        eq(Message.isToolResult, false),
+      ),
+    );
 }

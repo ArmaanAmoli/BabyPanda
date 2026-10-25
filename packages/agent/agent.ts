@@ -220,14 +220,14 @@ export class BabyPandaAgent extends EventEmitter {
           // console.log('stopped compacting...');
           continue;
         } catch (err) {
-          // console.log(err);
           await writeLogs(
             LogType.agent,
             this.projectDirectoryName,
             this.sessionId,
             `\n [COMPACTION] error while compacting ${err}\n`,
           );
-          continue;
+          this.isRunning = false;
+          break;
         }
       }
 
