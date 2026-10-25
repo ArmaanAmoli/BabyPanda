@@ -171,8 +171,14 @@ export class BabyPandaAgent extends EventEmitter {
 
       if (!this.messageQueue.at(0) && !this.userMessageQueue.at(0)) {
         this.messageQueue.splice(0, 1);
-        console.error('message undefined');
-        continue;
+        // console.error('message undefined');
+        // continue;
+        writeLogs(
+          LogType.agent,
+          this.projectDirectoryName,
+          this.sessionId,
+          '[Message queue empty]',
+        );
       }
 
       const userInput = this.messageQueue.at(0);
