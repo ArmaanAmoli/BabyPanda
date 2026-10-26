@@ -576,6 +576,7 @@ export class BabyPandaAgent extends EventEmitter {
         await writeLogs(LogType.agent, this.projectDirectoryName, this.sessionId, `Loop has ended`);
         // eslint-disable-next-line no-useless-assignment
         finalBreak = true;
+        this.emit('end');
         break;
       }
     }

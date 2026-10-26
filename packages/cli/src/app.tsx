@@ -19,8 +19,9 @@ import {useVisibleMessages} from './hooks/useVisibleMessages';
 import {copyToClipboard} from './utils/copyToClipboard';
 import {executeCommand} from './utils/commands/executeCommands';
 import {useSettings} from './hooks/useSettings';
+import {LodingIndicator} from './components/LodingIndicator';
 
-export const HEIGHT_OF_PROMPT_BOX = 6;
+export const HEIGHT_OF_PROMPT_BOX = 4;
 export const PADDING_APP = 2;
 export const GAP_CHAT_BOX_PROMPT_BOX = 1;
 export default function App() {
@@ -72,6 +73,7 @@ export default function App() {
 		]);
 		lastRole.current = Role.user;
 		setPrompt('');
+		settings.responding.setResponding(true);
 
 		const wsMessage: WsEventMessage = {
 			eventType: WsEventTypes.message,
@@ -186,6 +188,12 @@ export default function App() {
 				{pendingPermissionMessages.length > 0 && (
 					<Box height={12} width="50%" backgroundColor={'#242424'}>
 						<PermissionBox />
+					</Box>
+				)}
+
+				{settings.responding.responding && (
+					<Box height={1} flexDirection="row" width="100%">
+						<LodingIndicator isResponding={settings.responding.responding} />
 					</Box>
 				)}
 
