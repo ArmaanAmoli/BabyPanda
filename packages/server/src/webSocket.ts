@@ -87,18 +87,13 @@ const websocketHandler = (c: Context, next: Next) => {
           ws.send(JSON.stringify(msg));
         };
 
-        // const onEnd = (contentType: ContentType) => {
-        //   await writeLogs(
-        //     LogType.server,
-        //     cwd,
-        //     sessionId,
-        //     `[/message]: Ended stream content type ${contentType}`,
-        //   );
-        // };
-
         const onError = async (err: Error) => {
           console.error('[AGENT:STREAM ERROR] ', err);
           await writeLogs(LogType.server, cwd, sessionId, `[/message]: Stream error ${err}`);
+        };
+
+        const onLoopEnd = () => {
+          ws.send(JSON.stringify({ eventType: WsEventTypes.setting, payload: { end: true } }));
         };
 
         cleanup = async () => {
@@ -109,7 +104,7 @@ const websocketHandler = (c: Context, next: Next) => {
           });
           babyPanda.off(ContentType.permission, onAskForPermission);
           babyPanda.off(ContentType.tool_call, onToolData);
-          // babyPanda.off('end', onEnd);
+          babyPanda.off('end', onLoopEnd);
           babyPanda.off('error', onError);
           await writeLogs(LogType.server, cwd, sessionId, '[/message]: Aborting stream...');
         };
@@ -122,7 +117,7 @@ const websocketHandler = (c: Context, next: Next) => {
         });
         babyPanda.on(ContentType.tool_call, onToolData);
         babyPanda.on(ContentType.permission, onAskForPermission);
-        // babyPanda.on('end', onEnd);
+        babyPanda.on('end', onLoopEnd);
         babyPanda.on('error', onError);
 
         await writeLogs(

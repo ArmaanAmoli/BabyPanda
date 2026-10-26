@@ -9,6 +9,8 @@ import {setTimeout} from 'node:timers';
 import {getProjectName} from '@baby-panda/utils';
 import {useMessageHistory} from '../hooks/useMessageHistroy';
 import {appendMessageHistory} from '../utils/appendMessageHistory';
+import {z} from 'zod';
+import {useSettings} from '../hooks/useSettings';
 
 export const SocketContext = createContext<WebSocket | null>(null);
 
@@ -20,6 +22,7 @@ export function SocketProvider({children}: ReactChildPropInterface) {
 	const [socket, setSocket] = useState<WebSocket | null>(null);
 	const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 	const reconnectDelayRef = useRef(1000);
+	const setting = useSettings();
 	const permissions = usePendingPermissionMessages();
 	useEffect(() => {
 		let isMounted = true;
@@ -62,6 +65,15 @@ export function SocketProvider({children}: ReactChildPropInterface) {
 							...prev,
 							permission,
 						]);
+						break;
+					}
+					case WsEventTypes.setting: {
+						const SettingSchema = z.object({end: z.boolean().optional()});
+						const chunk = SettingSchema.parse(payload);
+						if (chunk.end === true) {
+							setting.responding.setResponding(false);
+						}
+						break;
 					}
 				}
 			};
