@@ -21,7 +21,7 @@ import {executeCommand} from './utils/commands/executeCommands';
 import {useSettings} from './hooks/useSettings';
 import {LodingIndicator} from './components/LodingIndicator';
 
-export const HEIGHT_OF_PROMPT_BOX = 5;
+export const HEIGHT_OF_PROMPT_BOX = 4;
 export const PADDING_APP = 2;
 export const GAP_CHAT_BOX_PROMPT_BOX = 1;
 export default function App() {
@@ -191,9 +191,11 @@ export default function App() {
 					</Box>
 				)}
 
-				<Box height={1} flexDirection="row" width="100%">
-					<LodingIndicator isResponding={settings.responding.responding} />
-				</Box>
+				{settings.responding.responding && (
+					<Box height={1} flexDirection="row" width="100%">
+						<LodingIndicator isResponding={settings.responding.responding} />
+					</Box>
+				)}
 
 				<Box
 					height={HEIGHT_OF_PROMPT_BOX}
