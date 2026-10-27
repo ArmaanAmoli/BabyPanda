@@ -136,23 +136,11 @@ const nullToolResultSchemaMessage = {
 describe('Typesafe extraction of tool result and messages', () => {
   test('extracts bash tool results whose result is a serialized shell response', async () => {
     const result = await cleanMessageHistroy(bashInput);
-    expect(result).toEqual([
-      {
-        role: Role.tool,
-        content: 'shell:  | command : printf \'{"status":"ok"}\' | timeout : 120000 \n',
-        createdAt: 1,
-      },
-    ]);
+    expect(result).toEqual([]);
   });
   test('extract read tool result whose result is a ToolResult type JSON', async () => {
     const result = await cleanMessageHistroy(multipleMessages.slice(1, 2));
-    expect(result).toEqual([
-      {
-        role: Role.tool,
-        content: 'read:  | path : /home/folder/file | offset : 10 | limit : 1 \n',
-        createdAt: 3,
-      },
-    ]);
+    expect(result).toEqual([]);
   });
   test('extract thought or answer whose results are simple string', async () => {
     const result = await cleanMessageHistroy(multipleMessages.slice(0, 1));

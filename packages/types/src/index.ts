@@ -100,7 +100,7 @@ export const UserPermissionSchema = z.object({
 
 export type UserPermission = z.infer<typeof UserPermissionSchema>;
 
-export const WsEventTypeSchema = z.enum(['permission', 'message', 'setting']);
+export const WsEventTypeSchema = z.enum(['permission', 'message', 'setting', 'tool']);
 
 export const WsEventTypes = WsEventTypeSchema.enum;
 
@@ -151,3 +151,69 @@ export const WsCommonMessageSchema = z.object({
 });
 
 export type WsCommonMessage = z.infer<typeof WsCommonMessageSchema>;
+
+export const ShellCallSchema = z.object({
+  command: z.string().min(1),
+  timeout: z.number().int().positive().max(600_000).default(120000).optional(),
+});
+
+export const ReadToolSchema = z.object({
+  path: z.string().describe('Location of file'),
+  offset: z.number().optional().describe('Starting line number'),
+  limit: z.number().optional().describe('Number of lines coming after offset (including offset)'),
+});
+
+export const GrepToolSchema = z.object({
+  path: z.string().describe('Location of file'),
+  pattern: z.string().describe('Regular expression for searching'),
+  flag: z
+    .string()
+    .describe('flags to use (spawn process of nodeJs) [flag , pattern , path]')
+    .optional(),
+});
+
+export const EditToolSchema = z.object({
+  path: z.string().describe('Location of file'),
+  old_str: z.string().describe('String that will be replaced'),
+  new_str: z.string().describe('The string that will replace'),
+});
+
+export const GlobToolSchema = z.object({
+  pattern: z.string().describe('String that will be replaced'),
+  ignorePatterns: z.array(z.string()).describe('The string that will replace').optional(),
+});
+
+export const DeleteToolSchema = z.object({
+  path: z.string().describe('path of the file'),
+  options: z
+    .object({
+      force: z.boolean().optional().default(false),
+      maxRetries: z.number().optional().default(0),
+      recursive: z.boolean().optional().default(false),
+      retryDelay: z.number().default(100),
+    })
+    .optional(),
+});
+
+export const ListToolSchema = z.object({
+  path: z.string(),
+});
+
+export const WriteToolSchema = z.object({
+  path: z.string(),
+  content: z.string(),
+});
+
+export const MkdirSchema = z.object({
+  path: z.string(),
+});
+
+export const WebSearchSchema = z.object({
+  query: z.string(),
+});
+
+export const GetWebPageSchema = z.object({
+  url: z.array(z.string()),
+});
+
+export const ToolContentFrontEndSchema = z.object({ name: z.string(), argument: z.unknown() });

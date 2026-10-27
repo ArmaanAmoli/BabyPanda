@@ -25,6 +25,7 @@ import {ViewPortMessageProvider} from './context/ViewPortMessage';
 import {VisibleMessageProvider} from './context/VisibleMessages';
 import {SettingsProvider} from './context/Settings';
 import {FilteredStdin} from './utils/terminal/filterStdin';
+import {ToolCallsProvider} from './context/ToolCalls';
 
 const filteredStdin = new FilteredStdin(process.stdin);
 const server = Bun.serve(honoServer);
@@ -73,9 +74,11 @@ const {waitUntilExit, unmount} = render(
 							<PendingPermissionMessagesProvider>
 								<ViewPortMessageProvider>
 									<VisibleMessageProvider start={1}>
-										<SocketProvider>
-											<App />
-										</SocketProvider>
+										<ToolCallsProvider>
+											<SocketProvider>
+												<App />
+											</SocketProvider>
+										</ToolCallsProvider>
 									</VisibleMessageProvider>
 								</ViewPortMessageProvider>
 							</PendingPermissionMessagesProvider>

@@ -4,7 +4,6 @@ import type { Context, Next } from 'hono';
 import { writeLogs } from '@baby-panda/utils';
 import { LogType, PermissionsEnums, WsEventMessageSchema, WsEventTypes } from '@baby-panda/types';
 import { BabyPandaAgent } from '@baby-panda/agent';
-import { cleanMessageHistroy, type MessageHistory } from './utils/cleanMessageHistory';
 import { ContentType, Role } from '@baby-panda/types';
 import type {
   UserPermission,
@@ -52,27 +51,29 @@ const websocketHandler = (c: Context, next: Next) => {
           );
         };
 
-        const onToolData = async (data: MessageHistory) => {
-          await writeLogs(LogType.server, cwd, sessionId, `[/message]: Received a tool chunk`);
-          await writeLogs(LogType.server, cwd, sessionId, `[/message]: Raw tool chunk ${data}`);
-          const cleaned = await cleanMessageHistroy(data);
-          let content = '';
-          cleaned.forEach((msg) => {
-            if (msg.role === Role.tool) {
-              content = content.concat(content ? '\n' : '', msg.content);
-            }
-          });
-          const chunk: ServerStreamChunkSchemaType = {
-            role: Role.tool,
-            content,
-          };
-          await writeLogs(
-            LogType.server,
-            cwd,
-            sessionId,
-            `[/message]: Final tool content ${content}`,
-          );
-          const msg: WsCommonMessage = { eventType: WsEventTypes.message, payload: chunk };
+        const onToolData = async (data: { role: Role; sessionId: string; content: string }[]) => {
+          // await writeLogs(LogType.server, cwd, sessionId, `[/message]: Received a tool chunk`);
+          // await writeLogs(LogType.server, cwd, sessionId, `[/message]: Raw tool chunk ${data}`);
+          // const cleaned = await cleanMessageHistroy(data);
+          // let content = '';
+          // cleaned.forEach((msg) => {
+          //   if (msg.role === Role.tool) {
+          //     content = content.concat(content ? '\n' : '', msg.content);
+          //   }
+          // });
+          // const chunk: ServerStreamChunkSchemaType = {
+          //   role: Role.tool,
+          //   content,
+          // };
+          // await writeLogs(
+          //   LogType.server,
+          //   cwd,
+          //   sessionId,
+          //   `[/message]: Final tool content ${content}`,
+          // );
+          const msg: WsCommonMessage = { eventType: WsEventTypes.tool, payload: data };
+          // ws.send(JSON.stringify(msg));
+
           ws.send(JSON.stringify(msg));
         };
 

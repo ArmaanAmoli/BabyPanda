@@ -3,9 +3,21 @@ import { StdioServerTransport } from '@modelcontextprotocol/server/stdio';
 import { read, grep, edit, glob, del, list, write, mkdir } from './tools/FileSystem/filesystem';
 import { webSearch } from './tools/WebTools/webSearch';
 import { getWebPage } from './tools/WebTools/getWebPageContent';
-import { array, string, z } from 'zod';
+import { z } from 'zod';
 import { addToMemory } from '../memory/utils/memory';
 import { listNotes, readNotes, writeNotes, editNotes } from '../memory/utils/notes';
+import {
+  ReadToolSchema,
+  GrepToolSchema,
+  EditToolSchema,
+  GlobToolSchema,
+  DeleteToolSchema,
+  ListToolSchema,
+  WriteToolSchema,
+  MkdirSchema,
+  WebSearchSchema,
+  GetWebPageSchema,
+} from '@baby-panda/types';
 
 const server = new McpServer({
   name: 'baby-panda/mcp',
@@ -18,14 +30,7 @@ server.registerTool(
   'read',
   {
     description: 'Read content of a file',
-    inputSchema: z.object({
-      path: z.string().describe('Location of file'),
-      offset: z.number().optional().describe('Starting line number'),
-      limit: z
-        .number()
-        .optional()
-        .describe('Number of lines coming after offset (including offset)'),
-    }),
+    inputSchema: ReadToolSchema,
   },
   async (args) => {
     console.log('in the read tool', args.path);
@@ -45,14 +50,7 @@ server.registerTool(
   'grep',
   {
     description: 'Search content across files',
-    inputSchema: z.object({
-      path: z.string().describe('Location of file'),
-      pattern: z.string().describe('Regular expression for searching'),
-      flag: z
-        .string()
-        .describe('flags to use (spawn process of nodeJs) [flag , pattern , path]')
-        .optional(),
-    }),
+    inputSchema: GrepToolSchema,
   },
   async (args) => {
     const searchResult = await grep(args.path, args.pattern, args.flag);
@@ -71,11 +69,7 @@ server.registerTool(
   'edit',
   {
     description: 'edit content of a pre existing file',
-    inputSchema: z.object({
-      path: z.string().describe('Location of file'),
-      old_str: string().describe('String that will be replaced'),
-      new_str: string().describe('The string that will replace'),
-    }),
+    inputSchema: EditToolSchema,
   },
   async (args) => {
     const edited = await edit(args);
@@ -89,10 +83,7 @@ server.registerTool(
   'glob',
   {
     description: 'search for files',
-    inputSchema: z.object({
-      pattern: string().describe('String that will be replaced'),
-      ignorePatterns: array(z.string()).describe('The string that will replace').optional(),
-    }),
+    inputSchema: GlobToolSchema,
   },
   async (args) => {
     const result = await glob(args.pattern, args.ignorePatterns);
@@ -106,17 +97,7 @@ server.registerTool(
   'delete',
   {
     description: 'deletes a file',
-    inputSchema: z.object({
-      path: string().describe('path of the file'),
-      options: z
-        .object({
-          force: z.boolean().optional().default(false),
-          maxRetries: z.number().optional().default(0),
-          recursive: z.boolean().optional().default(false),
-          retryDelay: z.number().default(100),
-        })
-        .optional(),
-    }),
+    inputSchema: DeleteToolSchema,
   },
   async (args) => {
     const deleted = await del(args.path, args.options);
@@ -130,9 +111,7 @@ server.registerTool(
   'list',
   {
     description: 'List all the files in a folder',
-    inputSchema: z.object({
-      path: z.string(),
-    }),
+    inputSchema: ListToolSchema,
   },
   async (args) => {
     const result = await list(args.path);
@@ -146,10 +125,7 @@ server.registerTool(
   'write',
   {
     description: 'Create or overwrite a given file',
-    inputSchema: z.object({
-      path: z.string(),
-      content: z.string(),
-    }),
+    inputSchema: WriteToolSchema,
   },
   async (args) => {
     const result = await write(args.path, args.content);
@@ -163,9 +139,7 @@ server.registerTool(
   'mkdir',
   {
     description: 'Create a new folder',
-    inputSchema: z.object({
-      path: z.string(),
-    }),
+    inputSchema: MkdirSchema,
   },
   async (args) => {
     const result = await mkdir(args.path);
@@ -181,9 +155,7 @@ server.registerTool(
   'web_search',
   {
     description: 'Takes in a search query and return links to relevant web pages',
-    inputSchema: z.object({
-      query: z.string(),
-    }),
+    inputSchema: WebSearchSchema,
   },
   async (args) => {
     const results = await webSearch(args.query);
@@ -197,9 +169,7 @@ server.registerTool(
   'get_web_page',
   {
     description: 'Takes in a search query and return links to relevant web pages',
-    inputSchema: z.object({
-      url: z.array(z.string()),
-    }),
+    inputSchema: GetWebPageSchema,
   },
   async (args) => {
     const results = await getWebPage(args.url);

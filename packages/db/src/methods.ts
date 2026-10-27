@@ -1,7 +1,7 @@
 import { db } from './index.db';
 import { Session, Message, ApiKeys, CompactionResults } from './db/schema';
-import type { Role } from '@baby-panda/types';
-import { asc, desc, eq, gte, and, gt, lt } from 'drizzle-orm';
+import { Role } from '@baby-panda/types';
+import { asc, desc, eq, gte, and, gt, lt, ne } from 'drizzle-orm';
 interface APIProvider {
   provider: string;
   endpoint: string;
@@ -72,7 +72,7 @@ export async function getMessages(sessionId: string) {
   const messages = await db
     .select()
     .from(Message)
-    .where(eq(Message.sessionId, sessionId))
+    .where(and(eq(Message.sessionId, sessionId), ne(Message.role, Role.system)))
     .orderBy(asc(Message.createdAt));
   return messages;
 }

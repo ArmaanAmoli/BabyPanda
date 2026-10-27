@@ -11,10 +11,37 @@ import {useMessageHistory} from '../hooks/useMessageHistroy';
 import {appendMessageHistory} from '../utils/appendMessageHistory';
 import {z} from 'zod';
 import {useSettings} from '../hooks/useSettings';
+import {useToolCalls} from '../hooks/useToolCalls';
 
 export const SocketContext = createContext<WebSocket | null>(null);
 
 const projectName = getProjectName();
+
+function parseToolCall(content: string) {
+	try {
+		const parsed = z
+			.object({
+				name: z.string(),
+				argument: z.record(z.string(), z.unknown()).optional(),
+			})
+			.parse(JSON.parse(content));
+		const argument = parsed.argument ?? {};
+		const importantArgument =
+			typeof argument.command === 'string'
+				? argument.command
+				: typeof argument.path === 'string'
+					? argument.path
+					: typeof argument.query === 'string'
+						? argument.query
+						: undefined;
+		return {
+			name: parsed.name,
+			content: importantArgument ?? '',
+		};
+	} catch {
+		return {name: 'tool', content};
+	}
+}
 
 export function SocketProvider({children}: ReactChildPropInterface) {
 	const {sessionId} = useSession();
@@ -23,6 +50,7 @@ export function SocketProvider({children}: ReactChildPropInterface) {
 	const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 	const reconnectDelayRef = useRef(1000);
 	const setting = useSettings();
+	const toolCallContext = useToolCalls();
 	const permissions = usePendingPermissionMessages();
 	useEffect(() => {
 		let isMounted = true;
@@ -71,9 +99,37 @@ export function SocketProvider({children}: ReactChildPropInterface) {
 						const SettingSchema = z.object({end: z.boolean().optional()});
 						const chunk = SettingSchema.parse(payload);
 						if (chunk.end === true) {
+							toolCallContext.clearToolCalls();
 							setting.responding.setResponding(false);
 						}
 						break;
+					}
+					case WsEventTypes.tool: {
+						const ToolSchema = z.object({
+							role: z.string(),
+							sessionId: z.string(),
+							content: z.string(),
+						});
+						const parsedToolCalls = z
+							.array(ToolSchema)
+							.or(ToolSchema)
+							.safeParse(payload);
+						if (parsedToolCalls.success) {
+							const calls = Array.isArray(parsedToolCalls.data)
+								? parsedToolCalls.data
+								: [parsedToolCalls.data];
+							setting.responding.setResponding(true);
+							toolCallContext.setToolCalls(
+								calls.map(toolCall => parseToolCall(toolCall.content)),
+							);
+						} else {
+							await writeLogs(
+								LogType.cli,
+								projectName,
+								sessionId,
+								`[WS]: Invalid tool payload ${JSON.stringify(payload)}`,
+							);
+						}
 					}
 				}
 			};
