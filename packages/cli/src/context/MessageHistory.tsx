@@ -28,7 +28,11 @@ export function MessageHistoryProvider({
 
 	return (
 		<MessageHistoryContext.Provider
-			value={{messageHistory, setMessageHistory, lastRole}}
+			value={{
+				messageHistory,
+				setMessageHistory,
+				lastRole,
+			}}
 		>
 			{children}
 		</MessageHistoryContext.Provider>

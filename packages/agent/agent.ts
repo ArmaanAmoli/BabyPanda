@@ -419,6 +419,19 @@ export class BabyPandaAgent extends EventEmitter {
                     arguments: tool.arguments,
                   };
                 });
+                const visibleToolCalls = toolCallsT
+                  .filter((tool) => tool.name !== 'write' && tool.name !== 'edit')
+                  .map((tool) => ({
+                    sessionId: this.sessionId,
+                    content: JSON.stringify({
+                      name: tool.name,
+                      argument: tool.arguments,
+                    }),
+                    role: Role.tool,
+                  }));
+                if (visibleToolCalls.length > 0) {
+                  this.emit(ContentType.tool_call, visibleToolCalls);
+                }
                 const toolResults: ToolResult[] = [];
 
                 const executeToolCall = async () => {
@@ -522,23 +535,6 @@ export class BabyPandaAgent extends EventEmitter {
                         result: toolResult.result,
                       });
                       await createMessage(this.sessionId, content, Role.user, true);
-                      // push into compined tool call array
-                      //only emit tool name with arguments.
-                      if (
-                        toolResults.at(i)?.name !== 'write' &&
-                        toolResults.at(i)?.name !== 'edit'
-                      ) {
-                        this.emit(ContentType.tool_call, [
-                          {
-                            sessionId: this.sessionId,
-                            content: JSON.stringify({
-                              name: toolResult.name,
-                              argument: toolResult.arguments,
-                            }),
-                            role: Role.tool,
-                          },
-                        ]);
-                      }
                       this.numberOfMessages += 1;
                     } catch (err) {
                       throw new Error(`Unable to store tool message to database`, { cause: err });

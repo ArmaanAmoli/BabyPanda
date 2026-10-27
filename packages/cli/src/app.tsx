@@ -20,6 +20,8 @@ import {copyToClipboard} from './utils/copyToClipboard';
 import {executeCommand} from './utils/commands/executeCommands';
 import {useSettings} from './hooks/useSettings';
 import {LodingIndicator} from './components/LodingIndicator';
+import {ToolCallStatus} from './components/ToolCallStatus';
+import {useToolCalls} from './hooks/useToolCalls';
 
 export const HEIGHT_OF_PROMPT_BOX = 4;
 export const PADDING_APP = 2;
@@ -41,6 +43,7 @@ export default function App() {
 	const {visible, focusMessage, moveFocus, focusedMessageIndex} =
 		useVisibleMessages();
 	const settings = useSettings();
+	const {clearToolCalls} = useToolCalls();
 	const onChange = (value: string) => {
 		if (value.at(0) === '/') {
 			// potential command
@@ -74,6 +77,7 @@ export default function App() {
 		lastRole.current = Role.user;
 		setPrompt('');
 		settings.responding.setResponding(true);
+		clearToolCalls();
 
 		const wsMessage: WsEventMessage = {
 			eventType: WsEventTypes.message,
@@ -192,8 +196,11 @@ export default function App() {
 				)}
 
 				{settings.responding.responding && (
-					<Box height={1} flexDirection="row" width="100%">
-						<LodingIndicator isResponding={settings.responding.responding} />
+					<Box height={2} flexDirection="column" width="100%">
+						<ToolCallStatus />
+						<Box height={1} flexDirection="row" width="100%">
+							<LodingIndicator isResponding={settings.responding.responding} />
+						</Box>
 					</Box>
 				)}
 
