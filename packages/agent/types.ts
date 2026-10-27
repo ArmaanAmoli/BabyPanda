@@ -1,5 +1,5 @@
 import type { Message } from '@baby-panda/types';
-import { z } from 'zod';
+// import { z } from 'zod';
 
 export enum MessageQueueEvents {
   toolCallDone = 'tool-call-done',
@@ -26,7 +26,16 @@ export interface Tool {
 }
 export type ToolResult = Tool & { result?: unknown; error?: string };
 
-export const ShellCallSchema = z.object({
-  command: z.string().min(1),
-  timeout: z.number().int().positive().max(600_000).default(120000).optional(),
-});
+// export const ShellCallSchema = z.object({
+//   command: z.string().min(1),
+//   timeout: z.number().int().positive().max(600_000).default(120000).optional(),
+// });
+
+// export const ReadToolSchema = z.object({
+//       path: z.string().describe('Location of file'),
+//       offset: z.number().optional().describe('Starting line number'),
+//       limit: z
+//         .number()
+//         .optional()
+//         .describe('Number of lines coming after offset (including offset)'),
+//     });

@@ -75,6 +75,13 @@ export function SocketProvider({children}: ReactChildPropInterface) {
 						}
 						break;
 					}
+					case WsEventTypes.tool: {
+						const ToolSchema = z.object({
+							name: z.string(),
+							content: z.string(),
+						});
+						const toolCall = ToolSchema.parse(payload);
+					}
 				}
 			};
 

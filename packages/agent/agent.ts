@@ -1,9 +1,9 @@
 import { BabyPandaClient } from './client';
 import type { Message, MessageAPI, MessageContent, UserPermission } from '@baby-panda/types';
-import { ContentType, LogType, MessageContentSchema } from '@baby-panda/types';
+import { ContentType, LogType, MessageContentSchema, ShellCallSchema } from '@baby-panda/types';
 import { Role } from '@baby-panda/types';
 import type { UrlApi, Tool, ToolResult } from './types';
-import { MessageQueueEvents, ReasoningEffort, ShellCallSchema } from './types';
+import { MessageQueueEvents, ReasoningEffort } from './types';
 import { readFileSync, existsSync, lstatSync, mkdirSync, writeFileSync } from 'fs';
 import { EventEmitter } from 'events';
 import { MCPClient } from './mcp/client';
@@ -514,19 +514,31 @@ export class BabyPandaAgent extends EventEmitter {
                     continue;
                   } else {
                     try {
-                      const content = JSON.stringify(toolResults.at(i));
+                      const toolResult = toolResults.at(i);
+                      if (toolResult == undefined) continue;
+                      const content = JSON.stringify({
+                        name: toolResult.name,
+                        argument: toolResult.arguments,
+                        result: toolResult.result,
+                      });
                       await createMessage(this.sessionId, content, Role.user, true);
                       // push into compined tool call array
-                      this.emit(ContentType.tool_call, [
-                        {
-                          sessionId: this.sessionId,
-                          content: content,
-                          role: Role.user,
-                          isToolResult: true,
-                          messageIndex: null,
-                          createdAt: Date.now(),
-                        },
-                      ]);
+                      //only emit tool name with arguments.
+                      if (
+                        toolResults.at(i)?.name !== 'write' &&
+                        toolResults.at(i)?.name !== 'edit'
+                      ) {
+                        this.emit(ContentType.tool_call, [
+                          {
+                            sessionId: this.sessionId,
+                            content: JSON.stringify({
+                              name: toolResult.name,
+                              argument: toolResult.arguments,
+                            }),
+                            role: Role.tool,
+                          },
+                        ]);
+                      }
                       this.numberOfMessages += 1;
                     } catch (err) {
                       throw new Error(`Unable to store tool message to database`, { cause: err });
