@@ -15,7 +15,7 @@ import {
 } from '../utils/selectVisibleMessages';
 import type {VisibleMessage} from '../types';
 import {useTerminal} from '../hooks/useTerminal';
-import {HEIGHT_OF_PROMPT_BOX} from '../app';
+import {HEIGHT_OF_BOTTOM_CONTENT} from '../app';
 
 interface VisibleMessageContextValue {
 	visible: VisibleMessage[];
@@ -39,7 +39,7 @@ export function VisibleMessageProvider({
 }) {
 	const {viewPortMessages} = useViewPortMessage();
 	const {rows} = useTerminal();
-	const end = rows - HEIGHT_OF_PROMPT_BOX;
+	const end = rows - HEIGHT_OF_BOTTOM_CONTENT;
 	const budget = end - start + 1;
 	const [offset, setOffset] = useState(0);
 	const [focusedMessageIndex, setFocusedMessageIndex] = useState<number | null>(

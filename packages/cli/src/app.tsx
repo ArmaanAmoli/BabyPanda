@@ -23,7 +23,7 @@ import {LodingIndicator} from './components/LodingIndicator';
 import {ToolCallStatus} from './components/ToolCallStatus';
 import {useToolCalls} from './hooks/useToolCalls';
 
-export const HEIGHT_OF_PROMPT_BOX = 3;
+export const HEIGHT_OF_BOTTOM_CONTENT = 8;
 export const PADDING_APP = 2;
 export const GAP_CHAT_BOX_PROMPT_BOX = 1;
 export default function App() {
@@ -173,7 +173,7 @@ export default function App() {
 				flexDirection="column"
 				gap={GAP_CHAT_BOX_PROMPT_BOX}
 			>
-				<Box height={rows - HEIGHT_OF_PROMPT_BOX} flexDirection="column">
+				<Box height={rows - HEIGHT_OF_BOTTOM_CONTENT} flexDirection="column">
 					{messageHistory.length === 0 && (
 						<BigText
 							text="BABY PANDA"
@@ -189,39 +189,50 @@ export default function App() {
 					<ChatBox />
 				</Box>
 
-				{pendingPermissionMessages.length > 0 && (
-					<Box height={12} width="50%" backgroundColor={'#242424'}>
-						<PermissionBox />
-					</Box>
-				)}
-
-				{settings.responding.responding && (
-					<Box
-						height={2}
-						flexDirection="column"
-						width="100%"
-						gap={1}
-						backgroundColor={'black'}
-					>
-						<ToolCallStatus />
-						<Box height={1} flexDirection="row" width="100%">
-							<LodingIndicator isResponding={settings.responding.responding} />
-						</Box>
-					</Box>
-				)}
-
 				<Box
-					height={HEIGHT_OF_PROMPT_BOX}
+					flexDirection={'column'}
 					width="100%"
-					backgroundColor={'#242424'}
+					height={HEIGHT_OF_BOTTOM_CONTENT}
+					backgroundColor={'black'}
+					justifyContent={'flex-end'}
 				>
-					<PromptBox
-						placeholder={'Write a message... '}
-						value={prompt}
-						onChange={onChange}
-						onSubmit={onSubmit}
-						active={focus === 'PromptBox'}
-					/>
+					{pendingPermissionMessages.length > 0 && (
+						<Box height="100%" width="50%" backgroundColor={'#242424'}>
+							<PermissionBox />
+						</Box>
+					)}
+
+					{pendingPermissionMessages.length === 0 &&
+						settings.responding.responding && (
+							<Box
+								height={4}
+								flexDirection="column"
+								width="100%"
+								backgroundColor={'black'}
+								paddingBottom={1}
+							>
+								<Box height={1} width="100%" marginBottom={1}>
+									<ToolCallStatus />
+								</Box>
+								<Box height={1} flexDirection="row" width="100%">
+									<LodingIndicator
+										isResponding={settings.responding.responding}
+									/>
+								</Box>
+							</Box>
+						)}
+
+					{pendingPermissionMessages.length === 0 && (
+						<Box height={3} width="100%" backgroundColor={'#242424'}>
+							<PromptBox
+								placeholder={'Write a message... '}
+								value={prompt}
+								onChange={onChange}
+								onSubmit={onSubmit}
+								active={focus === 'PromptBox'}
+							/>
+						</Box>
+					)}
 				</Box>
 			</Box>
 			{clipboardStatus && (

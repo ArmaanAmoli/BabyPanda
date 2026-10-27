@@ -4,7 +4,7 @@ import TextInput from 'ink-text-input';
 import {type PromptBoxArgs} from '../types';
 import {ActiveComponentWrapper} from './ActiveComponentWrapper';
 import {useTerminal} from '../hooks/useTerminal';
-import {HEIGHT_OF_PROMPT_BOX} from '../app';
+import {HEIGHT_OF_BOTTOM_CONTENT} from '../app';
 export default function PromptBox({
 	placeholder,
 	value,
@@ -28,7 +28,7 @@ export default function PromptBox({
 					// Starts one row below the ChatBox scroll region (which ends at
 					// terminal.rows - HEIGHT_OF_PROMPT_BOX) so the two mouse regions
 					// never overlap.
-					start={terminal.rows - HEIGHT_OF_PROMPT_BOX + 1}
+					start={terminal.rows - HEIGHT_OF_BOTTOM_CONTENT + 1}
 					end={terminal.rows}
 				>
 					<TextInput
