@@ -23,7 +23,7 @@ import {LodingIndicator} from './components/LodingIndicator';
 import {ToolCallStatus} from './components/ToolCallStatus';
 import {useToolCalls} from './hooks/useToolCalls';
 
-export const HEIGHT_OF_PROMPT_BOX = 4;
+export const HEIGHT_OF_PROMPT_BOX = 3;
 export const PADDING_APP = 2;
 export const GAP_CHAT_BOX_PROMPT_BOX = 1;
 export default function App() {
@@ -196,7 +196,13 @@ export default function App() {
 				)}
 
 				{settings.responding.responding && (
-					<Box height={2} flexDirection="column" width="100%">
+					<Box
+						height={2}
+						flexDirection="column"
+						width="100%"
+						gap={1}
+						backgroundColor={'black'}
+					>
 						<ToolCallStatus />
 						<Box height={1} flexDirection="row" width="100%">
 							<LodingIndicator isResponding={settings.responding.responding} />
