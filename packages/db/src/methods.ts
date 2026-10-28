@@ -59,13 +59,20 @@ export async function addProvider(details: APIProvider) {
   try {
     await db.insert(ApiKeys).values({
       provider: details.provider,
-      endpoint: details.endpoint,
       key: details.key,
     });
     return true;
   } catch (err) {
     // console.log(`Error occred while adding provider, ${err}`);
-    throw new Error(`Error occred while adding provider`, { cause: err });
+    throw new Error(`Error occured while adding provider`, { cause: err });
+  }
+}
+export async function getProviders() {
+  try {
+    const keys = await db.select().from(ApiKeys);
+    return keys;
+  } catch (err) {
+    throw new Error(`Error occured while getting api keys from db`, { cause: err });
   }
 }
 export async function getMessages(sessionId: string) {

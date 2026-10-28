@@ -1,7 +1,7 @@
 import { BabyPandaAgent } from '../agent.ts';
 import type { Message } from '@baby-panda/types';
 import { Role } from '@baby-panda/types';
-import { ModelsEnum, ProvidersEnum } from '@agent/config/models';
+import { ModelsEnum, ProvidersEnum } from '@baby-panda/types';
 import { createSession } from '@baby-panda/db';
 
 // const sessionId = await createSession();

@@ -18,7 +18,7 @@ import {
 import { extractFirstJSON } from './utils/FirstJsonExtractor';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { ModelsEnum, Models, ProvidersEnum } from '@agent/config/models';
+import { ModelsEnum, Models, ProvidersEnum } from '@baby-panda/types';
 import { getContent } from '@agent/utils/getContent';
 import { compaction } from '@agent/memory/services/compaction';
 import { projectDir, memoryFile } from '@agent/memory/constants';

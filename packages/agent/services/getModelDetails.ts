@@ -1,7 +1,10 @@
-import { Models, ModelsSchema, ProvidersEnum, ModelsEnum } from '@agent/config/models';
-import type { ModelDetails } from '@agent/config/models';
-
-import { z } from 'zod';
+import {
+  Models,
+  ModelsSchema,
+  ProvidersEnum,
+  ModelsEnum,
+  type ModelDetails,
+} from '@baby-panda/types';
 
 export default function getModelDetails(
   provider: ProvidersEnum,

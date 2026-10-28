@@ -24,8 +24,7 @@ export const Message = sqliteTable(
 );
 
 export const ApiKeys = sqliteTable('api_keys', {
-  provider: text('provider'),
-  endpoint: text('endpoint'),
+  provider: text('provider').notNull().unique(),
   key: text('key').primaryKey(),
 });
 
