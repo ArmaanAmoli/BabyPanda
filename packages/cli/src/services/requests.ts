@@ -1,6 +1,6 @@
 import app from '@baby-panda/server';
-import type {APIProvider, Session} from '../types';
-import type {CleanedMessage, MessageRegular} from '@baby-panda/types';
+// import type {APIProvider, Session} from '../types';
+import type {CleanedMessage} from '@baby-panda/types';
 import {CleanedMessageArraySchema, LogType} from '@baby-panda/types';
 import {writeLogs} from '@baby-panda/utils';
 const cwd = process.cwd().replaceAll('/', '-').replace('-', '');
@@ -45,7 +45,7 @@ export async function startSession() {
 	const sessionId = decoder.decode(sessionIdUint);
 	return sessionId;
 }
-
+/* 
 async function registerProvider(details: APIProvider) {
 	const req = new Request('http://localhost:3000/add-provider', {
 		method: 'POST',
@@ -88,7 +88,7 @@ async function getAllSessions(): Promise<Session[]> {
 	const sessionsList = JSON.parse(sessions) as Session[];
 	return sessionsList;
 }
-
+ */
 export async function getMessages(
 	sessionId: string,
 ): Promise<CleanedMessage[]> {
