@@ -22,6 +22,7 @@ import {useSettings} from './hooks/useSettings';
 import {LodingIndicator} from './components/LodingIndicator';
 import {ToolCallStatus} from './components/ToolCallStatus';
 import {useToolCalls} from './hooks/useToolCalls';
+import {ProvidersList} from './components/ProvidersList';
 
 export const HEIGHT_OF_BOTTOM_CONTENT = 8;
 export const PADDING_APP = 2;
@@ -188,53 +189,61 @@ export default function App() {
 					    equal to the container height (rows - HEIGHT_OF_PROMPT_BOX). */}
 					<ChatBox />
 				</Box>
-
-				<Box
-					flexDirection={'column'}
-					width="100%"
-					height={HEIGHT_OF_BOTTOM_CONTENT}
-					backgroundColor={'black'}
-					justifyContent={'flex-end'}
-				>
-					{pendingPermissionMessages.length > 0 && (
-						<Box height="100%" width="50%" backgroundColor={'#242424'}>
-							<PermissionBox />
-						</Box>
-					)}
-
-					{pendingPermissionMessages.length === 0 &&
-						settings.responding.responding && (
-							<Box
-								height={4}
-								flexDirection="column"
-								width="100%"
-								backgroundColor={'black'}
-								paddingBottom={1}
-							>
-								<Box height={1} width="100%" marginBottom={1}>
-									<ToolCallStatus />
-								</Box>
-								<Box height={1} flexDirection="row" width="100%">
-									<LodingIndicator
-										isResponding={settings.responding.responding}
-									/>
-								</Box>
+				{/* {settings.provider.provider == null && (
+					<Box height={HEIGHT_OF_BOTTOM_CONTENT} backgroundColor={"black"} flexDirection={"column"}>
+						<Text>Setup a provider</Text>
+						<ProvidersList/>
+					</Box>
+				)} */}
+				{
+					<Box
+						flexDirection={'column'}
+						width="100%"
+						height={HEIGHT_OF_BOTTOM_CONTENT}
+						backgroundColor={'black'}
+						justifyContent={'flex-end'}
+					>
+						{pendingPermissionMessages.length > 0 && (
+							<Box height="100%" width="50%" backgroundColor={'#242424'}>
+								<PermissionBox />
 							</Box>
 						)}
 
-					{pendingPermissionMessages.length === 0 && (
-						<Box height={3} width="100%" backgroundColor={'#242424'}>
-							<PromptBox
-								placeholder={'Write a message... '}
-								value={prompt}
-								onChange={onChange}
-								onSubmit={onSubmit}
-								active={focus === 'PromptBox'}
-							/>
-						</Box>
-					)}
-				</Box>
+						{pendingPermissionMessages.length === 0 &&
+							settings.responding.responding && (
+								<Box
+									height={4}
+									flexDirection="column"
+									width="100%"
+									backgroundColor={'black'}
+									paddingBottom={1}
+								>
+									<Box height={1} width="100%" marginBottom={1}>
+										<ToolCallStatus />
+									</Box>
+									<Box height={1} flexDirection="row" width="100%">
+										<LodingIndicator
+											isResponding={settings.responding.responding}
+										/>
+									</Box>
+								</Box>
+							)}
+
+						{pendingPermissionMessages.length === 0 && (
+							<Box height={3} width="100%" backgroundColor={'#242424'}>
+								<PromptBox
+									placeholder={'Write a message... '}
+									value={prompt}
+									onChange={onChange}
+									onSubmit={onSubmit}
+									active={focus === 'PromptBox'}
+								/>
+							</Box>
+						)}
+					</Box>
+				}
 			</Box>
+
 			{clipboardStatus && (
 				<Box
 					position="absolute"

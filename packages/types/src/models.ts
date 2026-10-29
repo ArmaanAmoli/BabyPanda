@@ -6,6 +6,7 @@ provider: provider_details : url , models: model:model_details
 */
 export enum ProvidersEnum {
   Nvidia = 'Nvidia',
+  OpenRouter = 'OpenRouter',
 }
 
 const ProvidersEnumSchema = z.enum(ProvidersEnum);
@@ -29,7 +30,7 @@ export type ModelDetails = z.infer<typeof ModelDetailSchema>;
 
 const ProviderDetailsSchema = z.object({
   url: z.string(),
-  models: z.record(ModelsEnumSchema, ModelDetailSchema),
+  models: z.record(ModelsEnumSchema, ModelDetailSchema).nullable(),
 });
 
 export const ModelsSchema = z.record(ProvidersEnumSchema, ProviderDetailsSchema);
@@ -59,5 +60,9 @@ export const Models: ModelsType = {
         contextLength: 131000,
       },
     },
+  },
+  OpenRouter: {
+    url: '',
+    models: null,
   },
 };
