@@ -27,6 +27,7 @@ import { writeLogs } from '@baby-panda/utils';
 import { shell } from './mcp/tools/Shell/shell';
 import type { ShellResult } from './mcp/tools/Shell/shell';
 import { runSandboxed, type SandboxResult } from './mcp/tools/Shell/sandbox';
+import { jsonrepair } from 'jsonrepair';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -34,6 +35,44 @@ const __dirname = path.dirname(__filename);
 const cwd = process.cwd();
 
 const instructionsFilePath = path.join(__dirname, 'memory', 'BabyPanda', 'BabyPanda.md');
+
+function parseMessageContent(rawReply: string): MessageContent {
+  const parsed = JSON.parse(jsonrepair(rawReply)) as {
+    role?: unknown;
+    content?: {
+      tool_call?: Array<{
+        id?: unknown;
+        type?: unknown;
+        function?: unknown;
+        arguments?: unknown;
+      }>;
+      thought?: unknown;
+      answer?: unknown;
+    };
+  };
+
+  if (Array.isArray(parsed.content?.tool_call)) {
+    parsed.content.tool_call = parsed.content.tool_call.map((call) => {
+      let args = call.arguments;
+      if (typeof args === 'string') {
+        args = JSON.parse(jsonrepair(args));
+      }
+
+      let functionName = call.function;
+      if (functionName && typeof functionName === 'object' && 'name' in functionName) {
+        functionName = functionName.name;
+      }
+
+      return {
+        ...call,
+        function: functionName,
+        arguments: args,
+      };
+    });
+  }
+
+  return MessageContentSchema.parse(parsed);
+}
 
 // let compact = true;
 // type MessageHistory = Awaited<ReturnType<typeof getMessages>>;
@@ -394,9 +433,9 @@ export class BabyPandaAgent extends EventEmitter {
             try {
               let replyJson: MessageContent | undefined;
               try {
-                replyJson = MessageContentSchema.parse(JSON.parse(fullReply));
+                replyJson = parseMessageContent(fullReply);
               } catch (err) {
-                reject(`parsing error ${err}`);
+                reject(new Error(`Unable to parse model tool call: ${String(err)}`));
 
                 await createMessage(
                   this.sessionId,
