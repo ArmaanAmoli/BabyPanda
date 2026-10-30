@@ -51,6 +51,7 @@ const cleanup = () => {
 		process.stdin.setRawMode?.(false);
 	}
 	deactivateAlternateScreenBuffer();
+	filteredStdin.dispose();
 };
 process.on('exit', cleanup);
 const getInitialSessionId = () => {
