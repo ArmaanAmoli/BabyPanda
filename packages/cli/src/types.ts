@@ -77,6 +77,8 @@ export interface ScrollableEntry {
 		innerHeight: number;
 	};
 	scrollBy(delta: number): void;
-	scrollTo?(position: number): void;
-	hasFocus(): boolean;
+	// scrollTo?(position: number): void;
+	// hasFocus(): boolean;
 }
+
+export type DOMRef = React.RefObject<DOMElement>;
