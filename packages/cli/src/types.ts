@@ -3,6 +3,7 @@ import type {SetStateAction} from 'react';
 import React from 'react';
 import {Role} from '@baby-panda/types';
 import {RefObject} from 'hono/jsx';
+import {DOMElement} from 'ink';
 export interface PromptBoxArgs {
 	placeholder: string;
 	value: string;
@@ -65,4 +66,17 @@ export interface ViewPortMessage {
 	role: Role;
 	createdAt: number | null;
 	lines: MessageLine[];
+}
+
+export interface ScrollableEntry {
+	id: string;
+	ref: React.RefObject<DOMElement>;
+	getScrollState(): {
+		scrollTop: number;
+		scrollHeight: number;
+		innerHeight: number;
+	};
+	scrollBy(delta: number): void;
+	scrollTo?(position: number): void;
+	hasFocus(): boolean;
 }
