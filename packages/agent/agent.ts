@@ -20,6 +20,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { ModelsEnum, Models, ProvidersEnum } from '@agent/config/models';
 import { getContent } from '@agent/utils/getContent';
+import { extractStreamingField } from '@agent/utils/StreamingContentExtractor';
 import { compaction } from '@agent/memory/services/compaction';
 import { projectDir, memoryFile } from '@agent/memory/constants';
 import { readFromMemory } from '@agent/memory/utils/memory';
@@ -317,12 +318,9 @@ export class BabyPandaAgent extends EventEmitter {
         While contentType is unidentified we want to save the data in the full Reply
         we will use the thought , answer , toolCall Regex to identify the stream only in case of toolCall we will not produce event
         */
-        const matchThought = '"thought":';
-        const matchAnswer = '"answer":';
-
         let toolCall = false;
         let fullReply = '';
-        let cleanedReplyForCLI = '';
+        let streamedReply = '';
         let buffer: string = '';
 
         let inParentContentProperty: boolean = false;
@@ -356,9 +354,6 @@ export class BabyPandaAgent extends EventEmitter {
                   );
                 } else if (answerRegex.test(fullReply)) {
                   contentType = ContentType.answer;
-                  cleanedReplyForCLI = fullReply.substring(
-                    fullReply.indexOf(matchAnswer) + matchAnswer.length,
-                  );
                   await writeLogs(
                     LogType.agent,
                     this.projectDirectoryName,
@@ -368,9 +363,6 @@ export class BabyPandaAgent extends EventEmitter {
                   toBreak = true;
                 } else if (thoughtRegex.test(fullReply)) {
                   contentType = ContentType.thought;
-                  cleanedReplyForCLI = fullReply.substring(
-                    fullReply.indexOf(matchThought) + matchThought.length,
-                  );
                   await writeLogs(
                     LogType.agent,
                     this.projectDirectoryName,
@@ -380,14 +372,16 @@ export class BabyPandaAgent extends EventEmitter {
                   this.messageQueue.push(MessageQueueEvents.lastReplyFromLLMWasThought);
                 }
                 lineBuffer.push(content);
-              } else {
-                if (!toolCall) {
-                  // later we have to add stack based mechanizm to remove the curly braces
-                  if (cleanedReplyForCLI.length) {
-                    this.emit(contentType, cleanedReplyForCLI);
-                    cleanedReplyForCLI = '';
-                  }
-                  this.emit(contentType, content);
+              }
+              if (
+                !toolCall &&
+                (contentType === ContentType.answer || contentType === ContentType.thought)
+              ) {
+                const field = contentType === ContentType.answer ? 'answer' : 'thought';
+                const visibleReply = extractStreamingField(fullReply, field);
+                if (visibleReply.length > streamedReply.length) {
+                  this.emit(contentType, visibleReply.slice(streamedReply.length));
+                  streamedReply = visibleReply;
                 }
               }
             } else {
