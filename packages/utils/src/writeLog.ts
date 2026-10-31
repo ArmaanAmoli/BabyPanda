@@ -27,7 +27,8 @@ export async function writeLogs(
   }
 
   const writePath = path.join(logDirectoryLocation, type);
-  const logline = `[${type}: ${timestamp}]: ${content}`;
+  const formattedContent = content.replace(/\r\n/g, '\n').trim().replace(/\n/g, '\n  ');
+  const logline = `[${type}: ${timestamp}]: ${formattedContent}\n`;
   try {
     await fs.promises.appendFile(writePath, logline);
   } catch (err) {
