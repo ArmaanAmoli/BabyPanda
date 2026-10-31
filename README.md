@@ -82,10 +82,11 @@ or pull requests.
 
 Copy `.env.example` to `.env` before running the application:
 
-| Variable         | Required | Default | Description                                                                             |
-| ---------------- | -------- | ------- | --------------------------------------------------------------------------------------- |
-| `NVIDIA_API_KEY` | Yes      | —       | Bearer token used for NVIDIA NIM chat completions.                                      |
-| `IN_DEV_MODE`    | No       | `false` | When `true`, uses `~/.babypanda/db/db.test.db`; otherwise uses `~/.babypanda/db/db.db`. |
+| Variable          | Required | Default   | Description                                                                                                              |
+| ----------------- | -------- | --------- | ------------------------------------------------------------------------------------------------------------------------ |
+| `NVIDIA_API_KEY`  | Yes      | —         | Bearer token used for NVIDIA NIM chat completions.                                                                       |
+| `IN_DEV_MODE`     | No       | `false`   | When `true`, uses `~/.babypanda/db/db.test.db`; otherwise uses `~/.babypanda/db/db.db`.                                  |
+| `BABY_PANDA_PORT` | No       | Automatic | Optional fixed local HTTP and WebSocket port. Without it, BabyPanda selects the first available port from `3500` upward. |
 
 The current server always targets the NVIDIA NIM endpoint:
 
@@ -94,7 +95,7 @@ https://integrate.api.nvidia.com/v1/chat/completions
 ```
 
 The environment file does not currently configure provider selection, model
-selection, port, or database path.
+selection, or database path.
 
 ## Running the project
 
@@ -107,6 +108,22 @@ terminal UI:
 ```bash
 bun run --filter @baby-panda/cli dev
 ```
+
+To run multiple instances, start the same command in each terminal. BabyPanda
+automatically selects ports starting at `3500` and moves to the next available
+port:
+
+```bash
+# Terminal 1
+bun run --filter @baby-panda/cli dev
+
+# Terminal 2
+bun run --filter @baby-panda/cli dev
+```
+
+The selected port is used by both the in-process HTTP server and the CLI
+WebSocket client. Set `BABY_PANDA_PORT` only when a specific fixed port is
+required.
 
 ### Server only
 

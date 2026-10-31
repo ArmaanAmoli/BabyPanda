@@ -4,7 +4,7 @@ import {render} from 'ink';
 import App from './app';
 import Bun from 'bun';
 import {startSession} from './services/requests';
-import honoServer from '@baby-panda/server';
+import honoServer, {getServerPort, setServerPort} from '@baby-panda/server';
 import {SessionProvider} from './context/SessionDetails';
 import {PendingPermissionMessagesProvider} from './context/PendingPermissionMessages';
 import {SocketProvider} from './context/WebSocket';
@@ -28,7 +28,41 @@ import {FilteredStdin} from './utils/terminal/filterStdin';
 import {ToolCallsProvider} from './context/ToolCalls';
 
 const filteredStdin = new FilteredStdin(process.stdin);
-const server = Bun.serve(honoServer);
+
+function isAddressInUseError(error: unknown) {
+	return (
+		typeof error === 'object' &&
+		error !== null &&
+		'code' in error &&
+		error.code === 'EADDRINUSE'
+	);
+}
+
+function startServer() {
+	let port = getServerPort();
+	const portWasConfigured = process.env['BABY_PANDA_PORT'] !== undefined;
+
+	while (port <= 65535) {
+		try {
+			const server = Bun.serve({...honoServer, port});
+			if (server.port === undefined) {
+				server.stop();
+				throw new Error('BabyPanda server did not report a bound port');
+			}
+			setServerPort(server.port);
+			return server;
+		} catch (error) {
+			if (portWasConfigured || !isAddressInUseError(error)) {
+				throw error;
+			}
+			port++;
+		}
+	}
+
+	throw new Error('No available port found for BabyPanda');
+}
+
+const server = startServer();
 if (typeof Bun !== 'undefined') {
 	process.stdin.resume();
 	process.stdin.setRawMode?.(true);
@@ -110,6 +144,6 @@ process.on('SIGHUP', () => shutdown(0));
 await waitUntilExit();
 console.log('stopping server');
 server.stop();
-console.log('Baby panda closed.');
+console.log('Baby panda closed.', initialSessionId);
 
 process.exit(0);

@@ -12,6 +12,7 @@ import {appendMessageHistory} from '../utils/appendMessageHistory';
 import {z} from 'zod';
 import {useSettings} from '../hooks/useSettings';
 import {useToolCalls} from '../hooks/useToolCalls';
+import {getServerPort} from '@baby-panda/server';
 
 export const SocketContext = createContext<WebSocket | null>(null);
 
@@ -54,7 +55,7 @@ export function SocketProvider({children}: ReactChildPropInterface) {
 	const permissions = usePendingPermissionMessages();
 	useEffect(() => {
 		let isMounted = true;
-		const url = new URL('ws://localhost:3000/ws');
+		const url = new URL(`ws://localhost:${getServerPort()}/ws`);
 
 		function connect() {
 			if (!sessionId) return;

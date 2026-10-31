@@ -1,9 +1,10 @@
-import app from '@baby-panda/server';
+import app, {getServerPort} from '@baby-panda/server';
 // import type {APIProvider, Session} from '../types';
 import type {CleanedMessage} from '@baby-panda/types';
 import {CleanedMessageArraySchema, LogType} from '@baby-panda/types';
 import {writeLogs} from '@baby-panda/utils';
 const cwd = process.cwd().replaceAll('/', '-').replace('-', '');
+const getServerBaseUrl = () => `http://localhost:${getServerPort()}`;
 
 const decoder = new TextDecoder();
 function concatArrayBuffer(chunks: Uint8Array[]) {
@@ -21,7 +22,7 @@ function concatArrayBuffer(chunks: Uint8Array[]) {
 }
 
 export async function startSession() {
-	const req = new Request('http://localhost:3000/start-session', {
+	const req = new Request(`${getServerBaseUrl()}/start-session`, {
 		method: 'POST',
 	});
 	const res = await app.fetch(req);
@@ -47,7 +48,7 @@ export async function startSession() {
 }
 /* 
 async function registerProvider(details: APIProvider) {
-	const req = new Request('http://localhost:3000/add-provider', {
+	const req = new Request(`${getServerBaseUrl()}/add-provider`, {
 		method: 'POST',
 		body: JSON.stringify(details),
 	});
@@ -63,7 +64,7 @@ async function registerProvider(details: APIProvider) {
 }
 
 async function getAllSessions(): Promise<Session[]> {
-	const req = new Request('http://localhost:3000/get-session', {
+	const req = new Request(`${getServerBaseUrl()}/get-session`, {
 		method: 'POST',
 	});
 	const res = await app.fetch(req);
@@ -93,7 +94,7 @@ export async function getMessages(
 	sessionId: string,
 ): Promise<CleanedMessage[]> {
 	await writeLogs(LogType.cli, cwd, sessionId, 'Fetching Message History...');
-	const req = new Request('http://localhost:3000/get-messages', {
+	const req = new Request(`${getServerBaseUrl()}/get-messages`, {
 		method: 'POST',
 		body: JSON.stringify({sessionId}),
 	});

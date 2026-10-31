@@ -11,6 +11,26 @@ import { websocketHandler } from './webSocket';
 import type { WSContext } from 'hono/ws';
 import { websocket } from '@hono/bun';
 
+const defaultPort = 3500;
+const configuredPort = Number(process.env['BABY_PANDA_PORT'] ?? defaultPort);
+
+if (!Number.isInteger(configuredPort) || configuredPort < 1 || configuredPort > 65535) {
+  throw new Error('BABY_PANDA_PORT must be an integer between 1 and 65535');
+}
+
+let serverPort = configuredPort;
+
+export function getServerPort() {
+  return serverPort;
+}
+
+export function setServerPort(port: number) {
+  if (!Number.isInteger(port) || port < 1 || port > 65535) {
+    throw new Error('BABY_PANDA_PORT must be an integer between 1 and 65535');
+  }
+  serverPort = port;
+}
+
 const app = new Hono();
 
 export const wsCollection = new Map<string, WSContext>(); // sessionID - ws object
@@ -82,7 +102,7 @@ app.post('/add-provider', async (c) => {
 
 export type HonoAppType = typeof app;
 export default {
-  port: 3000,
+  port: serverPort,
   fetch: app.fetch,
   websocket,
 };
