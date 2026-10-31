@@ -16,6 +16,10 @@ export enum ModelsEnum {
   'nvidia/nemotron-3-ultra-550b-a55b' = 'nvidia/nemotron-3-ultra-550b-a55b',
   'moonshotai/kimi-k3' = 'moonshotai/kimi-k3',
   'nvidia/nemotron-3.5-lightning-30b-a3b' = 'nvidia/nemotron-3.5-lightning-30b-a3b',
+  'nvidia/nemotron-3.5-super-vl-120b-a12b' = 'nvidia/nemotron-3.5-super-vl-120b-a12b',
+  'mistralai/mistral-large-4-1t-a52b' = 'mistralai/mistral-large-4-1t-a52b',
+  'minimaxai/minimax-m3.1-flash' = 'minimaxai/minimax-m3.1-flash',
+  'deepseek-ai/deepseek-v4.1-flash' = 'deepseek-ai/deepseek-v4.1-flash',
   'meta/muse-glimmer-30b' = 'meta/muse-glimmer-30b',
 }
 
@@ -53,6 +57,18 @@ export const Models: ModelsType = {
         contextLength: 1000000,
       },
       'nvidia/nemotron-3.5-lightning-30b-a3b': {
+        contextLength: 1000000,
+      },
+      'nvidia/nemotron-3.5-super-vl-120b-a12b': {
+        contextLength: 262000,
+      },
+      'mistralai/mistral-large-4-1t-a52b': {
+        contextLength: 262000,
+      },
+      'minimaxai/minimax-m3.1-flash': {
+        contextLength: 262000,
+      },
+      'deepseek-ai/deepseek-v4.1-flash': {
         contextLength: 1000000,
       },
       'meta/muse-glimmer-30b': {
