@@ -326,71 +326,74 @@ export class BabyPandaAgent extends EventEmitter {
         const lineBuffer: string[] = [];
         const regex = /^data:\s/;
 
-        response.response?.data.on('data', async (chunk: Buffer | string) => {
+        const processLine = (rawLine: string) => {
+          let line = rawLine.trim();
+          if (!regex.test(line)) return;
+          line = line.slice(6);
+          if (line === '[DONE]') return;
+          const content = getContent(line, this);
+          fullReply += content;
+          if (!inParentContentProperty && parentContentPropertyRegex.test(fullReply)) {
+            inParentContentProperty = true;
+          }
+
+          if (inParentContentProperty) {
+            if (contentType === ContentType.unidentified) {
+              if (toolCallRegex.test(fullReply)) {
+                toolCall = true;
+                contentType = ContentType.tool_call;
+                void writeLogs(
+                  LogType.agent,
+                  this.projectDirectoryName,
+                  this.sessionId,
+                  'received a tool called',
+                );
+              } else if (answerRegex.test(fullReply)) {
+                contentType = ContentType.answer;
+                void writeLogs(
+                  LogType.agent,
+                  this.projectDirectoryName,
+                  this.sessionId,
+                  'received an answer',
+                );
+                toBreak = true;
+              } else if (thoughtRegex.test(fullReply)) {
+                contentType = ContentType.thought;
+                void writeLogs(
+                  LogType.agent,
+                  this.projectDirectoryName,
+                  this.sessionId,
+                  'received a thought',
+                );
+                this.messageQueue.push(MessageQueueEvents.lastReplyFromLLMWasThought);
+              }
+              lineBuffer.push(content);
+            }
+            if (
+              !toolCall &&
+              (contentType === ContentType.answer || contentType === ContentType.thought)
+            ) {
+              const field = contentType === ContentType.answer ? 'answer' : 'thought';
+              const visibleReply = extractStreamingField(fullReply, field);
+              if (visibleReply.length > streamedReply.length) {
+                this.emit(contentType, visibleReply.slice(streamedReply.length));
+                streamedReply = visibleReply;
+              }
+            }
+          }
+        };
+
+        response.response?.data.on('data', (chunk: Buffer | string) => {
           const encodedChunk = typeof chunk === 'string' ? chunk : chunk.toString('utf-8');
           buffer += encodedChunk;
           const lines = buffer.split('\n');
           buffer = lines.pop() ?? '';
 
-          for (let line of lines) {
-            line = line.trim();
-            if (!regex.test(line)) continue;
-            line = line.slice(6);
-            if (line === '[DONE]') continue;
-            const content = getContent(line, this);
-            fullReply += content;
-            if (inParentContentProperty) {
-              if (contentType === ContentType.unidentified) {
-                if (toolCallRegex.test(fullReply)) {
-                  toolCall = true;
-                  contentType = ContentType.tool_call;
-                  // console.log("tool called !")
-                  await writeLogs(
-                    LogType.agent,
-                    this.projectDirectoryName,
-                    this.sessionId,
-                    'received a tool called',
-                  );
-                } else if (answerRegex.test(fullReply)) {
-                  contentType = ContentType.answer;
-                  await writeLogs(
-                    LogType.agent,
-                    this.projectDirectoryName,
-                    this.sessionId,
-                    'received an answer',
-                  );
-                  toBreak = true;
-                } else if (thoughtRegex.test(fullReply)) {
-                  contentType = ContentType.thought;
-                  await writeLogs(
-                    LogType.agent,
-                    this.projectDirectoryName,
-                    this.sessionId,
-                    'received a thought',
-                  );
-                  this.messageQueue.push(MessageQueueEvents.lastReplyFromLLMWasThought);
-                }
-                lineBuffer.push(content);
-              }
-              if (
-                !toolCall &&
-                (contentType === ContentType.answer || contentType === ContentType.thought)
-              ) {
-                const field = contentType === ContentType.answer ? 'answer' : 'thought';
-                const visibleReply = extractStreamingField(fullReply, field);
-                if (visibleReply.length > streamedReply.length) {
-                  this.emit(contentType, visibleReply.slice(streamedReply.length));
-                  streamedReply = visibleReply;
-                }
-              }
-            } else {
-              if (parentContentPropertyRegex.test(fullReply)) {
-                inParentContentProperty = true;
-              }
-            }
-          }
+          for (const line of lines) processLine(line);
         });
         response.response?.data.on('end', async () => {
+          processLine(buffer);
+          buffer = '';
           await writeLogs(
             LogType.agent,
             this.projectDirectoryName,
@@ -409,6 +412,32 @@ export class BabyPandaAgent extends EventEmitter {
             toBreak = false;
             resolve('empty reply');
             return;
+          }
+          if (contentType === ContentType.unidentified) {
+            try {
+              const parsedReply = parseMessageContent(fullReply);
+              const parsedContent = parsedReply.content;
+              if (parsedContent.tool_call) {
+                toolCall = true;
+                contentType = ContentType.tool_call;
+              } else if (typeof parsedContent.answer === 'string') {
+                contentType = ContentType.answer;
+                toBreak = true;
+              } else if (typeof parsedContent.thought === 'string') {
+                contentType = ContentType.thought;
+                this.messageQueue.push(MessageQueueEvents.lastReplyFromLLMWasThought);
+                if (streamedReply.length === 0) {
+                  this.emit(ContentType.thought, parsedContent.thought);
+                }
+              }
+            } catch (err) {
+              reject(new Error(`Unable to classify model response: ${String(err)}`));
+              return;
+            }
+          } else if (contentType === ContentType.thought) {
+            if (!this.messageQueue.includes(MessageQueueEvents.lastReplyFromLLMWasThought)) {
+              this.messageQueue.push(MessageQueueEvents.lastReplyFromLLMWasThought);
+            }
           }
           await writeLogs(
             LogType.agent,
