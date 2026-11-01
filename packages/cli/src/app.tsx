@@ -419,7 +419,9 @@ export default function App() {
 								<CommandMenu
 									title="Select provider"
 									items={settings.providers.providers.map(provider => ({
-										label: `${provider.provider}${provider.hasKey ? '' : ' (API key required)'}`,
+										label: `${provider.provider}${
+											provider.hasKey ? '' : ' (API key required)'
+										}`,
 										value: provider.provider,
 									}))}
 									onSelect={selectProvider}
@@ -465,7 +467,8 @@ export default function App() {
 							backgroundColor={APP_BACKGROUND_COLOR}
 						>
 							<Text dimColor>
-								{settings.model.provider} · {settings.model.model} ·{' '}
+								Session {sessionId} · {settings.model.provider} ·{' '}
+								{settings.model.model} ·{' '}
 								{settings.model.contextWindow.toLocaleString()} context ·{' '}
 								{settings.model.contextWindow
 									? Math.round(

@@ -3,16 +3,6 @@ import type {MutableRefObject, SetStateAction} from 'react';
 import React from 'react';
 import {Role} from '@baby-panda/types';
 import type {DOMElement} from 'ink';
-export interface PromptBoxArgs {
-	placeholder: string;
-	value: string;
-	onSubmit: () => void;
-	onChange: (value: string) => void;
-	active?: boolean;
-	start?: number;
-	end?: number;
-	maxHeight?: number;
-}
 
 export interface APIProvider {
 	provider: string;

@@ -1,11 +1,21 @@
 import React from 'react';
 import {Box, Text, useInput} from 'ink';
 import wcwidth from 'ts-wcwidth';
-import {type PromptBoxArgs} from '../types';
 import {useTerminal} from '../hooks/useTerminal';
 import {APP_BACKGROUND_COLOR} from '../theme';
 import {useMouse} from '../hooks/useMouse';
 import type {MouseEvent} from '../utils/terminal/mouse';
+
+export interface PromptBoxArgs {
+	placeholder: string;
+	value: string;
+	onSubmit: () => void;
+	onChange: (value: string) => void;
+	active?: boolean;
+	start?: number;
+	end?: number;
+	maxHeight?: number;
+}
 
 interface VisualLine {
 	text: string;

@@ -95,7 +95,12 @@ export function ChatBox({height}: {height: number}) {
 									flexGrow={1}
 									height={1}
 									paddingLeft={1}
-									backgroundColor={APP_BACKGROUND_COLOR}
+									backgroundColor={
+										focusedMessageIndex !== null &&
+										item.messageIndices.includes(focusedMessageIndex)
+											? '#242424'
+											: APP_BACKGROUND_COLOR
+									}
 								>
 									<Text wrap="truncate" dimColor={item.role === Role.thought}>
 										{item.content}
