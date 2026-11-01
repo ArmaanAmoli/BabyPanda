@@ -22,7 +22,7 @@ export const Markdown: React.FC<MarkdownProps> = ({children, isThought}) => {
 	const tokens = marked.lexer(cleanInput);
 
 	return (
-		<Box flexDirection="column">
+		<Box flexDirection="column" width="100%">
 			{tokens.map((token, index) => {
 				switch (token.type) {
 					case 'heading':
@@ -37,7 +37,7 @@ export const Markdown: React.FC<MarkdownProps> = ({children, isThought}) => {
 					case 'paragraph':
 						return (
 							<Box key={index} marginBottom={1}>
-								<Text dimColor={isThought ?? false}>
+								<Text wrap="wrap" dimColor={isThought ?? false}>
 									{formatText(token.text)}
 								</Text>
 							</Box>
@@ -47,7 +47,11 @@ export const Markdown: React.FC<MarkdownProps> = ({children, isThought}) => {
 						return (
 							<Box key={index} paddingLeft={2} flexDirection="column">
 								<Box borderStyle="round" borderColor="gray" paddingX={1}>
-									<Text color="yellow" dimColor={isThought ?? false}>
+									<Text
+										wrap="wrap"
+										color="yellow"
+										dimColor={isThought ?? false}
+									>
 										{token.text}
 									</Text>
 								</Box>
@@ -58,7 +62,7 @@ export const Markdown: React.FC<MarkdownProps> = ({children, isThought}) => {
 						return (
 							<Box key={index} flexDirection="column" marginBottom={1}>
 								{token.items.map((item: {text: string}, i: number) => (
-									<Text key={i} dimColor={isThought ?? false}>
+									<Text key={i} wrap="wrap" dimColor={isThought ?? false}>
 										<Text color="magenta"> • </Text>
 										{formatText(item.text)}
 									</Text>
@@ -72,7 +76,7 @@ export const Markdown: React.FC<MarkdownProps> = ({children, isThought}) => {
 					default:
 						return (
 							<Box key={index} marginBottom={1}>
-								<Text dimColor={isThought ?? false}>
+								<Text wrap="wrap" dimColor={isThought ?? false}>
 									{formatText(token.raw)}
 								</Text>
 							</Box>

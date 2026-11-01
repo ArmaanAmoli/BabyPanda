@@ -1,8 +1,8 @@
 import React from 'react';
-import {Box, Text} from 'ink';
+import {Box} from 'ink';
 import {Role} from '@baby-panda/types';
 import type {CleanedMessage} from '@baby-panda/types';
-// import {Markdown} from './markdown';
+import {Markdown} from './markdown';
 
 export const PADDING_MESSAGE_BOX = 1;
 export const MARGIN_TOP_MESSAGE_BOX = 1;
@@ -19,7 +19,7 @@ function getColor(role: Role) {
 	}
 }
 
-export function MessageBox({
+export const MessageBox = React.memo(function MessageBox({
 	role,
 	content,
 	isSelected,
@@ -28,6 +28,7 @@ export function MessageBox({
 	return (
 		<Box
 			width="100%"
+			flexShrink={0}
 			justifyContent={'flex-start'}
 			borderColor={color}
 			borderTop={isSelected}
@@ -38,10 +39,9 @@ export function MessageBox({
 			borderStyle={'bold'}
 			backgroundColor={'#111111b0'}
 		>
-			{/* <Markdown
+			<Markdown
 				isThought={role === Role.thought ? true : false}
-			>{`${content}`}</Markdown> */}
-			<Text>{`${content}`}</Text>
+			>{`${content}`}</Markdown>
 		</Box>
 	);
-}
+});

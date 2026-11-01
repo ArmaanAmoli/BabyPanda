@@ -12,16 +12,25 @@ export class FilteredStdin extends PassThrough {
 
 	private readonly mouseListeners = new Set<(event: MouseEvent) => void>();
 
+	private readonly onData = (chunk: Buffer | string) => {
+		this.process(chunk.toString());
+	};
+
+	private readonly onEnd = () => {
+		this.end();
+	};
+
 	public constructor(private readonly source: ReadStream) {
 		super();
 
-		source.on('data', chunk => {
-			this.process(chunk.toString());
-		});
+		source.on('data', this.onData);
 
-		source.on('end', () => {
-			this.end();
-		});
+		source.on('end', this.onEnd);
+	}
+
+	public dispose() {
+		this.source.off('data', this.onData);
+		this.source.off('end', this.onEnd);
 	}
 
 	public get isTTY() {

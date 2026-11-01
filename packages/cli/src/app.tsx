@@ -22,6 +22,7 @@ import {useSettings} from './hooks/useSettings';
 import {LodingIndicator} from './components/LodingIndicator';
 import {ToolCallStatus} from './components/ToolCallStatus';
 import {useToolCalls} from './hooks/useToolCalls';
+import {getMessageGroups} from './utils/messageGroups';
 
 export const HEIGHT_OF_BOTTOM_CONTENT = 8;
 export const PADDING_APP = 2;
@@ -33,6 +34,7 @@ export default function App() {
 	const {pendingPermissionMessages} = usePendingPermissionMessages();
 	const sessionId = sessionState.sessionId;
 	const {messageHistory, setMessageHistory, lastRole} = useMessageHistory();
+	const messageGroups = getMessageGroups(messageHistory);
 	const [prompt, setPrompt] = useState('');
 	const [isCommand, setIsCommand] = useState(false);
 	const [clipboardStatus, setClipboardStatus] = useState<string>();
@@ -136,12 +138,16 @@ export default function App() {
 			}
 		}
 		if (_input === 'y' && focus === 'ChatBox') {
-			const selectedMessage =
+			const selectedGroup =
 				focusedMessageIndex === null
 					? undefined
-					: messageHistory[focusedMessageIndex];
-			if (selectedMessage) {
-				void copyToClipboard(selectedMessage.content)
+					: messageGroups.find(group => group.includes(focusedMessageIndex));
+			if (selectedGroup) {
+				const content = selectedGroup
+					.map(index => messageHistory[index]?.content)
+					.filter((value): value is string => value !== undefined)
+					.join('\n');
+				void copyToClipboard(content)
 					.then(() => {
 						showClipboardStatus('Copied to clipboard');
 					})

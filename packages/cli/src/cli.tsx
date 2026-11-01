@@ -26,6 +26,7 @@ import {VisibleMessageProvider} from './context/VisibleMessages';
 import {SettingsProvider} from './context/Settings';
 import {FilteredStdin} from './utils/terminal/filterStdin';
 import {ToolCallsProvider} from './context/ToolCalls';
+import {ScrollProvider} from './context/Scroll';
 
 const filteredStdin = new FilteredStdin(process.stdin);
 
@@ -85,6 +86,7 @@ const cleanup = () => {
 		process.stdin.setRawMode?.(false);
 	}
 	deactivateAlternateScreenBuffer();
+	filteredStdin.dispose();
 };
 process.on('exit', cleanup);
 const getInitialSessionId = () => {
@@ -103,21 +105,23 @@ const {waitUntilExit, unmount} = render(
 		<SettingsProvider>
 			<TerminalProvider>
 				<MouseProvider filteredStdin={filteredStdin}>
-					<SessionProvider id={initialSessionId}>
-						<MessageHistoryProvider>
-							<PendingPermissionMessagesProvider>
-								<ViewPortMessageProvider>
-									<VisibleMessageProvider start={1}>
-										<ToolCallsProvider>
-											<SocketProvider>
-												<App />
-											</SocketProvider>
-										</ToolCallsProvider>
-									</VisibleMessageProvider>
-								</ViewPortMessageProvider>
-							</PendingPermissionMessagesProvider>
-						</MessageHistoryProvider>
-					</SessionProvider>
+					<ScrollProvider>
+						<SessionProvider id={initialSessionId}>
+							<MessageHistoryProvider>
+								<PendingPermissionMessagesProvider>
+									<ViewPortMessageProvider>
+										<VisibleMessageProvider start={1}>
+											<ToolCallsProvider>
+												<SocketProvider>
+													<App />
+												</SocketProvider>
+											</ToolCallsProvider>
+										</VisibleMessageProvider>
+									</ViewPortMessageProvider>
+								</PendingPermissionMessagesProvider>
+							</MessageHistoryProvider>
+						</SessionProvider>
+					</ScrollProvider>
 				</MouseProvider>
 			</TerminalProvider>
 		</SettingsProvider>

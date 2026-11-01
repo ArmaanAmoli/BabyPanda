@@ -1,8 +1,8 @@
 import type {Message, CleanedMessage} from '@baby-panda/types';
-import type {SetStateAction} from 'react';
+import type {MutableRefObject, SetStateAction} from 'react';
 import React from 'react';
 import {Role} from '@baby-panda/types';
-import {RefObject} from 'hono/jsx';
+import type {DOMElement} from 'ink';
 export interface PromptBoxArgs {
 	placeholder: string;
 	value: string;
@@ -35,7 +35,7 @@ export enum ComponentName {
 export interface MessagesContext {
 	messageHistory: CleanedMessage[];
 	setMessageHistory: React.Dispatch<SetStateAction<CleanedMessage[]>>;
-	lastRole: RefObject<Role | null>;
+	lastRole: MutableRefObject<Role | null>;
 }
 
 export type Focused = 'ChatBox' | 'PromptBox';
@@ -66,3 +66,18 @@ export interface ViewPortMessage {
 	createdAt: number | null;
 	lines: MessageLine[];
 }
+
+export interface ScrollableEntry {
+	id: string;
+	ref: React.RefObject<DOMElement | null>;
+	getScrollState(): {
+		scrollTop: number;
+		scrollHeight: number;
+		innerHeight: number;
+	};
+	scrollBy(delta: number): void;
+	scrollTo?(position: number): void;
+	hasFocus?(): boolean;
+}
+
+export type DOMRef = React.RefObject<DOMElement | null>;
