@@ -107,7 +107,7 @@ export class BabyPandaAgent extends EventEmitter {
     this.sessionId = sessionId;
     this.mcpClient = new MCPClient(this.sessionId);
     this.client = new BabyPandaClient({ url, apikey });
-    this.model = ModelsEnum['mistralai/mistral-large-4-1t-a52b']; // This will be our default model
+    this.model = ModelsEnum['minimaxai/minimax-m3.1-flash']; // This will be our default model
     this.instructions = readFileSync(instructionsFilePath, {
       encoding: 'utf-8',
     });
@@ -216,8 +216,6 @@ export class BabyPandaAgent extends EventEmitter {
           this.sessionId,
           '[Message queue empty]',
         );
-        this.isRunning = false;
-        break;
       }
 
       const userInput = this.messageQueue.at(0);
