@@ -107,7 +107,7 @@ export class BabyPandaAgent extends EventEmitter {
     this.sessionId = sessionId;
     this.mcpClient = new MCPClient(this.sessionId);
     this.client = new BabyPandaClient({ url, apikey });
-    this.model = ModelsEnum['nvidia/nemotron-3.5-super-vl-120b-a12b']; // This will be our default model
+    this.model = ModelsEnum['mistralai/mistral-large-4-1t-a52b']; // This will be our default model
     this.instructions = readFileSync(instructionsFilePath, {
       encoding: 'utf-8',
     });
