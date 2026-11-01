@@ -1,50 +1,228 @@
-import React from 'react';
-import {breakMessageIntoLines} from '../utils/breakIntoLines';
+import React, {useEffect, useMemo, useRef, useState} from 'react';
+import {Box, type DOMElement} from 'ink';
+import {useScroll} from '../hooks/useScroll';
 
-interface VirtualizedListProps<T> {
+export interface VirtualizedListProps<T> {
 	data: readonly T[];
 	renderItem: (args: {item: T; index: number}) => React.ReactElement;
 	keyExtractor: (item: T, index: number) => string;
-	estimateItemHeight: (item: T, index: number) => number;
+	/**
+	 * Return the number of terminal rows occupied by one item.
+	 * The value may be an estimate; the list will still keep scrolling correct.
+	 */
+	getItemHeight: (item: T, index: number) => number;
 	height: number;
-	width: number;
+	width?: number | string;
+	/**
+	 * When supplied, the list keeps this item inside the viewport.
+	 * This is useful for keyboard navigation and does not change wheel scrolling.
+	 */
+	ensureVisibleIndex?: number | null;
 }
 
-export function VirtualizedList<T extends object & {text: string}>({
+/**
+ * Renders only the items that intersect the terminal viewport.
+ *
+ * The complete data array stays in the parent. This component only calculates
+ * which indexes are visible and uses blank rows above and below them to keep
+ * those items at their correct terminal position.
+ */
+export function VirtualizedList<T>({
 	data,
 	renderItem,
 	keyExtractor,
-	estimateItemHeight,
+	getItemHeight,
 	height,
-	width,
+	width = '100%',
+	ensureVisibleIndex = null,
 }: VirtualizedListProps<T>) {
-	/*  
-        Assume: estimateItemHeight manages padding and margin
+	const viewportRef = useRef<DOMElement>(null);
+	const [scrollTop, setScrollTop] = useState(0);
+	const scrollTopRef = useRef(0);
+	const targetScrollTopRef = useRef(0);
+	const animationTimerRef = useRef<ReturnType<typeof setTimeout>>();
+	const stickToBottomRef = useRef(true);
+	const previousTotalHeight = useRef(0);
 
-        The user only give json with text:string => we adjust it
+	const heights = useMemo(
+		() => data.map((item, index) => Math.max(1, getItemHeight(item, index))),
+		[data, getItemHeight],
+	);
+	const offsets = useMemo(() => {
+		const result = [0];
+		for (const itemHeight of heights) {
+			result.push(result[result.length - 1] + itemHeight);
+		}
+		return result;
+	}, [heights]);
+	const totalHeight = offsets.at(-1) ?? 0;
+	const maximumScrollTop = Math.max(0, totalHeight - height);
 
-        write the logic for
-            calling useScrollable()
-            implimenting scrollBy() using args
-            implimenting getScrollState()
-            break content into lines (must manupulate generic for that)
-        
-        end goal
-            prepare a array whose element can directly be put into renderItem()
-            one by one
-    */
-
-	const renderItems: T[] = [];
-	const scrollBy = (delta: number): void => {
-		data.forEach((item, index) => {
-			const height = estimateItemHeight(item, index);
-		});
+	const updateScrollTop = (next: number) => {
+		scrollTopRef.current = next;
+		setScrollTop(next);
 	};
+
+	const scheduleScrollAnimation = () => {
+		if (animationTimerRef.current != null) return;
+
+		const animate = () => {
+			animationTimerRef.current = undefined;
+			const current = scrollTopRef.current;
+			const target = targetScrollTopRef.current;
+
+			if (current === target) return;
+
+			// Ink renders whole terminal rows, so moving one row per frame is
+			// the smallest visible step and avoids large jumps during wheel bursts.
+			const next = current + Math.sign(target - current);
+			updateScrollTop(next);
+			animationTimerRef.current = setTimeout(animate, 16);
+		};
+
+		animationTimerRef.current = setTimeout(animate, 16);
+	};
+
+	useEffect(
+		() => () => {
+			if (animationTimerRef.current != null) {
+				clearTimeout(animationTimerRef.current);
+			}
+		},
+		[],
+	);
+
+	useEffect(() => {
+		if (
+			ensureVisibleIndex == null ||
+			ensureVisibleIndex < 0 ||
+			ensureVisibleIndex >= data.length
+		) {
+			return;
+		}
+
+		const itemStart = offsets[ensureVisibleIndex] ?? 0;
+		const itemEnd = offsets[ensureVisibleIndex + 1] ?? itemStart;
+		let nextScrollTop = scrollTop;
+
+		// Move up only when the focused item is above the viewport.
+		if (itemStart < scrollTop) {
+			nextScrollTop = itemStart;
+		}
+
+		// Move down only when the focused item is below the viewport.
+		if (itemEnd > scrollTop + height) {
+			nextScrollTop = itemEnd - height;
+		}
+
+		nextScrollTop = Math.max(0, Math.min(maximumScrollTop, nextScrollTop));
+		if (nextScrollTop !== scrollTop) {
+			stickToBottomRef.current = nextScrollTop >= maximumScrollTop;
+			targetScrollTopRef.current = nextScrollTop;
+			updateScrollTop(nextScrollTop);
+		}
+	}, [
+		data.length,
+		ensureVisibleIndex,
+		height,
+		maximumScrollTop,
+		offsets,
+		scrollTop,
+	]);
+
+	useEffect(() => {
+		const grewBy = totalHeight - previousTotalHeight.current;
+		previousTotalHeight.current = totalHeight;
+
+		// New streamed content should stay visible when the user was already
+		// at the bottom. If the user scrolled up, preserve their position.
+		if (stickToBottomRef.current && grewBy !== 0) {
+			targetScrollTopRef.current = maximumScrollTop;
+			updateScrollTop(maximumScrollTop);
+		} else {
+			const next = Math.min(scrollTopRef.current, maximumScrollTop);
+			targetScrollTopRef.current = next;
+			updateScrollTop(next);
+		}
+	}, [maximumScrollTop, totalHeight]);
+
+	const firstVisibleIndex = useMemo(() => {
+		let index = 0;
+		while (index < data.length - 1 && offsets[index + 1] <= scrollTop) {
+			index++;
+		}
+		return index;
+	}, [data.length, offsets, scrollTop]);
+
+	const lastVisibleIndex = useMemo(() => {
+		let index = firstVisibleIndex;
+		const visibleEnd = scrollTop + height;
+		while (index < data.length - 1 && offsets[index] < visibleEnd) {
+			index++;
+		}
+		return Math.min(data.length - 1, index);
+	}, [data.length, firstVisibleIndex, height, offsets, scrollTop]);
+
+	// Spacers are measured relative to the current viewport. Using the
+	// absolute item offset here would push the visible items off-screen after
+	// scrolling down because the viewport already starts at `scrollTop`.
+	const emptyViewportSpace =
+		totalHeight <= height && scrollTop >= maximumScrollTop
+			? height - totalHeight
+			: 0;
+	const topSpacer = Math.max(
+		0,
+		emptyViewportSpace + (offsets[firstVisibleIndex] ?? 0) - scrollTop,
+	);
+	const bottomSpacer = Math.max(
+		0,
+		totalHeight - (offsets[lastVisibleIndex + 1] ?? totalHeight),
+	);
+
+	const scrollBy = (delta: number) => {
+		const nextTarget = Math.max(
+			0,
+			Math.min(maximumScrollTop, targetScrollTopRef.current + delta),
+		);
+		targetScrollTopRef.current = nextTarget;
+		stickToBottomRef.current = nextTarget >= maximumScrollTop;
+		scheduleScrollAnimation();
+	};
+
+	useScroll({
+		ref: viewportRef,
+		getScrollState: () => ({
+			scrollTop,
+			scrollHeight: totalHeight,
+			innerHeight: height,
+		}),
+		scrollBy,
+		scrollTo: position => {
+			const next = Math.max(0, Math.min(maximumScrollTop, position));
+			targetScrollTopRef.current = next;
+			stickToBottomRef.current = next >= maximumScrollTop;
+			updateScrollTop(next);
+		},
+	});
+
+	if (data.length === 0) {
+		return <Box ref={viewportRef} width={width} height={height} />;
+	}
+
 	return (
-		<>
-			{renderItems.map((item, index) => {
-				return renderItem({item, index});
-			})}
-		</>
+		<Box ref={viewportRef} width={width} height={height} flexDirection="column">
+			<Box height={topSpacer} flexShrink={0} />
+			{data
+				.slice(firstVisibleIndex, lastVisibleIndex + 1)
+				.map((item, offset) => {
+					const index = firstVisibleIndex + offset;
+					return (
+						<React.Fragment key={keyExtractor(item, index)}>
+							{renderItem({item, index})}
+						</React.Fragment>
+					);
+				})}
+			<Box height={bottomSpacer} flexShrink={0} />
+		</Box>
 	);
 }

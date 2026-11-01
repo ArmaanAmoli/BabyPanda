@@ -32,8 +32,9 @@ export interface MouseEvent {
 export const DOUBLE_CLICK_THRESHOLD_MS = 400;
 export const DOUBLE_CLICK_DISTANCE_TOLERANCE = 2;
 
-// Lines to scroll per wheel notch, shared by every scrollable region.
-export const SCROLL_ROWS = 3;
+// Move one terminal row per wheel event. This prevents a tall message from
+// being skipped when the viewport currently starts in its middle.
+export const SCROLL_ROWS = 1;
 
 export type MouseHandler = (event: MouseEvent) => void;
 

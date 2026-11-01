@@ -6,8 +6,6 @@ import React, {
 	useRef,
 	useState,
 } from 'react';
-import {SCROLL_ROWS, type MouseEvent} from '../utils/terminal/mouse';
-import {useMouse} from '../hooks/useMouse';
 import {useViewPortMessage} from '../hooks/useViewPortMessage';
 import {
 	findOffsetForMessage,
@@ -16,6 +14,7 @@ import {
 import type {VisibleMessage} from '../types';
 import {useTerminal} from '../hooks/useTerminal';
 import {HEIGHT_OF_BOTTOM_CONTENT} from '../app';
+import {getGroupForMessage, getMessageGroups} from '../utils/messageGroups';
 
 interface VisibleMessageContextValue {
 	visible: VisibleMessage[];
@@ -46,6 +45,17 @@ export function VisibleMessageProvider({
 		null,
 	);
 	const focusedMessageRef = useRef<number | null>(null);
+	const messageGroups = useMemo(
+		() =>
+			getMessageGroups(
+				viewPortMessages.map(message => ({
+					role: message.role,
+					content: '',
+					createdAt: message.createdAt,
+				})),
+			),
+		[viewPortMessages],
+	);
 	const {totalLines, maxOffset} = useMemo(() => {
 		const total = viewPortMessages.reduce(
 			(sum, message) => sum + message.lines.length,
@@ -76,14 +86,22 @@ export function VisibleMessageProvider({
 	);
 
 	const focusMessage = (messageIndex: number | null) => {
-		focusedMessageRef.current = messageIndex;
-		setFocusedMessageIndex(messageIndex);
+		if (messageIndex === null) {
+			focusedMessageRef.current = null;
+			setFocusedMessageIndex(null);
+			return;
+		}
 
-		if (messageIndex !== null) {
+		const groupIndex = getGroupForMessage(messageGroups, messageIndex);
+		const normalizedIndex = messageGroups[groupIndex]?.[0] ?? messageIndex;
+		focusedMessageRef.current = normalizedIndex;
+		setFocusedMessageIndex(normalizedIndex);
+
+		if (normalizedIndex !== null) {
 			const nextOffset = findOffsetForMessage(
 				viewPortMessages,
 				budget,
-				messageIndex,
+				normalizedIndex,
 				maxOffset,
 			);
 			setOffset(nextOffset);
@@ -96,37 +114,19 @@ export function VisibleMessageProvider({
 			return;
 		}
 
-		const nextIndex = currentIndex + direction;
-		if (direction === -1 && currentIndex === 0) {
-			focusMessage(viewPortMessages.length - 1);
+		const currentGroup = getGroupForMessage(messageGroups, currentIndex);
+		const nextGroup = currentGroup + direction;
+		if (nextGroup < 0) {
+			focusMessage(messageGroups.at(-1)?.[0] ?? null);
 			return;
 		}
-		if (direction === 1 && currentIndex === viewPortMessages.length - 1) {
-			focusMessage(0);
-			return;
-		}
-		if (nextIndex < 0 || nextIndex >= viewPortMessages.length) {
+		if (nextGroup >= messageGroups.length) {
+			focusMessage(messageGroups[0]?.[0] ?? null);
 			return;
 		}
 
-		focusMessage(nextIndex);
+		focusMessage(messageGroups[nextGroup]?.[0] ?? null);
 	};
-
-	const handler = (event: MouseEvent) => {
-		if (
-			(event.name !== 'scroll-up' && event.name !== 'scroll-down') ||
-			event.row < start ||
-			event.row > end
-		) {
-			return;
-		}
-
-		setOffset(previous => {
-			const delta = event.name === 'scroll-up' ? SCROLL_ROWS : -SCROLL_ROWS;
-			return Math.max(0, Math.min(maxOffset, previous + delta));
-		});
-	};
-	useMouse(handler);
 
 	return (
 		<VisibleMessageContext.Provider
