@@ -40,18 +40,6 @@ export interface MessagesContext {
 
 export type Focused = 'ChatBox' | 'PromptBox';
 
-export interface VisibleMessage {
-	messageIndex: number;
-	role: Role;
-	createdAt: number | null;
-	content: string;
-}
-
-export interface FlattenedLine {
-	line: MessageLine;
-	messageIndex: number;
-}
-
 export interface MessageLine {
 	role: Role;
 	content: string;

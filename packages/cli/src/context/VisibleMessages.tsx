@@ -1,27 +1,8 @@
-import React, {
-	createContext,
-	SetStateAction,
-	useEffect,
-	useMemo,
-	useRef,
-	useState,
-} from 'react';
+import React, {createContext, useMemo, useRef, useState} from 'react';
 import {useViewPortMessage} from '../hooks/useViewPortMessage';
-import {
-	findOffsetForMessage,
-	selectVisibleMessages,
-} from '../utils/selectVisibleMessages';
-import type {VisibleMessage} from '../types';
-import {useTerminal} from '../hooks/useTerminal';
-import {HEIGHT_OF_BOTTOM_CONTENT} from '../app';
 import {getGroupForMessage, getMessageGroups} from '../utils/messageGroups';
 
 interface VisibleMessageContextValue {
-	visible: VisibleMessage[];
-	offset: number;
-	setOffset: React.Dispatch<SetStateAction<number>>;
-	maxOffset: number;
-	setFocusedMessageIndex: (messageIndex: number | null) => void;
 	focusedMessageIndex: number | null;
 	focusMessage: (messageIndex: number | null) => void;
 	moveFocus: (direction: -1 | 1) => void;
@@ -30,17 +11,11 @@ export const VisibleMessageContext =
 	createContext<VisibleMessageContextValue | null>(null);
 
 export function VisibleMessageProvider({
-	start,
 	children,
 }: {
-	start: number;
 	children: React.ReactNode;
 }) {
 	const {viewPortMessages} = useViewPortMessage();
-	const {rows} = useTerminal();
-	const end = rows - HEIGHT_OF_BOTTOM_CONTENT;
-	const budget = end - start + 1;
-	const [offset, setOffset] = useState(0);
 	const [focusedMessageIndex, setFocusedMessageIndex] = useState<number | null>(
 		null,
 	);
@@ -56,34 +31,6 @@ export function VisibleMessageProvider({
 			),
 		[viewPortMessages],
 	);
-	const {totalLines, maxOffset} = useMemo(() => {
-		const total = viewPortMessages.reduce(
-			(sum, message) => sum + message.lines.length,
-			0,
-		);
-		return {
-			totalLines: total,
-			maxOffset: Math.max(0, total - 1),
-		};
-	}, [viewPortMessages, budget]);
-
-	// Follow new output while pinned to the bottom; otherwise shift the offset
-	// by the number of new lines so the viewed content stays in place.
-	const previousTotal = useRef(totalLines);
-	useEffect(() => {
-		const delta = totalLines - previousTotal.current;
-		previousTotal.current = totalLines;
-		if (delta > 0) {
-			setOffset(previous => (previous === 0 ? 0 : previous + delta));
-		}
-	}, [totalLines]);
-
-	const clampedOffset = Math.min(offset, maxOffset);
-
-	const {visible} = useMemo(
-		() => selectVisibleMessages(viewPortMessages, budget, clampedOffset),
-		[viewPortMessages, budget, clampedOffset],
-	);
 
 	const focusMessage = (messageIndex: number | null) => {
 		if (messageIndex === null) {
@@ -96,16 +43,6 @@ export function VisibleMessageProvider({
 		const normalizedIndex = messageGroups[groupIndex]?.[0] ?? messageIndex;
 		focusedMessageRef.current = normalizedIndex;
 		setFocusedMessageIndex(normalizedIndex);
-
-		if (normalizedIndex !== null) {
-			const nextOffset = findOffsetForMessage(
-				viewPortMessages,
-				budget,
-				normalizedIndex,
-				maxOffset,
-			);
-			setOffset(nextOffset);
-		}
 	};
 
 	const moveFocus = (direction: -1 | 1) => {
@@ -131,11 +68,6 @@ export function VisibleMessageProvider({
 	return (
 		<VisibleMessageContext.Provider
 			value={{
-				visible,
-				offset,
-				setOffset,
-				maxOffset,
-				setFocusedMessageIndex: focusMessage,
 				focusedMessageIndex,
 				focusMessage,
 				moveFocus,
