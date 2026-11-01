@@ -97,8 +97,34 @@ export function SocketProvider({children}: ReactChildPropInterface) {
 						break;
 					}
 					case WsEventTypes.setting: {
-						const SettingSchema = z.object({end: z.boolean().optional()});
+						const SettingSchema = z.object({
+							end: z.boolean().optional(),
+							provider: z.string().optional(),
+							model: z.string().optional(),
+							contextWindow: z.number().optional(),
+							contextWindowUsed: z.number().optional(),
+						});
 						const chunk = SettingSchema.parse(payload);
+						if (
+							chunk.provider ||
+							chunk.model ||
+							chunk.contextWindow ||
+							chunk.contextWindowUsed !== undefined
+						) {
+							const state: Partial<{
+								provider: string;
+								model: string;
+								contextWindow: number;
+								contextWindowUsed: number;
+							}> = {};
+							if (chunk.provider !== undefined) state.provider = chunk.provider;
+							if (chunk.model !== undefined) state.model = chunk.model;
+							if (chunk.contextWindow !== undefined)
+								state.contextWindow = chunk.contextWindow;
+							if (chunk.contextWindowUsed !== undefined)
+								state.contextWindowUsed = chunk.contextWindowUsed;
+							setting.model.setModelState(state);
+						}
 						if (chunk.end === true) {
 							toolCallContext.clearToolCalls();
 							setting.responding.setResponding(false);

@@ -3,6 +3,7 @@ import {
   getMessages,
   createSession,
   addProvider,
+  getProviders,
   getSessionsByProjectDirectory,
 } from '@baby-panda/db';
 import { BabyPandaAgent } from '@baby-panda/agent';
@@ -10,6 +11,7 @@ import { cleanMessageHistroy } from './utils/cleanMessageHistory';
 import { websocketHandler } from './webSocket';
 import type { WSContext } from 'hono/ws';
 import { websocket } from '@hono/bun';
+import { Models } from '@agent/config/models';
 
 const defaultPort = 3500;
 const configuredPort = Number(process.env['BABY_PANDA_PORT'] ?? defaultPort);
@@ -88,16 +90,37 @@ app.post('/add-provider', async (c) => {
       provider: body.provider,
       endpoint: body.endpoint,
     });
+
     return new Response('Provider Added', {
       status: 201,
       statusText: 'Created',
     });
   } catch (err) {
+    console.error('[PROVIDER] Unable to save provider key:', err);
     return new Response(`Unable to add provider ${err}`, {
       status: 500,
       statusText: 'Internal Server Error',
     });
   }
+});
+
+app.get('/providers', async () => {
+  const configured = await getProviders();
+  const providers = Object.entries(Models).map(([provider, details]) => {
+    const saved = configured.find(
+      (item) => item.provider?.toLowerCase() === provider.toLowerCase(),
+    );
+    return {
+      provider,
+      endpoint: saved?.endpoint ?? `${details.url}/chat/completions`,
+      hasKey: Boolean(saved?.hasKey),
+      models: Object.entries(details.models).map(([model, modelDetails]) => ({
+        model,
+        contextLength: modelDetails.contextLength,
+      })),
+    };
+  });
+  return new Response(JSON.stringify(providers), { status: 200 });
 });
 
 export type HonoAppType = typeof app;

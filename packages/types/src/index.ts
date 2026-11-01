@@ -139,6 +139,9 @@ export const WsEventMessageSchema = z.discriminatedUnion('eventType', [
     eventType: z.literal(WsEventTypeSchema.enum.setting),
     setting: z.object({
       sandbox: z.boolean().optional(),
+      provider: z.string().optional(),
+      model: z.string().optional(),
+      apiKey: z.string().optional(),
     }),
   }),
 ]);
