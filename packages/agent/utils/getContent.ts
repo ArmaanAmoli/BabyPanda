@@ -7,7 +7,10 @@ export const getContent = (encoded: string, agent?: BabyPandaAgent) => {
       const json = JSON.parse(encoded);
       if (json.usage) {
         // console.log("Toke Usage: ", json.usage )//temporary;
-        if (agent) agent.contextWindowUsed = json.usage.total_tokens;
+        if (agent) {
+          agent.contextWindowUsed = json.usage.total_tokens;
+          agent.emit('context-update', agent.getModelState());
+        }
       }
       if (!json.choices || json.choices.length === 0) return '';
       if (!json.choices[0].delta.content) return '';

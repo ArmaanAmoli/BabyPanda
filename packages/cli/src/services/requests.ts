@@ -6,6 +6,48 @@ import {writeLogs} from '@baby-panda/utils';
 const cwd = process.cwd().replaceAll('/', '-').replace('-', '');
 const getServerBaseUrl = () => `http://localhost:${getServerPort()}`;
 
+export interface ProviderModel {
+	model: string;
+	contextLength: number;
+}
+
+export interface ProviderInfo {
+	provider: string;
+	endpoint: string;
+	hasKey: boolean;
+	models: ProviderModel[];
+}
+
+export async function getProviders(): Promise<ProviderInfo[]> {
+	const response = await app.fetch(
+		new Request(`${getServerBaseUrl()}/providers`),
+	);
+	if (!response.ok) {
+		throw new Error(`Unable to load providers (${response.status})`);
+	}
+	return (await response.json()) as ProviderInfo[];
+}
+
+export async function saveProviderKey(
+	provider: string,
+	endpoint: string,
+	key: string,
+) {
+	const response = await app.fetch(
+		new Request(`${getServerBaseUrl()}/add-provider`, {
+			method: 'POST',
+			headers: {'content-type': 'application/json'},
+			body: JSON.stringify({provider, endpoint, key}),
+		}),
+	);
+	if (!response.ok) {
+		const details = await response.text();
+		throw new Error(
+			`Unable to save provider key (${response.status})${details ? `: ${details}` : ''}`,
+		);
+	}
+}
+
 const decoder = new TextDecoder();
 function concatArrayBuffer(chunks: Uint8Array[]) {
 	const result = new Uint8Array(

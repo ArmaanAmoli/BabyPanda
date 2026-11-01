@@ -75,20 +75,21 @@ existing session, pass its session ID as the first CLI argument:
 bun run --filter @baby-panda/cli dev -- SESSION_ID
 ```
 
-Do not commit `.env` or paste your NVIDIA key into source code, logs, issues,
-or pull requests.
+Provider API keys are stored in the local BabyPanda database. Configure a
+provider from the setup prompt when the CLI starts, or use `/provider` later.
+Do not paste provider keys into source code, logs, issues, or pull requests.
 
 ## Environment variables
 
-Copy `.env.example` to `.env` before running the application:
+Copy `.env.example` to `.env` before running the application if you need to
+configure database mode or the server port:
 
 | Variable          | Required | Default   | Description                                                                                                              |
 | ----------------- | -------- | --------- | ------------------------------------------------------------------------------------------------------------------------ |
-| `NVIDIA_API_KEY`  | Yes      | —         | Bearer token used for NVIDIA NIM chat completions.                                                                       |
 | `IN_DEV_MODE`     | No       | `false`   | When `true`, uses `~/.babypanda/db/db.test.db`; otherwise uses `~/.babypanda/db/db.db`.                                  |
 | `BABY_PANDA_PORT` | No       | Automatic | Optional fixed local HTTP and WebSocket port. Without it, BabyPanda selects the first available port from `3500` upward. |
 
-The current server always targets the NVIDIA NIM endpoint:
+The current server uses the configured provider endpoint, defaulting to:
 
 ```text
 https://integrate.api.nvidia.com/v1/chat/completions
@@ -357,4 +358,4 @@ bun run --filter @baby-panda/db type-check
 
 If you report a bug, include the command you ran, operating system, Bun
 version, whether `IN_DEV_MODE` was enabled, and a redacted error log. Never
-include `NVIDIA_API_KEY`.
+include provider API keys.

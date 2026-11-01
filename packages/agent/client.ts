@@ -20,6 +20,13 @@ class BabyPandaClient {
     this.token = 'Bearer ' + apikey;
     this.maxRetrys = 3;
   }
+  setApiKey(apikey: string) {
+    this.apikey = apikey;
+    this.token = 'Bearer ' + apikey;
+  }
+  setEndpoint(url: string) {
+    this.url = url;
+  }
   private async _attempt(
     messages: Message[],
     model: string,

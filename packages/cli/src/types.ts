@@ -9,6 +9,9 @@ export interface PromptBoxArgs {
 	onSubmit: () => void;
 	onChange: (value: string) => void;
 	active?: boolean;
+	start?: number;
+	end?: number;
+	maxHeight?: number;
 }
 
 export interface APIProvider {

@@ -4,6 +4,8 @@ import type { Context, Next } from 'hono';
 import { writeLogs } from '@baby-panda/utils';
 import { LogType, PermissionsEnums, WsEventMessageSchema, WsEventTypes } from '@baby-panda/types';
 import { BabyPandaAgent } from '@baby-panda/agent';
+import { getProviders } from '@baby-panda/db';
+import { Models, ProvidersEnum } from '@agent/config/models';
 import { ContentType, Role } from '@baby-panda/types';
 import type {
   UserPermission,
@@ -23,10 +25,11 @@ const websocketHandler = (c: Context, next: Next) => {
       async onOpen(_event, ws) {
         wsCollection.set(sessionId, ws);
         if (agentStore.get(sessionId) == undefined) {
-          const { url, apikey } = {
-            url: 'https://integrate.api.nvidia.com/v1/chat/completions',
-            apikey: process.env['NVIDIA_API_KEY']!,
-          };
+          const configured = (await getProviders()).find(
+            (provider) => provider.provider?.toLowerCase() === ProvidersEnum.Nvidia.toLowerCase(),
+          );
+          const url = configured?.endpoint ?? `${Models.Nvidia.url}/chat/completions`;
+          const apikey = configured?.hasKey ?? '';
           const agent = new BabyPandaAgent({ url, apikey }, sessionId);
           const initAgent = async () => await agent.init();
           initAgent();
@@ -34,6 +37,12 @@ const websocketHandler = (c: Context, next: Next) => {
         }
         //attach event listners
         const babyPanda = agentStore.get(sessionId)!;
+        wsCollection.get(sessionId)?.send(
+          JSON.stringify({
+            eventType: WsEventTypes.setting,
+            payload: babyPanda.getModelState(),
+          }),
+        );
 
         const onAskForPermission = (permissionObject: UserPermission) => {
           const ws = wsCollection.get(sessionId);
@@ -96,6 +105,9 @@ const websocketHandler = (c: Context, next: Next) => {
         const onLoopEnd = () => {
           ws.send(JSON.stringify({ eventType: WsEventTypes.setting, payload: { end: true } }));
         };
+        const onContextUpdate = (state: ReturnType<BabyPandaAgent['getModelState']>) => {
+          ws.send(JSON.stringify({ eventType: WsEventTypes.setting, payload: state }));
+        };
 
         cleanup = async () => {
           await writeLogs(LogType.server, cwd, sessionId, 'Cleanup started');
@@ -107,6 +119,7 @@ const websocketHandler = (c: Context, next: Next) => {
           babyPanda.off(ContentType.tool_call, onToolData);
           babyPanda.off('end', onLoopEnd);
           babyPanda.off('error', onError);
+          babyPanda.off('context-update', onContextUpdate);
           await writeLogs(LogType.server, cwd, sessionId, '[/message]: Aborting stream...');
         };
 
@@ -120,6 +133,7 @@ const websocketHandler = (c: Context, next: Next) => {
         babyPanda.on(ContentType.permission, onAskForPermission);
         babyPanda.on('end', onLoopEnd);
         babyPanda.on('error', onError);
+        babyPanda.on('context-update', onContextUpdate);
 
         await writeLogs(
           LogType.server,
@@ -163,6 +177,26 @@ const websocketHandler = (c: Context, next: Next) => {
             const setting = parse.setting;
             if (setting.sandbox != undefined) {
               agent?.setSandbox(setting.sandbox);
+            }
+            if (setting.apiKey !== undefined) {
+              agent?.client.setApiKey(setting.apiKey);
+            }
+            if (setting.provider !== undefined && setting.model !== undefined) {
+              const provider = setting.provider as ProvidersEnum;
+              if (provider in Models && setting.model in Models[provider].models) {
+                const configured = (await getProviders()).find(
+                  (item) => item.provider === provider,
+                );
+                if (configured?.endpoint) agent?.client.setEndpoint(configured.endpoint);
+                if (configured?.hasKey) agent?.client.setApiKey(configured.hasKey);
+                await agent?.setModel(setting.model, provider);
+                wsCollection.get(sessionId)?.send(
+                  JSON.stringify({
+                    eventType: WsEventTypes.setting,
+                    payload: agent?.getModelState(),
+                  }),
+                );
+              }
             }
           }
         }

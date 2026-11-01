@@ -18,7 +18,7 @@ import {
 import { extractFirstJSON } from './utils/FirstJsonExtractor';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { ModelsEnum, Models, ProvidersEnum } from '@agent/config/models';
+import { Models, ProvidersEnum } from '@agent/config/models';
 import { getContent } from '@agent/utils/getContent';
 import { extractStreamingField } from '@agent/utils/StreamingContentExtractor';
 import { compaction } from '@agent/memory/services/compaction';
@@ -95,7 +95,8 @@ export class BabyPandaAgent extends EventEmitter {
   private sandbox = false;
 
   instructions: string;
-  model: ModelsEnum;
+  model: string;
+  provider: ProvidersEnum;
   sessionId: string;
   reasoningEffect: ReasoningEffort;
   numberOfMessages: number = 0;
@@ -107,12 +108,17 @@ export class BabyPandaAgent extends EventEmitter {
     this.sessionId = sessionId;
     this.mcpClient = new MCPClient(this.sessionId);
     this.client = new BabyPandaClient({ url, apikey });
-    this.model = ModelsEnum['minimaxai/minimax-m3.1-flash']; // This will be our default model
+    this.provider = ProvidersEnum.Nvidia;
+    this.model = 'minimaxai/minimax-m3.1-flash';
     this.instructions = readFileSync(instructionsFilePath, {
       encoding: 'utf-8',
     });
     this.reasoningEffect = ReasoningEffort.none;
-    this.contextWindow = Models['Nvidia'].models[this.model].contextLength; // default model
+    const defaultModel = Models.Nvidia.models[this.model];
+    if (!defaultModel) {
+      throw new Error(`Unknown default model: ${this.model}`);
+    }
+    this.contextWindow = defaultModel.contextLength;
     if (!(existsSync(projectDir) && lstatSync(projectDir).isDirectory())) {
       mkdirSync(projectDir, { recursive: true });
       writeFileSync(memoryFile, '');
@@ -659,9 +665,23 @@ export class BabyPandaAgent extends EventEmitter {
     }
   }
 
-  async setModel(model: ModelsEnum, provider: ProvidersEnum) {
+  async setModel(model: string, provider: ProvidersEnum) {
+    const modelDetails = Models[provider].models[model];
+    if (!modelDetails) {
+      throw new Error(`Unknown model "${model}" for provider "${provider}"`);
+    }
     this.model = model;
-    this.contextWindow = Models[provider].models[model].contextLength;
+    this.provider = provider;
+    this.contextWindow = modelDetails.contextLength;
+  }
+
+  getModelState() {
+    return {
+      provider: this.provider,
+      model: this.model,
+      contextWindow: this.contextWindow,
+      contextWindowUsed: this.contextWindowUsed,
+    };
   }
 
   setAllowAlwaysTrue() {

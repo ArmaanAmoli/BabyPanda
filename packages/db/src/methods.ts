@@ -55,18 +55,47 @@ export async function createMessage(
   return creationTime;
 }
 export async function addProvider(details: APIProvider) {
-  // console.log(details);
   try {
-    await db.insert(ApiKeys).values({
-      provider: details.provider,
-      endpoint: details.endpoint,
-      key: details.key,
-    });
+    const providers = await db.select().from(ApiKeys);
+    const existing = providers.find(
+      (provider) =>
+        provider.provider !== null &&
+        provider.provider?.toLowerCase() === details.provider.toLowerCase(),
+    );
+
+    if (existing?.provider) {
+      await db
+        .delete(ApiKeys)
+        .where(and(eq(ApiKeys.key, details.key), ne(ApiKeys.provider, existing.provider)));
+      await db
+        .update(ApiKeys)
+        .set({
+          provider: details.provider,
+          endpoint: details.endpoint,
+          key: details.key,
+        })
+        .where(eq(ApiKeys.provider, existing.provider));
+    } else {
+      await db.delete(ApiKeys).where(eq(ApiKeys.key, details.key));
+      await db.insert(ApiKeys).values({
+        provider: details.provider,
+        endpoint: details.endpoint,
+        key: details.key,
+      });
+    }
     return true;
   } catch (err) {
-    // console.log(`Error occred while adding provider, ${err}`);
     throw new Error(`Error occred while adding provider`, { cause: err });
   }
+}
+export async function getProviders() {
+  return db
+    .select({
+      provider: ApiKeys.provider,
+      endpoint: ApiKeys.endpoint,
+      hasKey: ApiKeys.key,
+    })
+    .from(ApiKeys);
 }
 export async function getMessages(sessionId: string) {
   const messages = await db

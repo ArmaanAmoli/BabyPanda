@@ -3,10 +3,11 @@ import {Box, Text} from 'ink';
 import {VirtualizedList} from './VirtualizedList';
 import {useViewPortMessage} from '../hooks/useViewPortMessage';
 import {useTerminal} from '../hooks/useTerminal';
-import {HEIGHT_OF_BOTTOM_CONTENT, PADDING_APP} from '../app';
+import {PADDING_APP} from '../app';
 import {useVisibleMessages} from '../hooks/useVisibleMessages';
 import {Role} from '@baby-panda/types';
 import {getMessageGroups} from '../utils/messageGroups';
+import {APP_BACKGROUND_COLOR} from '../theme';
 
 interface ChatRow {
 	content: string;
@@ -24,9 +25,9 @@ function getRoleColor(role: Role) {
 	return '#f6eeee';
 }
 
-export function ChatBox() {
+export function ChatBox({height}: {height: number}) {
 	const {viewPortMessages} = useViewPortMessage();
-	const {rows, columns} = useTerminal();
+	const {columns} = useTerminal();
 	const {focusedMessageIndex} = useVisibleMessages();
 	const chatRows = React.useMemo<ChatRow[]>(() => {
 		const groups = getMessageGroups(
@@ -61,7 +62,7 @@ export function ChatBox() {
 		<Box flexGrow={1} flexDirection="column" justifyContent="flex-end">
 			<VirtualizedList
 				data={chatRows}
-				height={Math.max(1, rows - HEIGHT_OF_BOTTOM_CONTENT)}
+				height={height}
 				ensureVisibleIndex={
 					focusedMessageIndex == null
 						? null
@@ -77,7 +78,7 @@ export function ChatBox() {
 						height={1}
 						flexShrink={0}
 						flexDirection="row"
-						backgroundColor="#111111"
+						backgroundColor={APP_BACKGROUND_COLOR}
 					>
 						{item.isSeparator ? (
 							<Text color="#404040">
@@ -94,12 +95,7 @@ export function ChatBox() {
 									flexGrow={1}
 									height={1}
 									paddingLeft={1}
-									backgroundColor={
-										focusedMessageIndex !== null &&
-										item.messageIndices.includes(focusedMessageIndex)
-											? '#242424'
-											: '#111111'
-									}
+									backgroundColor={APP_BACKGROUND_COLOR}
 								>
 									<Text wrap="truncate" dimColor={item.role === Role.thought}>
 										{item.content}
