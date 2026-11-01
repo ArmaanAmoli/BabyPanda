@@ -42,8 +42,7 @@ export default function App() {
 		ReturnType<typeof setTimeout> | undefined
 	>(undefined);
 	const {rows, columns} = useTerminal();
-	const {visible, focusMessage, moveFocus, focusedMessageIndex} =
-		useVisibleMessages();
+	const {focusMessage, moveFocus, focusedMessageIndex} = useVisibleMessages();
 	const settings = useSettings();
 	const {clearToolCalls} = useToolCalls();
 	const onChange = (value: string) => {
@@ -119,9 +118,9 @@ export default function App() {
 		if (key.tab) {
 			const newFocus: Focused = focus === 'ChatBox' ? 'PromptBox' : 'ChatBox';
 			setFocus(newFocus);
-			const recentMessage = visible.at(visible.length - 1);
+			const recentMessage = messageHistory.at(-1);
 			if (newFocus === 'ChatBox' && recentMessage) {
-				focusMessage(recentMessage.messageIndex);
+				focusMessage(messageHistory.length - 1);
 			} else if (newFocus === 'PromptBox') {
 				focusMessage(null);
 			}

@@ -110,7 +110,7 @@ const {waitUntilExit, unmount} = render(
 							<MessageHistoryProvider>
 								<PendingPermissionMessagesProvider>
 									<ViewPortMessageProvider>
-										<VisibleMessageProvider start={1}>
+										<VisibleMessageProvider>
 											<ToolCallsProvider>
 												<SocketProvider>
 													<App />

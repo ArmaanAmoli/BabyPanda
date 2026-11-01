@@ -4,11 +4,10 @@ import {useMessageHistory} from '../hooks/useMessageHistroy';
 import {useTerminal} from '../hooks/useTerminal';
 import {breakMessageIntoLines} from '../utils/breakIntoLines';
 import type {ViewPortMessage} from '../types';
-import {
-	MARGIN_TOP_MESSAGE_BOX,
-	PADDING_MESSAGE_BOX,
-} from '../components/messageBox';
 import {PADDING_APP} from '../app';
+
+const PADDING_MESSAGE_BOX = 1;
+const MARGIN_TOP_MESSAGE_BOX = 1;
 
 // A single logical message together with its width-wrapped lines. Keeping the
 // grouping lets the viewport budget for the decoration each message box adds
