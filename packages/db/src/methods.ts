@@ -7,6 +7,49 @@ interface APIProvider {
   endpoint: string;
   key: string;
 }
+
+type SqliteError = Error & {
+  code?: string;
+  rawCode?: number;
+};
+
+function isSqliteError(error: unknown): error is SqliteError {
+  if (!(error instanceof Error)) {
+    return false;
+  }
+
+  if ('code' in error || 'rawCode' in error) {
+    return true;
+  }
+
+  return error.cause !== undefined && isSqliteError(error.cause);
+}
+const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+export async function SQLSafeExecutor<TArgs extends readonly unknown[], TResult>(
+  fn: (...args: TArgs) => Promise<TResult>,
+  args: TArgs,
+  retry: number = 3,
+): Promise<TResult> {
+  try {
+    const output = await fn(...args);
+    return output;
+  } catch (err: unknown) {
+    if (isSqliteError(err)) {
+      if (err.code === 'SQLITE_BUSY' || err.rawCode === 5) {
+        // attempt retry
+        if (retry > 0) {
+          await delay(5000);
+          return await SQLSafeExecutor(fn, args, retry - 1);
+        } else {
+          throw err;
+        }
+      }
+    }
+    throw err;
+  }
+}
+
 export async function createSession(parentSessionId?: string) {
   const id: string = crypto.randomUUID();
   const cwd = process.cwd();
@@ -26,34 +69,38 @@ export async function createMessage(
   isToolResult?: boolean,
 ) {
   const creationTime = Date.now();
-  await db.transaction(async (tx) => {
-    const session = await tx
-      .select({
-        messageCount: Session.messagesCount,
-      })
-      .from(Session)
-      .where(eq(Session.id, sessionId));
-    // console.log(`session:`, session);
-    if (!session[0] || session[0].messageCount === null) {
-      tx.rollback();
-      throw new Error(`Unable to find Session`);
-    }
-    const messageIndex = session[0].messageCount;
-    await tx.insert(Message).values({
-      messageIndex: messageIndex,
-      sessionId: sessionId,
-      createdAt: creationTime,
-      content: content,
-      role: role,
-      isToolResult: isToolResult ?? false,
-    } as typeof Message.$inferInsert);
-    await tx
-      .update(Session)
-      .set({ messagesCount: messageIndex + 1 })
-      .where(eq(Session.id, sessionId));
-  });
+  await db.transaction(
+    async (tx) => {
+      const session = await tx
+        .select({
+          messageCount: Session.messagesCount,
+        })
+        .from(Session)
+        .where(eq(Session.id, sessionId));
+      // console.log(`session:`, session);
+      if (!session[0] || session[0].messageCount === null) {
+        tx.rollback();
+        throw new Error(`Unable to find Session`);
+      }
+      const messageIndex = session[0].messageCount;
+      await tx.insert(Message).values({
+        messageIndex: messageIndex,
+        sessionId: sessionId,
+        createdAt: creationTime,
+        content: content,
+        role: role,
+        isToolResult: isToolResult ?? false,
+      } as typeof Message.$inferInsert);
+      await tx
+        .update(Session)
+        .set({ messagesCount: messageIndex + 1 })
+        .where(eq(Session.id, sessionId));
+    },
+    { behavior: 'immediate' },
+  );
   return creationTime;
 }
+
 export async function addProvider(details: APIProvider) {
   try {
     const providers = await db.select().from(ApiKeys);
