@@ -1,10 +1,10 @@
 import type { MessageAPI, Message } from '@baby-panda/types';
 import { Role } from '@baby-panda/types';
-import { MessageContentSchema } from '@baby-panda/types';
+// import { MessageContentSchema } from '@baby-panda/types';
 import { BabyPandaAgent } from '@agent/agent';
 import { readFileSync } from 'fs';
 import { getContent } from '@agent/utils/getContent';
-import { jsonrepair } from 'jsonrepair';
+// import { jsonrepair } from 'jsonrepair';
 
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -14,22 +14,22 @@ const __dirname = path.dirname(path.dirname(__filename));
 const compactionInstructionFilePath = path.join(__dirname, 'BabyPanda', 'Compaction.md');
 const maxRetries = 2;
 
-function cleanMessageArray(messages: MessageAPI[]) {
-  let result: string = ``;
-  messages.forEach((msg) => {
-    try {
-      const parsed = MessageContentSchema.parse(JSON.parse(jsonrepair(msg.content)));
-      const pContent = parsed.content;
-      if (!pContent.tool_call) {
-        console.log('in loop');
-        result += `${parsed.role.toUpperCase}: ${pContent.answer ?? pContent.thought}`;
-      }
-    } catch {
-      // ignore the message and move on to the next message because it means its a tool result
-    }
-  });
-  return result;
-}
+// function cleanMessageArray(messages: MessageAPI[]) {
+//   let result: string = ``;
+//   messages.forEach((msg) => {
+//     try {
+//       const parsed = MessageContentSchema.parse(JSON.parse(jsonrepair(msg.content)));
+//       const pContent = parsed.content;
+//       if (!pContent.tool_call) {
+//         console.log('in loop');
+//         result += `${parsed.role.toUpperCase}: ${pContent.answer ?? pContent.thought}`;
+//       }
+//     } catch {
+//       // ignore the message and move on to the next message because it means its a tool result
+//     }
+//   });
+//   return result;
+// }
 
 export async function compaction(agent: BabyPandaAgent) {
   type T = Awaited<ReturnType<typeof getMessagesForSummary>>;
@@ -64,7 +64,7 @@ export async function compaction(agent: BabyPandaAgent) {
       }
     });
 
-  const content = `<messages>${compactionSummary?.content ?? ''} ${cleanMessageArray(messages2)}</messages>`;
+  const content = `<messages>${compactionSummary?.content ?? ''} ${JSON.stringify(messages2)}</messages>`;
   // console.log(content);
   const systemInstructions = readFileSync(compactionInstructionFilePath).toString();
   const systemMessage: Message = {

@@ -219,7 +219,7 @@ export async function getMessagesForSummary(
     .where(eq(Message.sessionId, sessionId))
     .orderBy(desc(Message.createdAt))
     .limit(1)
-    .offset(19);
+    .offset(49);
   const cutoffTimestamp = cutoffMessage[0]?.createdAt;
 
   if (cutoffTimestamp == null) {
@@ -235,7 +235,7 @@ export async function getMessagesForSummary(
           eq(Message.sessionId, sessionId),
           lt(Message.createdAt, cutoffTimestamp),
           gt(Message.createdAt, compactionSummaryCreatedAt),
-          eq(Message.isToolResult, false),
+          // eq(Message.isToolResult, false),
         ),
       );
   }
@@ -247,7 +247,7 @@ export async function getMessagesForSummary(
       and(
         eq(Message.sessionId, sessionId),
         lt(Message.createdAt, cutoffTimestamp),
-        eq(Message.isToolResult, false),
+        // eq(Message.isToolResult, false),
       ),
     );
 }
