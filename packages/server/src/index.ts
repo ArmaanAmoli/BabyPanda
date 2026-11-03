@@ -112,7 +112,7 @@ app.get('/providers', async () => {
     );
     return {
       provider,
-      endpoint: saved?.endpoint ?? `${details.url}/chat/completions`,
+      endpoint: saved?.endpoint ?? `${details.url}`,
       hasKey: Boolean(saved?.hasKey),
       models: Object.entries(details.models).map(([model, modelDetails]) => ({
         model,

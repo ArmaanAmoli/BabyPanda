@@ -28,15 +28,11 @@ export const Models: ModelsType = {
       'z-ai/glm-5.3-flash': {
         contextLength: 1000000,
       },
-      'z-ai/glm-5.3': {
-        contextLength: 1000000,
-      },
+
       'nvidia/nemotron-3-ultra-550b-a55b': {
         contextLength: 1000000,
       },
-      'moonshotai/kimi-k3': {
-        contextLength: 1000000,
-      },
+
       'nvidia/nemotron-3.5-lightning-30b-a3b': {
         contextLength: 1000000,
       },

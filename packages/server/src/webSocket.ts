@@ -28,7 +28,7 @@ const websocketHandler = (c: Context, next: Next) => {
           const configured = (await getProviders()).find(
             (provider) => provider.provider?.toLowerCase() === ProvidersEnum.Nvidia.toLowerCase(),
           );
-          const url = configured?.endpoint ?? `${Models.Nvidia.url}/chat/completions`;
+          const url = configured?.endpoint ?? `${Models.Nvidia.url}`;
           const apikey = configured?.hasKey ?? '';
           const agent = new BabyPandaAgent({ url, apikey }, sessionId);
           const initAgent = async () => await agent.init();
@@ -142,6 +142,7 @@ const websocketHandler = (c: Context, next: Next) => {
           '[WS]: CONNECTED',
         );
       },
+
       async onMessage(event) {
         const agent = agentStore.get(sessionId);
         const payload = JSON.parse(event.data.toString());
