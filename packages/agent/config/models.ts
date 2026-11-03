@@ -23,7 +23,7 @@ type ModelsType = z.infer<typeof ModelsSchema>;
 
 export const Models: ModelsType = {
   Nvidia: {
-    url: 'https://integrate.api.nvidia.com/v1',
+    url: 'https://integrate.api.nvidia.com/v1/chat/completions',
     models: {
       'z-ai/glm-5.3-flash': {
         contextLength: 1000000,

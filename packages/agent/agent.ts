@@ -303,7 +303,7 @@ export class BabyPandaAgent extends EventEmitter {
           LogType.agent,
           this.projectDirectoryName,
           this.sessionId,
-          `Request failed: ${response.error} restarting loop...`,
+          `Request failed: ${this.client.url} ${response.error} restarting loop...`,
         );
         this.messageQueue.push(MessageQueueEvents.errorInLastIteration);
         continue;
