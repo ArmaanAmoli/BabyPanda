@@ -2,7 +2,12 @@ import React, {useEffect, createContext, useRef, useState} from 'react';
 import {ReactChildPropInterface} from '../types';
 import {useSession} from '../hooks/useSession';
 import {writeLogs} from '@baby-panda/utils';
-import {LogType, WsCommonMessageSchema, WsEventTypes} from '@baby-panda/types';
+import {
+	ReasoningEffort,
+	LogType,
+	WsCommonMessageSchema,
+	WsEventTypes,
+} from '@baby-panda/types';
 import {UserPermissionSchema, ServerStreamChunkSchema} from '@baby-panda/types';
 import usePendingPermissionMessages from '../hooks/usePendingPermissionMessages';
 import {setTimeout} from 'node:timers';
@@ -101,6 +106,8 @@ export function SocketProvider({children}: ReactChildPropInterface) {
 							end: z.boolean().optional(),
 							provider: z.string().optional(),
 							model: z.string().optional(),
+							reasoningEffort: z.enum(ReasoningEffort).optional(),
+							reasoningEfforts: z.array(z.enum(ReasoningEffort)).optional(),
 							contextWindow: z.number().optional(),
 							contextWindowUsed: z.number().optional(),
 						});
@@ -114,11 +121,17 @@ export function SocketProvider({children}: ReactChildPropInterface) {
 							const state: Partial<{
 								provider: string;
 								model: string;
+								reasoningEffort: ReasoningEffort;
+								reasoningEfforts: ReasoningEffort[];
 								contextWindow: number;
 								contextWindowUsed: number;
 							}> = {};
 							if (chunk.provider !== undefined) state.provider = chunk.provider;
 							if (chunk.model !== undefined) state.model = chunk.model;
+							if (chunk.reasoningEffort !== undefined)
+								state.reasoningEffort = chunk.reasoningEffort;
+							if (chunk.reasoningEfforts !== undefined)
+								state.reasoningEfforts = chunk.reasoningEfforts;
 							if (chunk.contextWindow !== undefined)
 								state.contextWindow = chunk.contextWindow;
 							if (chunk.contextWindowUsed !== undefined)

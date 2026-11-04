@@ -168,7 +168,8 @@ export default function App() {
 			}),
 		);
 		setPrompt('');
-		setIsCommand(false);
+		setPrompt('/efforts');
+		setIsCommand(true);
 	};
 
 	const selectEffort = (reasoningEffort: string) => {
@@ -507,7 +508,8 @@ export default function App() {
 						>
 							<Text dimColor>
 								Session {sessionId} · {settings.model.provider} ·{' '}
-								{settings.model.model} ·{' '}
+								{settings.model.model} · effort:{' '}
+								{settings.model.reasoningEffort} ·{' '}
 								{settings.model.contextWindow.toLocaleString()} context ·{' '}
 								{settings.model.contextWindow
 									? Math.round(
