@@ -78,12 +78,6 @@ export function SocketProvider({children}: ReactChildPropInterface) {
 			};
 
 			socketInstance.onmessage = async event => {
-				await writeLogs(
-					LogType.cli,
-					projectName,
-					sessionId,
-					`[WS]: ${event.data}`,
-				);
 				const data = event.data;
 				const parsed = WsCommonMessageSchema.parse(JSON.parse(data));
 				const {payload} = parsed;

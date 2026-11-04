@@ -114,7 +114,7 @@ export class BabyPandaAgent extends EventEmitter {
     console.log(sessionId, 'in agent constructor');
     this.sessionId = sessionId;
     this.mcpClient = new MCPClient(this.sessionId);
-    this.client = new BabyPandaClient({ url, apikey });
+    this.client = new BabyPandaClient({ url, apikey }, sessionId);
     this.provider = ProvidersEnum.Nvidia;
     this.model = 'minimaxai/minimax-m3.1-flash';
     this.instructions = readFileSync(instructionsFilePath, {

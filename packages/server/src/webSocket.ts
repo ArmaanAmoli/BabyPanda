@@ -88,7 +88,6 @@ const websocketHandler = (c: Context, next: Next) => {
 
         const handlers: Record<string, (data: string) => void> = {};
         const onData = async (eventName: ContentType, data: string) => {
-          await writeLogs(LogType.server, cwd, sessionId, '[/message]: Received a data chunk');
           const chunk: ServerStreamChunkSchemaType = {
             role: eventName === ContentType.answer ? Role.assistant : Role.thought,
             content: data,
