@@ -1,5 +1,8 @@
+import {ReasoningEffort} from '@baby-panda/types';
+
 export interface Settings {
 	sandbox?: boolean;
+	reasoningEffort?: ReasoningEffort;
 }
 
 export function executeCommand(command: string): Settings {
@@ -8,6 +11,15 @@ export function executeCommand(command: string): Settings {
 	const args = parts.slice(1);
 
 	switch (cmd) {
+		case 'efforts': {
+			if (
+				args.length !== 1 ||
+				!Object.values(ReasoningEffort).includes(args[0] as ReasoningEffort)
+			) {
+				throw new Error('effort must be one of: none, low, medium, high');
+			}
+			return {reasoningEffort: args[0] as ReasoningEffort};
+		}
 		case 'sandbox': {
 			if (args.length != 1) {
 				break;

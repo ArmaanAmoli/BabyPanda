@@ -182,6 +182,12 @@ const websocketHandler = (c: Context, next: Next) => {
             if (setting.apiKey !== undefined) {
               agent?.client.setApiKey(setting.apiKey);
             }
+            if (setting.reasoningEffort !== undefined) {
+              const modelDetails = agent && Models[agent.provider].models[agent.model];
+              if (agent && modelDetails?.reasoningEfforts.includes(setting.reasoningEffort)) {
+                agent.setReasoningEffort(setting.reasoningEffort);
+              }
+            }
             if (setting.provider !== undefined && setting.model !== undefined) {
               const provider = setting.provider as ProvidersEnum;
               if (provider in Models && setting.model in Models[provider].models) {

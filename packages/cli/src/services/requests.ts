@@ -2,6 +2,7 @@ import app, {getServerPort} from '@baby-panda/server';
 // import type {APIProvider, Session} from '../types';
 import type {CleanedMessage} from '@baby-panda/types';
 import {CleanedMessageArraySchema, LogType} from '@baby-panda/types';
+import type {ReasoningEffort} from '@baby-panda/types';
 import {writeLogs} from '@baby-panda/utils';
 const cwd = process.cwd().replaceAll('/', '-').replace('-', '');
 const getServerBaseUrl = () => `http://localhost:${getServerPort()}`;
@@ -9,6 +10,7 @@ const getServerBaseUrl = () => `http://localhost:${getServerPort()}`;
 export interface ProviderModel {
 	model: string;
 	contextLength: number;
+	reasoningEfforts: ReasoningEffort[];
 }
 
 export interface ProviderInfo {

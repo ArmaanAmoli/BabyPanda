@@ -5,7 +5,7 @@ import {useState, useEffect, useRef} from 'react';
 import PromptBox, {getWrappedLineCount} from './components/promptBox';
 import {CommandMenu, ProviderSetupBox} from './components/commandMenu';
 import {ChatBox} from './components/ChatBox';
-import {Role, WsEventTypes} from '@baby-panda/types';
+import {ReasoningEffort, Role, WsEventTypes} from '@baby-panda/types';
 import type {WsEventMessage} from '@baby-panda/types';
 import {getMessages, getProviders, saveProviderKey} from './services/requests';
 import {useSession} from './hooks/useSession';
@@ -65,6 +65,8 @@ export default function App() {
 	const showProviderMenu = isCommand && command === '/provider';
 	const showModelMenu =
 		isCommand && command === '/model' && activeProvider != null;
+	const showEffortMenu =
+		isCommand && command === '/efforts' && activeProvider != null;
 	const statusHeight = 1;
 	const promptMaxHeight = Math.min(8, Math.max(3, Math.floor(rows * 0.25)));
 	const promptWidth = Math.max(10, columns - 2 * PADDING_APP - 1);
@@ -92,7 +94,9 @@ export default function App() {
 		? settings.providers.providers.length
 		: showModelMenu
 			? (activeProvider?.models.length ?? 0)
-			: 0;
+			: showEffortMenu
+				? settings.model.reasoningEfforts.length
+				: 0;
 	const menuLimit = Math.max(
 		1,
 		rows - statusHeight - promptHeight - activityHeight - setupHeight - 2,
@@ -150,11 +154,31 @@ export default function App() {
 			model: model.model,
 			contextWindow: model.contextLength,
 			contextWindowUsed: 0,
+			reasoningEfforts: model.reasoningEfforts,
+			reasoningEffort: model.reasoningEfforts[0] ?? ReasoningEffort.none,
 		});
 		socket?.send(
 			JSON.stringify({
 				eventType: WsEventTypes.setting,
-				setting: {provider: activeProvider.provider, model: model.model},
+				setting: {
+					provider: activeProvider.provider,
+					model: model.model,
+					reasoningEffort: model.reasoningEfforts[0] ?? ReasoningEffort.none,
+				},
+			}),
+		);
+		setPrompt('');
+		setPrompt('/efforts');
+		setIsCommand(true);
+	};
+
+	const selectEffort = (reasoningEffort: string) => {
+		const selectedEffort = reasoningEffort as ReasoningEffort;
+		settings.model.setModelState({reasoningEffort: selectedEffort});
+		socket?.send(
+			JSON.stringify({
+				eventType: WsEventTypes.setting,
+				setting: {reasoningEffort: selectedEffort},
 			}),
 		);
 		setPrompt('');
@@ -166,7 +190,7 @@ export default function App() {
 			return;
 		}
 		if (isCommand) {
-			if (showProviderMenu || showModelMenu) return;
+			if (showProviderMenu || showModelMenu || showEffortMenu) return;
 			// execute command
 			const setting = executeCommand(prompt);
 			const wsMessage: WsEventMessage = {
@@ -176,6 +200,11 @@ export default function App() {
 
 			if (setting.sandbox != undefined) {
 				settings.sandbox.setSandBox(setting.sandbox);
+			}
+			if (setting.reasoningEffort !== undefined) {
+				settings.model.setModelState({
+					reasoningEffort: setting.reasoningEffort,
+				});
 			}
 			socket?.send(JSON.stringify(wsMessage));
 			setPrompt('');
@@ -439,6 +468,17 @@ export default function App() {
 									limit={menuLimit}
 								/>
 							)}
+							{showEffortMenu && (
+								<CommandMenu
+									title="Select reasoning effort"
+									items={settings.model.reasoningEfforts.map(effort => ({
+										label: effort,
+										value: effort,
+									}))}
+									onSelect={selectEffort}
+									limit={menuLimit}
+								/>
+							)}
 						</>
 					)}
 
@@ -468,7 +508,8 @@ export default function App() {
 						>
 							<Text dimColor>
 								Session {sessionId} · {settings.model.provider} ·{' '}
-								{settings.model.model} ·{' '}
+								{settings.model.model} · effort:{' '}
+								{settings.model.reasoningEffort} ·{' '}
 								{settings.model.contextWindow.toLocaleString()} context ·{' '}
 								{settings.model.contextWindow
 									? Math.round(

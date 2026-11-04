@@ -1,6 +1,7 @@
 import React, {SetStateAction} from 'react';
 import {useState, createContext} from 'react';
 import type {ProviderInfo} from '../services/requests';
+import {ReasoningEffort} from '@baby-panda/types';
 
 export interface SettingsContextValue {
 	sandbox: {
@@ -21,6 +22,8 @@ export interface SettingsContextValue {
 		model: string;
 		contextWindow: number;
 		contextWindowUsed: number;
+		reasoningEffort: ReasoningEffort;
+		reasoningEfforts: ReasoningEffort[];
 		setModelState: (state: Partial<SettingsContextValue['model']>) => void;
 	};
 }
@@ -36,6 +39,8 @@ export function SettingsProvider({children}: {children: React.ReactNode}) {
 		model: 'minimaxai/minimax-m3.1-flash',
 		contextWindow: 262_000,
 		contextWindowUsed: 0,
+		reasoningEffort: ReasoningEffort.none,
+		reasoningEfforts: Object.values(ReasoningEffort),
 	});
 	const value: SettingsContextValue = {
 		sandbox: {sandbox, setSandBox},
