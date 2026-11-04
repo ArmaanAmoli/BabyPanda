@@ -20,12 +20,15 @@ import { LogType } from '@baby-panda/types';
 
 function wrapWithSQLSafeExecutor<TArgs extends readonly unknown[], TResult>(
   method: (...args: TArgs) => Promise<TResult>,
-) {
-  try {
-    return (...args: TArgs) => SQLSafeExecutor(method, args);
-  } catch (err) {
-    writeLogs(LogType.db, getProjectName(), 'common', `${err}`);
-  }
+): (...args: TArgs) => Promise<TResult> {
+  return async (...args: TArgs): Promise<TResult> => {
+    try {
+      return await SQLSafeExecutor(method, args);
+    } catch (error: unknown) {
+      await writeLogs(LogType.db, getProjectName(), 'common', `${error}`);
+      throw error;
+    }
+  };
 }
 
 export { SQLSafeExecutor };
