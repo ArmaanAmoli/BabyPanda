@@ -1,3 +1,4 @@
+import { getProjectName, writeLogs } from '@baby-panda/utils';
 import {
   SQLSafeExecutor,
   createSession as createSessionMethod,
@@ -15,11 +16,16 @@ import {
   addCompactionSummary as addCompactionSummaryMethod,
   getMessagesForSummary as getMessagesForSummaryMethod,
 } from './methods';
+import { LogType } from '@baby-panda/types';
 
 function wrapWithSQLSafeExecutor<TArgs extends readonly unknown[], TResult>(
   method: (...args: TArgs) => Promise<TResult>,
 ) {
-  return (...args: TArgs) => SQLSafeExecutor(method, args);
+  try {
+    return (...args: TArgs) => SQLSafeExecutor(method, args);
+  } catch (err) {
+    writeLogs(LogType.db, getProjectName(), 'common', `${err}`);
+  }
 }
 
 export { SQLSafeExecutor };

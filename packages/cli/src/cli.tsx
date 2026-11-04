@@ -78,7 +78,7 @@ activateAlternateScreenBuffer();
 enableKittyKeyboardProtocol();
 enableLineWrapping();
 enableMouseEvents();
-const cleanup = () => {
+const cleanupTerminal = () => {
 	disableMouseEvents();
 	disableKittyKeyboardProtocol();
 	disableLineWrapping();
@@ -88,7 +88,37 @@ const cleanup = () => {
 	deactivateAlternateScreenBuffer();
 	filteredStdin.dispose();
 };
+let terminalCleanedUp = false;
+const cleanup = () => {
+	if (terminalCleanedUp) return;
+	terminalCleanedUp = true;
+	cleanupTerminal();
+};
 process.on('exit', cleanup);
+let serverStopped = false;
+const stopServer = () => {
+	if (serverStopped) return;
+	serverStopped = true;
+	server.stop(true);
+};
+let appUnmount: (() => void) | undefined = undefined;
+let shuttingDown = false;
+const shutdown = (exitCode: number, error?: unknown) => {
+	if (shuttingDown) return;
+	shuttingDown = true;
+	if (error !== undefined) {
+		console.error('BabyPanda stopped unexpectedly:', error);
+	}
+	cleanup();
+	stopServer();
+	appUnmount?.();
+	process.exit(exitCode);
+};
+process.on('SIGTERM', () => shutdown(0));
+process.on('SIGINT', () => shutdown(0));
+process.on('SIGHUP', () => shutdown(0));
+process.on('uncaughtException', error => shutdown(1, error));
+process.on('unhandledRejection', reason => shutdown(1, reason));
 const getInitialSessionId = () => {
 	if (typeof process !== 'undefined' && process.argv && process.argv[2]) {
 		return process.argv[2];
@@ -133,21 +163,10 @@ const {waitUntilExit, unmount} = render(
 	},
 );
 
-let shuttingDown = false;
-const shutdown = (exitCode: number) => {
-	if (shuttingDown) return;
-	shuttingDown = true;
-	cleanup();
-	server.stop();
-	unmount();
-	process.exit(exitCode);
-};
-process.on('SIGTERM', () => shutdown(0));
-process.on('SIGINT', () => shutdown(0));
-process.on('SIGHUP', () => shutdown(0));
+appUnmount = unmount;
 await waitUntilExit();
 console.log('stopping server');
-server.stop();
+stopServer();
 console.log('Baby panda closed.', initialSessionId);
 
 process.exit(0);
