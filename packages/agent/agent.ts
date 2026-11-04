@@ -1,9 +1,15 @@
 import { BabyPandaClient } from './client';
 import type { Message, MessageAPI, MessageContent, UserPermission } from '@baby-panda/types';
-import { ContentType, LogType, MessageContentSchema, ShellCallSchema } from '@baby-panda/types';
+import {
+  ContentType,
+  LogType,
+  MessageContentSchema,
+  ReasoningEffort,
+  ShellCallSchema,
+} from '@baby-panda/types';
 import { Role } from '@baby-panda/types';
 import type { UrlApi, Tool, ToolResult } from './types';
-import { MessageQueueEvents, ReasoningEffort } from './types';
+import { MessageQueueEvents } from './types';
 import { readFileSync, existsSync, lstatSync, mkdirSync, writeFileSync } from 'fs';
 import { EventEmitter } from 'events';
 import { MCPClient } from './mcp/client';
@@ -20,6 +26,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { Models, ProvidersEnum } from '@agent/config/models';
 import { getContent } from '@agent/utils/getContent';
+import { cleanMessages } from '@agent/utils/cleanMessages';
 import { extractStreamingField } from '@agent/utils/StreamingContentExtractor';
 import { compaction } from '@agent/memory/services/compaction';
 import { projectDir, memoryFile } from '@agent/memory/constants';
@@ -98,7 +105,7 @@ export class BabyPandaAgent extends EventEmitter {
   model: string;
   provider: ProvidersEnum;
   sessionId: string;
-  reasoningEffect: ReasoningEffort;
+  reasoningEffort: ReasoningEffort;
   numberOfMessages: number = 0;
 
   constructor({ url, apikey }: UrlApi, sessionId: string) {
@@ -113,7 +120,7 @@ export class BabyPandaAgent extends EventEmitter {
     this.instructions = readFileSync(instructionsFilePath, {
       encoding: 'utf-8',
     });
-    this.reasoningEffect = ReasoningEffort.none;
+    this.reasoningEffort = ReasoningEffort.none;
     const defaultModel = Models.Nvidia.models[this.model];
     if (!defaultModel) {
       throw new Error(`Unknown default model: ${this.model}`);
@@ -162,10 +169,7 @@ export class BabyPandaAgent extends EventEmitter {
       ? await getMessagesAfterTimestamp(this.sessionId, createdAt)
       : await getMessages(this.sessionId);
     console.log('agent:MessageHistory');
-    return messageHistoryFromDb.map((msg) => {
-      const msgApi: Message = { role: msg.role!, content: msg.content! };
-      return msgApi;
-    });
+    return cleanMessages(messageHistoryFromDb);
   }
 
   private async createContext() {
@@ -291,7 +295,7 @@ export class BabyPandaAgent extends EventEmitter {
         this.sessionId,
         'message sended waiting for response...',
       );
-      const response = await this.client.chatCompletion(messages, this.model);
+      const response = await this.client.chatCompletion(messages, this.model, this.reasoningEffort);
       await writeLogs(
         LogType.agent,
         this.projectDirectoryName,
@@ -673,6 +677,13 @@ export class BabyPandaAgent extends EventEmitter {
     this.model = model;
     this.provider = provider;
     this.contextWindow = modelDetails.contextLength;
+    if (!modelDetails.reasoningEfforts.includes(this.reasoningEffort)) {
+      this.reasoningEffort = modelDetails.reasoningEfforts[0] ?? ReasoningEffort.none;
+    }
+  }
+
+  setReasoningEffort(reasoningEffort: ReasoningEffort) {
+    this.reasoningEffort = reasoningEffort;
   }
 
   getModelState() {
@@ -681,6 +692,10 @@ export class BabyPandaAgent extends EventEmitter {
       model: this.model,
       contextWindow: this.contextWindow,
       contextWindowUsed: this.contextWindowUsed,
+      reasoningEffort: this.reasoningEffort,
+      reasoningEfforts: Models[this.provider].models[this.model]?.reasoningEfforts ?? [
+        ReasoningEffort.none,
+      ],
     };
   }
 

@@ -1,6 +1,7 @@
 import axios, { type AxiosResponse } from 'axios';
 import { setTimeout } from 'node:timers/promises';
 import type { Message } from '@baby-panda/types';
+import type { ReasoningEffort } from '@baby-panda/types';
 import type { UrlApi } from './types'; // verbatimModuleSyntax
 
 interface ChatCompletionArgs {
@@ -30,6 +31,7 @@ class BabyPandaClient {
   private async _attempt(
     messages: Message[],
     model: string,
+    reasoningEffort: ReasoningEffort,
     isRetrying: boolean,
     retrysDone: number,
   ): Promise<ChatCompletionArgs> {
@@ -38,21 +40,21 @@ class BabyPandaClient {
       url: this.url,
       responseType: 'stream' as const,
       headers: {
-        accept: 'application/json',
+        accept: 'text/event-stream',
         'content-type': 'application/json',
         authorization: this.token,
       },
       timeout: 120_000,
       data: {
-        model: model,
-        temperature: 1,
-        top_p: 0.95,
-        // max_tokens: 16384,
-        // reasoning_effort: reasoning_effort ? reasoning_effort : 'none',
-        seed: 42,
+        model,
+        messages,
+        temperature: 0.5,
+        top_p: 1,
+        max_tokens: 4096,
+        frequency_penalty: 0,
+        presence_penalty: 0,
+        reasoning_effort: reasoningEffort,
         stream: true,
-        messages: messages,
-        stream_options: { include_usage: true },
       },
     };
     try {
@@ -82,7 +84,7 @@ class BabyPandaClient {
         isRetrying = true;
       }
       if (isRetrying && retrysDone < this.maxRetrys) {
-        return await this._attempt(messages, model, true, retrysDone);
+        return await this._attempt(messages, model, reasoningEffort, true, retrysDone);
       } else {
         if (retrysDone >= this.maxRetrys) {
           console.error('Maximum API retry attempts reached');
@@ -94,8 +96,12 @@ class BabyPandaClient {
     }
   }
 
-  async chatCompletion(messages: Message[], model: string): Promise<ChatCompletionArgs> {
-    return await this._attempt(messages, model, false, 0);
+  async chatCompletion(
+    messages: Message[],
+    model: string,
+    reasoningEffort: ReasoningEffort,
+  ): Promise<ChatCompletionArgs> {
+    return await this._attempt(messages, model, reasoningEffort, false, 0);
   }
 }
 
@@ -104,6 +110,10 @@ const fetchError = async (error: unknown) => {
 
   const { response } = error;
   if (!response) return error.message;
+
+  if (response.data && typeof response.data.on !== 'function') {
+    return JSON.stringify(response.data);
+  }
 
   if (error.response?.data && typeof error.response.data.on === 'function') {
     return new Promise<string>((resolve) => {
@@ -120,6 +130,8 @@ const fetchError = async (error: unknown) => {
       });
     });
   }
+
+  return error.message;
 };
 
 export { BabyPandaClient };

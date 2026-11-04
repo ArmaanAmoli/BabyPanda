@@ -8,6 +8,13 @@ export enum Role {
   thought = 'thought',
 }
 
+export enum ReasoningEffort {
+  none = 'none',
+  low = 'low',
+  medium = 'medium',
+  high = 'high',
+}
+
 export interface MessageRegular {
   role: Role;
   content: string;
@@ -141,6 +148,7 @@ export const WsEventMessageSchema = z.discriminatedUnion('eventType', [
       sandbox: z.boolean().optional(),
       provider: z.string().optional(),
       model: z.string().optional(),
+      reasoningEffort: z.enum(ReasoningEffort).optional(),
       apiKey: z.string().optional(),
     }),
   }),

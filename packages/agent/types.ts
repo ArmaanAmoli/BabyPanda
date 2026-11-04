@@ -9,11 +9,6 @@ export enum MessageQueueEvents {
   answerMessageBreakPreventer = 'answer-message-break-preventer',
 }
 
-export enum ReasoningEffort {
-  none = 'none',
-  high = 'high',
-  max = 'max',
-}
 export interface UrlApi {
   url: string;
   apikey: string;

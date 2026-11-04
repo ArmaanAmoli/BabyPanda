@@ -117,6 +117,7 @@ app.get('/providers', async () => {
       models: Object.entries(details.models).map(([model, modelDetails]) => ({
         model,
         contextLength: modelDetails.contextLength,
+        reasoningEfforts: modelDetails.reasoningEfforts,
       })),
     };
   });

@@ -1,9 +1,10 @@
-import type { MessageAPI, Message } from '@baby-panda/types';
+import type { Message } from '@baby-panda/types';
 import { Role } from '@baby-panda/types';
 // import { MessageContentSchema } from '@baby-panda/types';
 import { BabyPandaAgent } from '@agent/agent';
 import { readFileSync } from 'fs';
 import { getContent } from '@agent/utils/getContent';
+import { cleanMessages } from '@agent/utils/cleanMessages';
 // import { jsonrepair } from 'jsonrepair';
 
 import path from 'path';
@@ -47,22 +48,7 @@ export async function compaction(agent: BabyPandaAgent) {
     messages = await getMessagesForSummary(sessionId);
   }
 
-  // convert to messageAPI type
-  const messages2: MessageAPI[] = [];
-  messages
-    .map((msg) => {
-      if (msg.role && msg.content) {
-        return {
-          role: msg.role,
-          content: msg.content,
-        };
-      }
-    })
-    .forEach((msg) => {
-      if (msg != undefined) {
-        messages2.push(msg);
-      }
-    });
+  const messages2 = cleanMessages(messages);
 
   const content = `<messages>${compactionSummary?.content ?? ''} ${JSON.stringify(messages2)}</messages>`;
   // console.log(content);
@@ -73,7 +59,11 @@ export async function compaction(agent: BabyPandaAgent) {
   };
   const transcript: Message = { role: Role.user, content: content };
   // console.log(systemInstructions, transcript);
-  const response = await agent.client.chatCompletion([systemMessage, transcript], agent.model);
+  const response = await agent.client.chatCompletion(
+    [systemMessage, transcript],
+    agent.model,
+    agent.reasoningEffort,
+  );
   let fullReply = '';
   let isRetrying: boolean = false;
   let retriesDone = 0;

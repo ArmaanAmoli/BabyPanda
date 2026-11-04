@@ -79,6 +79,9 @@ Provider API keys are stored in the local BabyPanda database. Configure a
 provider from the setup prompt when the CLI starts, or use `/provider` later.
 Do not paste provider keys into source code, logs, issues, or pull requests.
 
+Use `/model` to select a model and `/efforts` to select its reasoning effort.
+The portable reasoning levels are `none`, `low`, `medium`, and `high`.
+
 ## Environment variables
 
 Copy `.env.example` to `.env` before running the application if you need to
