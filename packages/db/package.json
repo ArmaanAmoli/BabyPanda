@@ -18,9 +18,10 @@
     "@baby-panda/types": "workspace:*"
   },
   "dependencies": {
+    "@baby-panda/utils": "workspace:*",
     "@libsql/client": "^0.17.4",
     "dotenv": "^17.4.2",
     "drizzle-orm": "^1.0.0-rc.4",
-    "@baby-panda/utils": "workspace:*"
+    "ulid": "^3.0.2"
   }
 }

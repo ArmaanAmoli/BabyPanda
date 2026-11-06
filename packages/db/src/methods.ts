@@ -1,7 +1,8 @@
 import { db } from './index.db';
-import { Session, Message, ApiKeys, CompactionResults } from './db/schema';
+import { Session, Message, ApiKeys } from './db/schema';
 import { Role } from '@baby-panda/types';
-import { asc, desc, eq, gte, and, gt, lt, ne } from 'drizzle-orm';
+import { asc, desc, eq, and, lt, ne, gte } from 'drizzle-orm';
+import { ulid } from 'ulid';
 interface APIProvider {
   provider: string;
   endpoint: string;
@@ -51,7 +52,7 @@ export async function SQLSafeExecutor<TArgs extends readonly unknown[], TResult>
 }
 
 export async function createSession(parentSessionId?: string) {
-  const id: string = crypto.randomUUID();
+  const id: string = ulid();
   const cwd = process.cwd();
   await db
     .insert(Session)
@@ -62,12 +63,8 @@ export async function createSession(parentSessionId?: string) {
     );
   return id;
 }
-export async function createMessage(
-  sessionId: string,
-  content: string,
-  role: Role,
-  isToolResult?: boolean,
-) {
+
+export async function createMessage(sessionId: string, content: string, role: Role) {
   const creationTime = Date.now();
   await db.transaction(
     async (tx) => {
@@ -84,13 +81,13 @@ export async function createMessage(
       }
       const messageIndex = session[0].messageCount;
       await tx.insert(Message).values({
-        messageIndex: messageIndex,
+        id: ulid(),
         sessionId: sessionId,
-        createdAt: creationTime,
         content: content,
         role: role,
-        isToolResult: isToolResult ?? false,
+        sequence: messageIndex,
       } as typeof Message.$inferInsert);
+
       await tx
         .update(Session)
         .set({ messagesCount: messageIndex + 1 })
@@ -144,12 +141,18 @@ export async function getProviders() {
     })
     .from(ApiKeys);
 }
-export async function getMessages(sessionId: string) {
+export async function getMessages(sessionId: string, index: number = 0) {
   const messages = await db
     .select()
     .from(Message)
-    .where(and(eq(Message.sessionId, sessionId), ne(Message.role, Role.system)))
-    .orderBy(asc(Message.createdAt));
+    .where(
+      and(
+        eq(Message.sessionId, sessionId),
+        ne(Message.role, Role.system),
+        gte(Message.sequence, index),
+      ),
+    )
+    .orderBy(asc(Message.sequence));
   return messages;
 }
 export async function getSessions() {
@@ -170,84 +173,47 @@ export async function getSessionsByProjectDirectory(projectDirectory: string) {
     .where(eq(Session.projectDirectory, projectDirectory));
   return sessions;
 }
-export async function addCompactionSummary(sessionId: string, summary: string) {
-  const timestamp = Date.now();
-  await db
-    .insert(CompactionResults)
-    .values({ content: summary, sessionId: sessionId, createdAt: timestamp });
-  return timestamp;
-}
+
 export async function getCompactionSummaries(sessionId: string) {
   const summaries = await db
     .select()
-    .from(CompactionResults)
-    .where(eq(CompactionResults.sessionId, sessionId))
-    .orderBy(asc(CompactionResults.createdAt));
+    .from(Message)
+    .where(and(eq(Message.sessionId, sessionId), eq(Message.role, Role.compaction)))
+    .orderBy(asc(Message.sequence));
   return summaries;
 }
 export async function getMostRecentCompactionSummary(sessionId: string) {
   const summary = (
     await db
       .select()
-      .from(CompactionResults)
-      .where(eq(CompactionResults.sessionId, sessionId))
-      .orderBy(desc(CompactionResults.createdAt))
+      .from(Message)
+      .where(and(eq(Message.sessionId, sessionId), eq(Message.role, Role.compaction)))
+      .orderBy(desc(Message.sequence))
   )[0];
   return summary;
-}
-export async function getMessagesAfterTimestamp(sessionId: string, timestamp: number) {
-  const messages = await db
-    .select()
-    .from(Message)
-    .where(and(gte(Message.createdAt, timestamp), eq(Message.sessionId, sessionId)));
-  return messages;
 }
 
 export async function deleteSession(sessionId: string) {
   await db.delete(Session).where(eq(Session.id, sessionId));
 }
 
-export async function getMessagesForSummary(
-  sessionId: string,
-  compactionSummaryCreatedAt?: number,
-) {
+export async function getMessagesForSummary(sessionId: string, index: number = 0) {
   const cutoffMessage = await db
     .select({
-      createdAt: Message.createdAt,
+      sequence: Message.sequence,
     })
     .from(Message)
-    .where(eq(Message.sessionId, sessionId))
-    .orderBy(desc(Message.createdAt))
+    .where(and(eq(Message.sessionId, sessionId), gte(Message.sequence, index)))
+    .orderBy(desc(Message.sequence))
     .limit(1)
     .offset(49);
-  const cutoffTimestamp = cutoffMessage[0]?.createdAt;
+  const cutoffIndex = cutoffMessage[0]?.sequence;
 
-  if (cutoffTimestamp == null) {
+  if (cutoffIndex == null) {
     return [];
   }
-
-  if (compactionSummaryCreatedAt !== undefined) {
-    return db
-      .select()
-      .from(Message)
-      .where(
-        and(
-          eq(Message.sessionId, sessionId),
-          lt(Message.createdAt, cutoffTimestamp),
-          gt(Message.createdAt, compactionSummaryCreatedAt),
-          // eq(Message.isToolResult, false),
-        ),
-      );
-  }
-
   return db
     .select()
     .from(Message)
-    .where(
-      and(
-        eq(Message.sessionId, sessionId),
-        lt(Message.createdAt, cutoffTimestamp),
-        // eq(Message.isToolResult, false),
-      ),
-    );
+    .where(and(eq(Message.sessionId, sessionId), lt(Message.sequence, cutoffIndex)));
 }
