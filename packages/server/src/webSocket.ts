@@ -89,7 +89,7 @@ const websocketHandler = (c: Context, next: Next) => {
         const handlers: Record<string, (data: string) => void> = {};
         const onData = async (eventName: ContentType, data: string) => {
           const chunk: ServerStreamChunkSchemaType = {
-            role: eventName === ContentType.answer ? Role.assistant : Role.thought,
+            role: eventName,
             content: data,
           };
           const msg: WsCommonMessage = { eventType: WsEventTypes.message, payload: chunk };
@@ -122,7 +122,7 @@ const websocketHandler = (c: Context, next: Next) => {
           await writeLogs(LogType.server, cwd, sessionId, '[/message]: Aborting stream...');
         };
 
-        [ContentType.answer, ContentType.thought].forEach((eventName) => {
+        [ContentType.content, ContentType.reasoning_content].forEach((eventName) => {
           handlers[eventName] = (data: string) => {
             void onData(eventName, data);
           };
@@ -169,7 +169,7 @@ const websocketHandler = (c: Context, next: Next) => {
           }
           case WsEventTypes.message: {
             const agent = agentStore.get(sessionId);
-            agent?.message({ content: parse.content, role: parse.role });
+            agent?.message({ content: parse.content, role: Role.user });
             break;
           }
           case WsEventTypes.setting: {
