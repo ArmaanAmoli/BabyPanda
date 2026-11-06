@@ -159,6 +159,13 @@ function toChatMessage(entry: unknown): ChatMessage[] {
 				? Role.tool
 				: Role.user;
 
+		// Tool-call results are not part of the visible chat: during the run
+		// they are only shown in the bottom status bar, and on reload they are
+		// skipped entirely.
+		if (role === Role.tool) {
+			return [];
+		}
+
 		// Assistant messages carry their reasoning inline; render it as a
 		// separate entry so its styling matches the streamed reasoning chunks.
 		if (role === Role.assistant) {

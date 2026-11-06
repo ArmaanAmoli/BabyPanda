@@ -4,7 +4,7 @@ import { Role } from '@baby-panda/types';
 import { BabyPandaAgent } from '@agent/agent';
 import { readFileSync } from 'fs';
 import { getContent } from '@/packages/agent/utils/extractFromRawLLMRes';
-// import { cleanMessages } from '@agent/utils/cleanMessages';
+import { cleanMessages } from '@agent/utils/cleanMessages';
 // import { jsonrepair } from 'jsonrepair';
 
 import path from 'path';
@@ -48,9 +48,9 @@ export async function compaction(agent: BabyPandaAgent) {
     messages = await getMessagesForSummary(sessionId);
   }
 
-  const messages2: MessagesArray = messages.map((msg) => {
-    return JSON.parse(msg.content);
-  });
+  // The same normalization used in the agent's history read path: legacy rows
+  // may miss `role` or hold MCP-shaped content.
+  const messages2: MessagesArray = cleanMessages(messages);
 
   const content = `<messages>${compactionSummary?.content ?? ''} ${JSON.stringify(messages2)}</messages>`;
   // console.log(content);

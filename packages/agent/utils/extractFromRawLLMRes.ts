@@ -6,6 +6,7 @@ export interface RawReplyChunkFromLLM {
   tool_calls: AgentToolCallUncertain[];
   reasoning_content: string;
   content: string;
+  finish_reason: string | null;
 }
 
 export const getContent = (encoded: string, agent?: BabyPandaAgent): RawReplyChunkFromLLM => {
@@ -18,22 +19,23 @@ export const getContent = (encoded: string, agent?: BabyPandaAgent): RawReplyChu
         agent.emit('context-update', agent.getModelState());
       }
     }
-    if (!json.choices || json.choices.length === 0) {
-      throw new Error(`Received chunk with no choices`);
-    }
-    const delta = json.choices[0].delta ?? {};
+    // Usage-only terminator chunks arrive with an empty choices array, so the
+    // choices must be optional instead of fatal.
+    const firstChoice = json.choices?.[0] ?? null;
+    const delta = firstChoice?.delta ?? {};
     const tool_calls_raw = delta.tool_calls;
     const reasoning_content =
       delta.reasoning_content !== undefined ? `${delta.reasoning_content}` : '';
 
     const content = delta.content !== undefined ? `${delta.content}` : '';
+    const finish_reason = (firstChoice?.finish_reason ?? null) as string | null;
 
     let tool_calls: AgentToolCallUncertain[] = [];
     if (tool_calls_raw != undefined && Array.isArray(tool_calls_raw)) {
       tool_calls = [...tool_calls_raw] as AgentToolCallUncertain[];
     }
 
-    return { tool_calls, content, reasoning_content };
+    return { tool_calls, content, reasoning_content, finish_reason };
   } catch (err) {
     throw new Error(`Failed to parse SSE chunk: ${encoded}  ${err}`, { cause: err });
   }
@@ -69,5 +71,6 @@ export function appendResponse(
     reasoning_content: initial.reasoning_content + newChunk.reasoning_content,
     content: initial.content + newChunk.content,
     tool_calls: appendToolCallArray(initial.tool_calls, newChunk.tool_calls),
+    finish_reason: newChunk.finish_reason ?? initial.finish_reason,
   };
 }

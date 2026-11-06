@@ -1,6 +1,13 @@
 import { BabyPandaClient } from './client';
 // import type { Message, MessageAPI, MessageContent, UserPermission } from '@baby-panda/types';
-import type { UserPermission, MessagesArray, UserMessage, SystemMessage } from '@baby-panda/types';
+import type {
+  UserPermission,
+  MessagesArray,
+  UserMessage,
+  SystemMessage,
+  AssistantMessage,
+  ToolMessage,
+} from '@baby-panda/types';
 import {
   ContentType,
   LogType,
@@ -30,6 +37,7 @@ import {
   getContent,
   type RawReplyChunkFromLLM,
 } from '@/packages/agent/utils/extractFromRawLLMRes';
+import { cleanMessages, contentToText, normalizeToolCalls } from './utils/cleanMessages';
 // import { cleanMessages } from '@agent/utils/cleanMessages';
 // import { extractStreamingField } from '@agent/utils/StreamingContentExtractor';
 import { compaction } from '@agent/memory/services/compaction';
@@ -174,20 +182,9 @@ export class BabyPandaAgent extends EventEmitter {
   private async getMessageHistory(index: number = 0): Promise<MessagesArray> {
     const messageHistoryFromDb = await getMessages(this.sessionId, index);
     console.log('agent:MessageHistory');
-    return messageHistoryFromDb.map((msg) => {
-      /*
-      full reply JSON is stored as a string
-
-      {
-        role:
-        content:
-        reasoning_content:
-        tool_calls:
-      }
-      
-      */
-      return JSON.parse(msg.content);
-    }) as MessagesArray;
+    // Stored rows may miss `role` (or hold MCP-shaped content), so every entry
+    // is normalized before the history is used for LLM requests.
+    return cleanMessages(messageHistoryFromDb);
   }
 
   private async createContext(): Promise<MessagesArray> {
@@ -322,7 +319,7 @@ export class BabyPandaAgent extends EventEmitter {
         LogType.agent,
         this.projectDirectoryName,
         this.sessionId,
-        'received first chunk',
+        'response headers received, waiting for stream data...',
       );
       if (response.systemError) {
         await writeLogs(
@@ -336,7 +333,9 @@ export class BabyPandaAgent extends EventEmitter {
       }
 
       // let contentType: ContentType = ContentType.unidentified;
-      const toBreak: boolean = false;
+      // Set to true only when the model answered without any tool calls, so the
+      // loop keeps running across tool-call turns and ends after a final answer.
+      let toBreak = false;
 
       await new Promise((resolve, reject) => {
         // const parentContentPropertyRegex = /^.*"content":.*$/m;
@@ -352,40 +351,44 @@ export class BabyPandaAgent extends EventEmitter {
           content: '',
           reasoning_content: '',
           tool_calls: [],
+          finish_reason: null,
         };
         // const streamedReply = '';
         let buffer: string = '';
+        let finalized = false;
+        let firstChunkAt: number | null = null;
+        let lastChunkAt: number | null = null;
+        const streamStartedAt = Date.now();
 
         // const inParentContentProperty: boolean = false;
         // const lineBuffer: string[] = [];
         const regex = /^data:\s/;
 
         const processLine = (rawLine: string) => {
-          void writeLogs(LogType.mcp, this.projectDirectoryName, this.sessionId, `${rawLine}`);
           let line = rawLine.trim();
           if (!regex.test(line)) return;
           line = line.slice(6);
           if (line === '[DONE]') return;
-          const content = getContent(line, this);
+          let content: RawReplyChunkFromLLM;
+          try {
+            content = getContent(line, this);
+          } catch (err) {
+            // A malformed chunk must never kill the whole turn; log it and continue.
+            void writeLogs(
+              LogType.agent,
+              this.projectDirectoryName,
+              this.sessionId,
+              `[STREAM] skipping unparseable chunk: ${err instanceof Error ? err.message : String(err)}`,
+            );
+            return;
+          }
           fullReply = appendResponse(fullReply, content);
 
           if (content.content.length > 0) {
             this.emit(ContentType.content, content.content);
-            void writeLogs(
-              LogType.agent,
-              this.projectDirectoryName,
-              this.sessionId,
-              content.content,
-            );
           }
           if (content.reasoning_content.length > 0) {
             this.emit(ContentType.reasoning_content, content.reasoning_content);
-            void writeLogs(
-              LogType.agent,
-              this.projectDirectoryName,
-              this.sessionId,
-              content.reasoning_content,
-            );
           }
           // if (typeof content !== 'string') {
           //   toolCall = true;
@@ -435,6 +438,24 @@ export class BabyPandaAgent extends EventEmitter {
         };
 
         response.response?.data.on('data', (chunk: Buffer | string) => {
+          const now = Date.now();
+          if (firstChunkAt == null) {
+            firstChunkAt = now;
+            void writeLogs(
+              LogType.agent,
+              this.projectDirectoryName,
+              this.sessionId,
+              `[STREAM] first byte received ${now - streamStartedAt}ms after headers`,
+            );
+          } else if (lastChunkAt != null && now - lastChunkAt > 30_000) {
+            void writeLogs(
+              LogType.agent,
+              this.projectDirectoryName,
+              this.sessionId,
+              `[STREAM] stalled: ${Math.round((now - lastChunkAt) / 1000)}s between chunks`,
+            );
+          }
+          lastChunkAt = now;
           const encodedChunk = typeof chunk === 'string' ? chunk : chunk.toString('utf-8');
           buffer += encodedChunk;
           const lines = buffer.split('\n');
@@ -442,7 +463,25 @@ export class BabyPandaAgent extends EventEmitter {
 
           for (const line of lines) processLine(line);
         });
-        response.response?.data.on('end', async () => {
+        const finalizeStream = async (reason: string): Promise<void> => {
+          if (finalized) {
+            void writeLogs(
+              LogType.agent,
+              this.projectDirectoryName,
+              this.sessionId,
+              `[STREAM] ${reason}: stream was already finalized, ignoring duplicate finalize`,
+            );
+            return;
+          }
+          finalized = true;
+          // Release the socket so aborted connections do not linger.
+          response.response?.data.destroy?.();
+          await writeLogs(
+            LogType.agent,
+            this.projectDirectoryName,
+            this.sessionId,
+            `[STREAM] finalized by ${reason} after ${Date.now() - streamStartedAt}ms | finish_reason=${fullReply.finish_reason} | content=${fullReply.content.length} chars | reasoning=${fullReply.reasoning_content.length} chars | tool_calls=${fullReply.tool_calls.length}`,
+          );
           processLine(buffer);
           buffer = '';
           if (fullReply.tool_calls.length > 0) toolCall = true;
@@ -466,7 +505,13 @@ export class BabyPandaAgent extends EventEmitter {
             return;
           }
 
-          await createMessage(this.sessionId, JSON.stringify(fullReply), Role.assistant);
+          const assistantMessage: AssistantMessage = {
+            role: Role.assistant,
+            content: fullReply.content,
+            reasoning_content: fullReply.reasoning_content,
+            tool_calls: normalizeToolCalls(fullReply.tool_calls),
+          };
+          await createMessage(this.sessionId, JSON.stringify(assistantMessage), Role.assistant);
 
           // if (!toolCall) {
           /*
@@ -596,9 +641,27 @@ export class BabyPandaAgent extends EventEmitter {
                     name: rawcall.function.name,
                     arguments: JSON.parse(rawcall.function.arguments),
                   };
+                  await writeLogs(
+                    LogType.agent,
+                    this.projectDirectoryName,
+                    this.sessionId,
+                    `[TOOL CALL] id=${call.id} name=${call.name} arguments=${JSON.stringify(call.arguments)}`,
+                  );
                   if (call.name === 'shell') {
                     //execute nonShellToolCalls
                     if (MCPTools.length !== 0) {
+                      await writeLogs(
+                        LogType.agent,
+                        this.projectDirectoryName,
+                        this.sessionId,
+                        `[TOOL CALL BATCH] executing ${MCPTools.length} non-shell tool(s) before shell: ${JSON.stringify(
+                          MCPTools.map((tool) => ({
+                            id: tool.id,
+                            name: tool.name,
+                            arguments: tool.arguments,
+                          })),
+                        )}`,
+                      );
                       const nonShellToolResults = await this.mcpClient.callTools(MCPTools);
                       toolResults.push(...nonShellToolResults);
                       MCPTools.length = 0;
@@ -628,6 +691,13 @@ export class BabyPandaAgent extends EventEmitter {
                           // eslint-disable-next-line no-useless-assignment
                           let rawResult: ShellResult | null | SandboxResult = null;
 
+                          await writeLogs(
+                            LogType.agent,
+                            this.projectDirectoryName,
+                            this.sessionId,
+                            `[TOOL CALL EXECUTING] shell sandbox=${this.sandbox} command=${JSON.stringify(parsed.data.command)} timeout=${parsed.data.timeout ?? 'default'}ms`,
+                          );
+                          const shellStartedAt = Date.now();
                           if (this.sandbox) {
                             rawResult = await runSandboxed({
                               workspace: process.cwd(),
@@ -638,10 +708,16 @@ export class BabyPandaAgent extends EventEmitter {
                               LogType.agent,
                               this.projectDirectoryName,
                               this.sessionId,
-                              `IN SANDBOX EXECUTING ${JSON.stringify(rawResult)}`,
+                              `[TOOL RESULT] shell (sandboxed, ${Date.now() - shellStartedAt}ms) ${JSON.stringify(rawResult)}`,
                             );
                           } else {
                             rawResult = await shell(parsed.data.command, parsed.data.timeout!);
+                            await writeLogs(
+                              LogType.agent,
+                              this.projectDirectoryName,
+                              this.sessionId,
+                              `[TOOL RESULT] shell (${Date.now() - shellStartedAt}ms) ${JSON.stringify(rawResult)}`,
+                            );
                           }
 
                           const fullResult: ToolResult = {
@@ -666,6 +742,18 @@ export class BabyPandaAgent extends EventEmitter {
                 }
                 // If their is no shell tool call then just execute all
                 if (MCPTools.length !== 0) {
+                  await writeLogs(
+                    LogType.agent,
+                    this.projectDirectoryName,
+                    this.sessionId,
+                    `[TOOL CALL BATCH] executing ${MCPTools.length} non-shell tool(s): ${JSON.stringify(
+                      MCPTools.map((tool) => ({
+                        id: tool.id,
+                        name: tool.name,
+                        arguments: tool.arguments,
+                      })),
+                    )}`,
+                  );
                   const results = await this.mcpClient.callTools(MCPTools);
                   toolResults.push(...results);
                 }
@@ -675,7 +763,14 @@ export class BabyPandaAgent extends EventEmitter {
                 LogType.agent,
                 this.projectDirectoryName,
                 this.sessionId,
-                `[TOOL RESULT]: ${toolResults}`,
+                `[TOOL RESULT] all tool calls finished, ${toolResults.length} result(s): ${JSON.stringify(
+                  toolResults.map((result) => ({
+                    id: result.id,
+                    name: result.name,
+                    error: result.error ?? null,
+                    resultPreview: String(result.result).slice(0, 1000),
+                  })),
+                )}`,
               );
 
               let i = 0;
@@ -687,15 +782,12 @@ export class BabyPandaAgent extends EventEmitter {
                   try {
                     const toolResult = toolResults.at(i);
                     if (toolResult == undefined) continue;
-                    const content = JSON.stringify({
+                    const toolMessage: ToolMessage = {
+                      role: Role.tool,
                       tool_call_id: toolResult.id,
-                      content:
-                        toolResult.error ??
-                        (typeof toolResult.result === 'string'
-                          ? toolResult.result
-                          : JSON.stringify(toolResult.result)),
-                    });
-                    await createMessage(this.sessionId, content, Role.tool);
+                      content: toolResult.error ?? contentToText(toolResult.result),
+                    };
+                    await createMessage(this.sessionId, JSON.stringify(toolMessage), Role.tool);
                   } catch (err) {
                     throw new Error(`Unable to store tool message to database`, { cause: err });
                   }
@@ -713,16 +805,45 @@ export class BabyPandaAgent extends EventEmitter {
             }
           }
 
+          if (fullReply.tool_calls.length === 0) {
+            // The model produced a final answer without tool calls, so this
+            // turn is complete and the loop may end.
+            toBreak = true;
+          }
+
           resolve('single iteration of loop done.');
+        };
+        response.response?.data.on('end', async () => {
+          await finalizeStream('stream end reached');
         });
         response.response?.data.on('error', async (err: Error) => {
-          await writeLogs(
+          void writeLogs(
             LogType.agent,
             this.projectDirectoryName,
             this.sessionId,
             `Stream error: ${err}`,
           );
-          reject(err);
+          if (this.llmRawReplyIsEmpty(fullReply)) {
+            void writeLogs(
+              LogType.agent,
+              this.projectDirectoryName,
+              this.sessionId,
+              `[STREAM] no usable data was received before the stream error, failing this attempt | firstByte=${firstChunkAt != null ? `${firstChunkAt - streamStartedAt}ms after headers` : 'n/a'}`,
+            );
+            reject(err);
+            return;
+          }
+          // NVIDIA closes the stream without sending `data: [DONE]`, which Node
+          // surfaces as `Error: aborted`. If deltas were already received the
+          // reply must be salvaged, persisted and its tool calls executed,
+          // instead of discarding everything and re-sending the request.
+          void writeLogs(
+            LogType.agent,
+            this.projectDirectoryName,
+            this.sessionId,
+            `[STREAM] salvaging the already received reply despite the stream error: ${err}`,
+          );
+          await finalizeStream(`stream error salvaged [${err}]`);
         });
       }).catch(async (err) => {
         await writeLogs(
