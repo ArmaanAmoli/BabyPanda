@@ -17,8 +17,19 @@ export enum ReasoningEffort {
 
 export interface MessageRegular {
   role: Role;
-  content: string;
+  content: string | null;
   sessionId: string;
+  tool_calls?: ToolCall[];
+  tool_call_id?: string;
+}
+
+export interface ToolCall {
+  id: string;
+  type: 'function';
+  function: {
+    name: string;
+    arguments: string;
+  };
 }
 
 export type UserMessage = Omit<MessageRegular, 'role'> & { role: Role.user };
@@ -29,7 +40,7 @@ export type AssistantMessage = Omit<MessageRegular, 'role'> & {
   role: Role.assistant;
 };
 export type ToolMessage = Omit<MessageRegular, 'role'> & {
-  role: Role.user;
+  role: Role.tool;
   tool_call_id: string;
 };
 export type MessageAPI = Omit<MessageRegular, 'sessionId'>;
@@ -48,16 +59,16 @@ export enum ContentType {
 export const MessageContentSchema = z.object({
   role: z.string(),
   content: z.object({
-    tool_call: z
-      .array(
-        z.object({
-          id: z.string(),
-          type: z.string(),
-          function: z.string(),
-          arguments: z.record(z.string(), z.unknown()),
-        }),
-      )
-      .optional(),
+    /* tool_call: z
+       .array(
+         z.object({
+           id: z.string(),
+           type: z.string(),
+           function: z.string(),
+           arguments: z.record(z.string(), z.unknown()),
+         }),
+       )
+       .optional(),*/
     thought: z.string().optional(),
     answer: z.string().optional(),
   }),
