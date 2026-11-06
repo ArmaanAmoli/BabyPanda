@@ -5,6 +5,7 @@ import type { ReasoningEffort } from '@baby-panda/types';
 import { LogType } from '@baby-panda/types';
 import { getProjectName, writeLogs } from '@baby-panda/utils';
 import type { UrlApi } from './types'; // verbatimModuleSyntax
+import { tools } from './config/tools';
 
 interface ChatCompletionArgs {
   response?: AxiosResponse;
@@ -54,6 +55,7 @@ class BabyPandaClient {
       data: {
         model,
         messages,
+        tools,
         temperature: 0.5,
         top_p: 1,
         max_tokens: 4096,

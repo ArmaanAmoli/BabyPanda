@@ -25,7 +25,7 @@ import { extractFirstJSON } from './utils/FirstJsonExtractor';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { Models, ProvidersEnum } from '@agent/config/models';
-import { getContent } from '@agent/utils/getContent';
+import { appendToolCallArray, getContent } from '@/packages/agent/utils/extractFromRawLLMRes';
 import { cleanMessages } from '@agent/utils/cleanMessages';
 import { extractStreamingField } from '@agent/utils/StreamingContentExtractor';
 import { compaction } from '@agent/memory/services/compaction';
@@ -36,6 +36,7 @@ import { shell } from './mcp/tools/Shell/shell';
 import type { ShellResult } from './mcp/tools/Shell/shell';
 import { runSandboxed, type SandboxResult } from './mcp/tools/Shell/sandbox';
 import { jsonrepair } from 'jsonrepair';
+import { AgentToolCallSchema, type AgentToolCall, type AgentToolCallUncertain } from './config/tools';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -48,36 +49,36 @@ function parseMessageContent(rawReply: string): MessageContent {
   const parsed = JSON.parse(jsonrepair(rawReply)) as {
     role?: unknown;
     content?: {
-      tool_call?: Array<{
-        id?: unknown;
-        type?: unknown;
-        function?: unknown;
-        arguments?: unknown;
-      }>;
+      // tool_call?: Array<{
+      //   id?: unknown;
+      //   type?: unknown;
+      //   function?: unknown;
+      //   arguments?: unknown;
+      // }>;
       thought?: unknown;
       answer?: unknown;
     };
   };
 
-  if (Array.isArray(parsed.content?.tool_call)) {
-    parsed.content.tool_call = parsed.content.tool_call.map((call) => {
-      let args = call.arguments;
-      if (typeof args === 'string') {
-        args = JSON.parse(jsonrepair(args));
-      }
+  // if (Array.isArray(parsed.content?.tool_call)) {
+  //   parsed.content.tool_call = parsed.content.tool_call.map((call) => {
+  //     let args = call.arguments;
+  //     if (typeof args === 'string') {
+  //       args = JSON.parse(jsonrepair(args));
+  //     }
 
-      let functionName = call.function;
-      if (functionName && typeof functionName === 'object' && 'name' in functionName) {
-        functionName = functionName.name;
-      }
+  //     let functionName = call.function;
+  //     if (functionName && typeof functionName === 'object' && 'name' in functionName) {
+  //       functionName = functionName.name;
+  //     }
 
-      return {
-        ...call,
-        function: functionName,
-        arguments: args,
-      };
-    });
-  }
+  //     return {
+  //       ...call,
+  //       function: functionName,
+  //       arguments: args,
+  //     };
+  //   });
+  // }
 
   return MessageContentSchema.parse(parsed);
 }
@@ -181,12 +182,12 @@ export class BabyPandaAgent extends EventEmitter {
       if (memory) {
         return [
           this.systemInstructions,
+          { role: Role.system, content: content! },
           { role: Role.user, content: `[MEMORY]: ${memory}` },
-          { role: Role.user, content: content! },
           ...messageHistory,
         ];
       }
-      return [this.systemInstructions, { role: Role.user, content: content! }, ...messageHistory];
+      return [this.systemInstructions, { role: Role.system, content: content! }, ...messageHistory];
     } else {
       const messageHistory = await this.getMessageHistory();
       return [this.systemInstructions, ...messageHistory];
@@ -214,8 +215,8 @@ export class BabyPandaAgent extends EventEmitter {
   }
 
   private async loop() {
-    let finalBreak: boolean = false;
-    while (finalBreak === false) {
+    // let finalBreak: boolean = false;
+    while (true) {
       console.log('in the loop');
       this.isRunning = true;
 
@@ -237,7 +238,7 @@ export class BabyPandaAgent extends EventEmitter {
       ) {
         if (this.userMessageQueue.length >= 1) {
           for (const msg of this.userMessageQueue) {
-            await createMessage(this.sessionId, msg.content, Role.user);
+            await createMessage(this.sessionId, msg.content ?? '', Role.user);
             await writeLogs(
               LogType.agent,
               this.projectDirectoryName,
@@ -320,72 +321,70 @@ export class BabyPandaAgent extends EventEmitter {
         const parentContentPropertyRegex = /^.*"content":.*$/m;
         const thoughtRegex = /^.*"thought":.*$/m;
         const answerRegex = /^.*"answer":.*$/m;
-        const toolCallRegex = /^.*"tool_call":.*$/m;
         /*
         While contentType is unidentified we want to save the data in the full Reply
         we will use the thought , answer , toolCall Regex to identify the stream only in case of toolCall we will not produce event
         */
         let toolCall = false;
+        let responsePersisted = false;
         let fullReply = '';
         let streamedReply = '';
         let buffer: string = '';
+        const toolCalls: AgentToolCallUncertain[] = [];
 
         let inParentContentProperty: boolean = false;
         const lineBuffer: string[] = [];
         const regex = /^data:\s/;
 
         const processLine = (rawLine: string) => {
+          void writeLogs(LogType.mcp , this.projectDirectoryName , this.sessionId , `${rawLine}`)
           let line = rawLine.trim();
           if (!regex.test(line)) return;
           line = line.slice(6);
           if (line === '[DONE]') return;
           const content = getContent(line, this);
-          fullReply += content;
-          if (!inParentContentProperty && parentContentPropertyRegex.test(fullReply)) {
-            inParentContentProperty = true;
-          }
-
-          if (inParentContentProperty) {
-            if (contentType === ContentType.unidentified) {
-              if (toolCallRegex.test(fullReply)) {
-                toolCall = true;
-                contentType = ContentType.tool_call;
-                void writeLogs(
-                  LogType.agent,
-                  this.projectDirectoryName,
-                  this.sessionId,
-                  'received a tool called',
-                );
-              } else if (answerRegex.test(fullReply)) {
-                contentType = ContentType.answer;
-                void writeLogs(
-                  LogType.agent,
-                  this.projectDirectoryName,
-                  this.sessionId,
-                  'received an answer',
-                );
-                toBreak = true;
-              } else if (thoughtRegex.test(fullReply)) {
-                contentType = ContentType.thought;
-                void writeLogs(
-                  LogType.agent,
-                  this.projectDirectoryName,
-                  this.sessionId,
-                  'received a thought',
-                );
-                this.messageQueue.push(MessageQueueEvents.lastReplyFromLLMWasThought);
-              }
-              lineBuffer.push(content);
+          if (typeof content !== 'string') {
+            toolCall = true;
+            appendToolCallArray(toolCalls, content);
+          } else {
+            fullReply += content;
+            if (!inParentContentProperty && parentContentPropertyRegex.test(fullReply)) {
+              inParentContentProperty = true;
             }
-            if (
-              !toolCall &&
-              (contentType === ContentType.answer || contentType === ContentType.thought)
-            ) {
-              const field = contentType === ContentType.answer ? 'answer' : 'thought';
-              const visibleReply = extractStreamingField(fullReply, field);
-              if (visibleReply.length > streamedReply.length) {
-                this.emit(contentType, visibleReply.slice(streamedReply.length));
-                streamedReply = visibleReply;
+
+            if (inParentContentProperty) {
+              if (contentType === ContentType.unidentified) {
+                if (answerRegex.test(fullReply)) {
+                  contentType = ContentType.answer;
+                  void writeLogs(
+                    LogType.agent,
+                    this.projectDirectoryName,
+                    this.sessionId,
+                    'received an answer',
+                  );
+                  toBreak = true;
+                } else if (thoughtRegex.test(fullReply)) {
+                  contentType = ContentType.thought;
+                  void writeLogs(
+                    LogType.agent,
+                    this.projectDirectoryName,
+                    this.sessionId,
+                    'received a thought',
+                  );
+                  this.messageQueue.push(MessageQueueEvents.lastReplyFromLLMWasThought);
+                }
+                lineBuffer.push(content);
+              }
+              if (
+                !toolCall &&
+                (contentType === ContentType.answer || contentType === ContentType.thought)
+              ) {
+                const field = contentType === ContentType.answer ? 'answer' : 'thought';
+                const visibleReply = extractStreamingField(fullReply, field);
+                if (visibleReply.length > streamedReply.length) {
+                  this.emit(contentType, visibleReply.slice(streamedReply.length));
+                  streamedReply = visibleReply;
+                }
               }
             }
           }
@@ -408,110 +407,158 @@ export class BabyPandaAgent extends EventEmitter {
             this.sessionId,
             `[Context Window Used]: ${this.contextWindowUsed}`,
           );
-          fullReply = extractFirstJSON(fullReply) ?? '';
-          if (!fullReply) {
+
+          if (!toolCall) {
+            const extractedReply = extractFirstJSON(fullReply);
+            if (!extractedReply && fullReply.trim().length > 0) {
+              this.emit(ContentType.answer, fullReply);
+              await createMessage(this.sessionId, fullReply, Role.assistant, false);
+              this.numberOfMessages += 1;
+              responsePersisted = true;
+              toBreak = true;
+              await writeLogs(
+                LogType.agent,
+                this.projectDirectoryName,
+                this.sessionId,
+                `[REPLY]: ${fullReply}`,
+              );
+              resolve('single iteration of loop done.');
+              return;
+            }
+            fullReply = extractedReply ?? '';
+            if (!fullReply && toolCalls.length === 0) {
+              await writeLogs(
+                LogType.agent,
+                this.projectDirectoryName,
+                this.sessionId,
+                'Reply received was empty retrying...',
+              );
+              this.messageQueue.push(MessageQueueEvents.lastReplyFromLLMWasEmpty);
+              toBreak = false;
+              resolve('empty reply');
+              return;
+            }
+
+            let parsedReply: MessageContent;
+            try {
+              parsedReply = parseMessageContent(fullReply);
+            } catch (error) {
+              reject(new Error(`Unable to parse model response: ${String(error)}`));
+              return;
+            }
+            const parsedContent = parsedReply.content;
+
+            if (contentType === ContentType.unidentified) {
+              try {
+                if (typeof parsedContent.answer === 'string') {
+                  contentType = ContentType.answer;
+                  toBreak = true;
+                } else if (typeof parsedContent.thought === 'string') {
+                  contentType = ContentType.thought;
+                  this.messageQueue.push(MessageQueueEvents.lastReplyFromLLMWasThought);
+                  if (streamedReply.length === 0) {
+                    this.emit(ContentType.thought, parsedContent.thought);
+                  }
+                }
+              } catch (err) {
+                reject(new Error(`Unable to classify model response: ${String(err)}`));
+                return;
+              }
+            }
+            else if (contentType === ContentType.thought && parsedContent.thought != undefined) {
+              if (!this.messageQueue.includes(MessageQueueEvents.lastReplyFromLLMWasThought)) {
+                this.messageQueue.push(MessageQueueEvents.lastReplyFromLLMWasThought);
+              }
+              await createMessage(this.sessionId, parsedContent.thought, Role.thought, false);
+              responsePersisted = true;
+            }
+            else if(contentType === ContentType.answer && parsedContent.answer !== undefined){
+              await createMessage(this.sessionId, parsedContent.answer, Role.assistant, false);
+              responsePersisted = true;
+            }
             await writeLogs(
               LogType.agent,
               this.projectDirectoryName,
               this.sessionId,
-              'Reply received was empty retrying...',
+              `[REPLY]: ${fullReply}`,
             );
-            this.messageQueue.push(MessageQueueEvents.lastReplyFromLLMWasEmpty);
-            toBreak = false;
-            resolve('empty reply');
-            return;
-          }
-          if (contentType === ContentType.unidentified) {
+          } else {
             try {
-              const parsedReply = parseMessageContent(fullReply);
-              const parsedContent = parsedReply.content;
-              if (parsedContent.tool_call) {
-                toolCall = true;
-                contentType = ContentType.tool_call;
-              } else if (typeof parsedContent.answer === 'string') {
-                contentType = ContentType.answer;
-                toBreak = true;
-              } else if (typeof parsedContent.thought === 'string') {
-                contentType = ContentType.thought;
-                this.messageQueue.push(MessageQueueEvents.lastReplyFromLLMWasThought);
-                if (streamedReply.length === 0) {
-                  this.emit(ContentType.thought, parsedContent.thought);
-                }
-              }
-            } catch (err) {
-              reject(new Error(`Unable to classify model response: ${String(err)}`));
-              return;
-            }
-          } else if (contentType === ContentType.thought) {
-            if (!this.messageQueue.includes(MessageQueueEvents.lastReplyFromLLMWasThought)) {
-              this.messageQueue.push(MessageQueueEvents.lastReplyFromLLMWasThought);
-            }
-          }
-          await writeLogs(
-            LogType.agent,
-            this.projectDirectoryName,
-            this.sessionId,
-            `[REPLY]: ${fullReply}`,
-          );
-          try {
-            await createMessage(this.sessionId, fullReply, Role.assistant, toolCall);
-            this.numberOfMessages += 1;
-          } catch (err) {
-            reject(new Error(`Unable to store assistant message to database: ${err}`));
-          }
-          if (toolCall) {
-            try {
-              let replyJson: MessageContent | undefined;
-              try {
-                replyJson = parseMessageContent(fullReply);
-              } catch (err) {
-                reject(new Error(`Unable to parse model tool call: ${String(err)}`));
+              // try {
+              //   replyJson = parseMessageContent(fullReply);
+              // } catch (err) {
+              //   reject(new Error(`Unable to parse model tool call: ${String(err)}`));
 
-                await createMessage(
-                  this.sessionId,
-                  `Their is an issue in the reply structure that you gave ${err}`,
-                  Role.system,
-                  false,
-                );
-                return;
-              }
-              if (replyJson) {
-                const toolCalls = replyJson.content.tool_call;
+              //   await createMessage(
+              //     this.sessionId,
+              //     `Their is an issue in the reply structure that you gave ${err}`,
+              //     Role.system,
+              //     false,
+              //   );
+              //   return;
+              // }
+              if (toolCalls.length > 0) {
+                // const toolCalls = replyJson.content.tool_call;
                 if (!toolCalls) {
                   resolve('no tool call');
                   return;
                 }
-                const toolCallsT: Tool[] = toolCalls.map((tool) => {
-                  return {
-                    id: tool.id,
-                    name: tool.function,
-                    arguments: tool.arguments,
-                  };
+                const toolCallsT: AgentToolCall[] = toolCalls.filter(Boolean).map((tool) => {
+                  const parsedTool = AgentToolCallSchema.safeParse(tool);
+                  if(parsedTool.success){
+                    return parsedTool.data;
+                  }
+                  else{
+                    throw parsedTool.error;
+                  }
                 });
+
+                await createMessage(
+                  this.sessionId,
+                  JSON.stringify({
+                    content: null,
+                    tool_calls: toolCallsT.map((tool) => ({
+                      id: tool.id,
+                      type: tool.type,
+                      function: tool.function,
+                    })),
+                  }),
+                  Role.assistant,
+                  false,
+                );
+                this.numberOfMessages += 1;
+                responsePersisted = true;
+
                 const visibleToolCalls = toolCallsT
-                  .filter((tool) => tool.name !== 'write' && tool.name !== 'edit')
+                  .filter((tool) => tool.function.name !== 'write' && tool.function.name !== 'edit')
                   .map((tool) => ({
                     sessionId: this.sessionId,
                     content: JSON.stringify({
-                      name: tool.name,
-                      argument: tool.arguments,
+                      name: tool.function.name,
+                      argument: tool.function.arguments,
                     }),
                     role: Role.tool,
                   }));
                 if (visibleToolCalls.length > 0) {
                   this.emit(ContentType.tool_call, visibleToolCalls);
                 }
+
                 const toolResults: ToolResult[] = [];
 
                 const executeToolCall = async () => {
-                  const tools: Tool[] = [];
-                  for (const call of toolCallsT) {
+                  const MCPTools: Tool[] = [];
+                  for (const rawcall of toolCallsT) {
+                    const call:Tool = {
+                      id:rawcall.id,
+                      name:rawcall.function.name,
+                      arguments: JSON.parse(rawcall.function.arguments)
+                    }
                     if (call.name === 'shell') {
                       //execute nonShellToolCalls
-                      if (tools.length !== 0) {
-                        const nonShellToolResults = await this.mcpClient.callTools(tools);
+                      if (MCPTools.length !== 0) {
+                        const nonShellToolResults = await this.mcpClient.callTools(MCPTools);
                         toolResults.push(...nonShellToolResults);
-                        tools.length = 0;
+                        MCPTools.length = 0;
                       } else {
                         const parsed = ShellCallSchema.safeParse(call.arguments);
                         if (!parsed.success) {
@@ -572,12 +619,12 @@ export class BabyPandaAgent extends EventEmitter {
                         }
                       }
                     } else {
-                      tools.push(call);
+                      MCPTools.push(call);
                     }
                   }
                   // If their is no shell tool call then just execute all
-                  if (tools.length !== 0) {
-                    const results = await this.mcpClient.callTools(tools);
+                  if (MCPTools.length !== 0) {
+                    const results = await this.mcpClient.callTools(MCPTools);
                     toolResults.push(...results);
                   }
                 };
@@ -599,11 +646,14 @@ export class BabyPandaAgent extends EventEmitter {
                       const toolResult = toolResults.at(i);
                       if (toolResult == undefined) continue;
                       const content = JSON.stringify({
-                        name: toolResult.name,
-                        argument: toolResult.arguments,
-                        result: toolResult.result,
+                        tool_call_id: toolResult.id,
+                        content:
+                          toolResult.error ??
+                          (typeof toolResult.result === 'string'
+                            ? toolResult.result
+                            : JSON.stringify(toolResult.result)),
                       });
-                      await createMessage(this.sessionId, content, Role.user, true);
+                      await createMessage(this.sessionId, content, Role.tool, true);
                       this.numberOfMessages += 1;
                     } catch (err) {
                       throw new Error(`Unable to store tool message to database`, { cause: err });
@@ -622,9 +672,16 @@ export class BabyPandaAgent extends EventEmitter {
               reject(fullErrMessage);
             }
           }
-          // toolCall = false;
-          // fullReply = '';
-          // this.emit('end', contentType);
+
+          if (!responsePersisted) {
+            try {
+              await createMessage(this.sessionId, fullReply, Role.assistant, toolCall);
+              this.numberOfMessages += 1;
+            } catch (err) {
+              reject(new Error(`Unable to store assistant message to database: ${err}`));
+            }
+          }
+
           resolve('single iteration of loop done.');
         });
         response.response?.data.on('error', async (err: Error) => {
@@ -651,8 +708,7 @@ export class BabyPandaAgent extends EventEmitter {
         this.isRunning = false;
         // this.emit('abort');
         await writeLogs(LogType.agent, this.projectDirectoryName, this.sessionId, `Loop has ended`);
-        // eslint-disable-next-line no-useless-assignment
-        finalBreak = true;
+        // finalBreak = true;
         this.emit('end');
         break;
       }
