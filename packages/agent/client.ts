@@ -1,7 +1,7 @@
 import axios, { type AxiosResponse } from 'axios';
 import { setTimeout } from 'node:timers/promises';
-import type { Message } from '@baby-panda/types';
-import type { ReasoningEffort } from '@baby-panda/types';
+// import type { Message } from '@baby-panda/types';
+import type { MessagesArray, ReasoningEffort } from '@baby-panda/types';
 import { LogType } from '@baby-panda/types';
 import { getProjectName, writeLogs } from '@baby-panda/utils';
 import type { UrlApi } from './types'; // verbatimModuleSyntax
@@ -34,7 +34,7 @@ class BabyPandaClient {
     this.url = url;
   }
   private async _attempt(
-    messages: Message[],
+    messages: MessagesArray,
     model: string,
     reasoningEffort: ReasoningEffort,
     isRetrying: boolean,
@@ -51,19 +51,20 @@ class BabyPandaClient {
         'content-type': 'application/json',
         authorization: this.token,
       },
-      timeout: 120_000,
+      timeout: 240_000,
       data: {
         model,
         messages,
         tools,
         temperature: 0.5,
         top_p: 1,
-        max_tokens: 4096,
+        max_tokens: 8192,
         frequency_penalty: 0,
         presence_penalty: 0,
         reasoning_effort: reasoningEffort,
         stream: true,
         stream_options: { include_usage: true },
+        tool_choice: 'auto',
       },
     };
     try {
@@ -129,7 +130,7 @@ class BabyPandaClient {
   }
 
   async chatCompletion(
-    messages: Message[],
+    messages: MessagesArray,
     model: string,
     reasoningEffort: ReasoningEffort,
   ): Promise<ChatCompletionArgs> {

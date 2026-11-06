@@ -36,15 +36,15 @@ export const AgentToolCallSchema = z.object({
 
 export type AgentToolCall = z.infer<typeof AgentToolCallSchema>;
 
-export interface AgentToolCallMessage {
-  role: 'assistant';
-  content: string | null;
-  tool_calls: AgentToolCall[];
-}
+// export interface AgentToolCallMessage {
+//   role: 'assistant';
+//   content: string | null;
+//   tool_calls: AgentToolCall[];
+// }
 
-export interface AgentToolCallResponse {
-  message: AgentToolCallMessage;
-}
+// export interface AgentToolCallResponse {
+//   message: AgentToolCallMessage;
+// }
 
 export const tools: ModelTool[] = [
   {

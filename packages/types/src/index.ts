@@ -1,11 +1,10 @@
 import z from 'zod';
 export enum Role {
   system = 'system',
-  context = 'context',
   user = 'user',
   assistant = 'assistant',
   tool = 'tool',
-  thought = 'thought',
+  compaction = 'compaction',
 }
 
 export enum ReasoningEffort {
@@ -15,13 +14,13 @@ export enum ReasoningEffort {
   high = 'high',
 }
 
-export interface MessageRegular {
-  role: Role;
-  content: string | null;
-  sessionId: string;
-  tool_calls?: ToolCall[];
-  tool_call_id?: string;
-}
+// export interface MessageRegular {
+//   role: Role;
+//   content: string | null;
+//   sessionId: string;
+//   tool_calls?: ToolCall[];
+//   tool_call_id?: string;
+// }
 
 export interface ToolCall {
   id: string;
@@ -32,68 +31,108 @@ export interface ToolCall {
   };
 }
 
-export type UserMessage = Omit<MessageRegular, 'role'> & { role: Role.user };
-export type SystemMessage = Omit<MessageRegular, 'role'> & {
+export interface UserMessage {
+  role: Role.user;
+  content: string;
+}
+
+export interface SystemMessage {
   role: Role.system;
-};
-export type AssistantMessage = Omit<MessageRegular, 'role'> & {
+  content: string;
+}
+
+export interface AssistantMessage {
   role: Role.assistant;
-};
-export type ToolMessage = Omit<MessageRegular, 'role'> & {
+  reasoning_content: string;
+  content: string;
+  tool_calls: ToolCall[];
+}
+
+export interface ToolMessage {
   role: Role.tool;
   tool_call_id: string;
+  content: string;
+}
+
+export interface CompactionMessage {
+  role: Role.compaction;
+  content: string;
+}
+
+export type MessagesArray = (
+  AssistantMessage | UserMessage | ToolMessage | CompactionMessage | SystemMessage
+)[];
+
+export type DBMessage = {
+  id: string;
+  sessionId: string;
+  content: string;
+  role: Role;
+  sequence: number;
 };
-export type MessageAPI = Omit<MessageRegular, 'sessionId'>;
-export type Message =
-  UserMessage | SystemMessage | AssistantMessage | ToolMessage | MessageRegular | MessageAPI; // universal Message Type
-export type MessageDB = Message & { createdAt: Date };
+
+// export type UserMessage = Omit<MessageRegular, 'role'> & { role: Role.user };
+// export type SystemMessage = Omit<MessageRegular, 'role'> & {
+//   role: Role.system;
+// };
+// export type AssistantMessage = Omit<MessageRegular, 'role'> & {
+//   role: Role.assistant;
+// };
+// export type ToolMessage = Omit<MessageRegular, 'role'> & {
+//   role: Role.tool;
+//   tool_call_id: string;
+// };
+// export type MessageAPI = Omit<MessageRegular, 'sessionId'>;
+// export type Message =
+//   UserMessage | SystemMessage | AssistantMessage | ToolMessage | MessageRegular | MessageAPI; // universal Message Type
+// export type MessageDB = Message & { createdAt: Date };
 
 export enum ContentType {
-  answer = 'answer',
-  thought = 'thought',
+  content = 'content',
+  reasoning_content = 'reasoning_content',
   tool_call = 'tool_call',
   unidentified = 'unidentified',
   permission = 'permission',
 }
 
-export const MessageContentSchema = z.object({
-  role: z.string(),
-  content: z.object({
-    /* tool_call: z
-       .array(
-         z.object({
-           id: z.string(),
-           type: z.string(),
-           function: z.string(),
-           arguments: z.record(z.string(), z.unknown()),
-         }),
-       )
-       .optional(),*/
-    thought: z.string().optional(),
-    answer: z.string().optional(),
-  }),
-});
+// export const MessageContentSchema = z.object({
+//   role: z.string(),
+//   content: z.object({
+//     /* tool_call: z
+//        .array(
+//          z.object({
+//            id: z.string(),
+//            type: z.string(),
+//            function: z.string(),
+//            arguments: z.record(z.string(), z.unknown()),
+//          }),
+//        )
+//        .optional(),*/
+//     thought: z.string().optional(),
+//     answer: z.string().optional(),
+//   }),
+// });
 
-export type MessageContent = z.infer<typeof MessageContentSchema>;
+// export type MessageContent = z.infer<typeof MessageContentSchema>;
 
-export const ToolRawResultSchema = z.object({
-  id: z.string(),
-  name: z.string(),
-  arguments: z.record(z.string(), z.unknown()),
-  result: z.unknown().optional(),
-  error: z.string().optional(),
-});
+// export const ToolRawResultSchema = z.object({
+//   id: z.string(),
+//   name: z.string(),
+//   arguments: z.record(z.string(), z.unknown()),
+//   result: z.unknown().optional(),
+//   error: z.string().optional(),
+// });
 
-export const CleanedMessageSchema = z.object({
-  role: z.enum(Role),
-  content: z.string(),
-  createdAt: z.number().nullable(),
-  // isThought: z.boolean().default(false).optional()
-});
+// export const CleanedMessageSchema = z.object({
+//   role: z.enum(Role),
+//   content: z.string(),
+//   createdAt: z.number().nullable(),
+//   // isThought: z.boolean().default(false).optional()
+// });
 
-export const CleanedMessageArraySchema = z.array(CleanedMessageSchema);
+// export const CleanedMessageArraySchema = z.array(CleanedMessageSchema);
 
-export type CleanedMessage = z.infer<typeof CleanedMessageSchema>;
+// export type CleanedMessage = z.infer<typeof CleanedMessageSchema>;
 
 export enum LogType {
   agent = 'agent.log',
@@ -104,7 +143,7 @@ export enum LogType {
 }
 
 export const ServerStreamChunkSchema = z.object({
-  role: z.enum(Role),
+  role: z.enum(ContentType),
   content: z.string(),
 });
 

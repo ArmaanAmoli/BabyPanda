@@ -1,10 +1,10 @@
-import type { Message } from '@baby-panda/types';
+import type { MessagesArray, SystemMessage, UserMessage } from '@baby-panda/types';
 import { Role } from '@baby-panda/types';
 // import { MessageContentSchema } from '@baby-panda/types';
 import { BabyPandaAgent } from '@agent/agent';
 import { readFileSync } from 'fs';
 import { getContent } from '@/packages/agent/utils/extractFromRawLLMRes';
-import { cleanMessages } from '@agent/utils/cleanMessages';
+// import { cleanMessages } from '@agent/utils/cleanMessages';
 // import { jsonrepair } from 'jsonrepair';
 
 import path from 'path';
@@ -41,23 +41,25 @@ export async function compaction(agent: BabyPandaAgent) {
   // const history =
   // last compaction summary ka timestamp , 20th most recent message timestamp
   const compactionSummary = await getMostRecentCompactionSummary(agent.sessionId);
-  if (compactionSummary !== undefined && compactionSummary.createdAt != null) {
-    const csCreatedAt = compactionSummary.createdAt;
-    messages = await getMessagesForSummary(sessionId, csCreatedAt);
+  if (compactionSummary !== undefined) {
+    const lastCompactionSummaryIndex = compactionSummary.sequence;
+    messages = await getMessagesForSummary(sessionId, lastCompactionSummaryIndex);
   } else {
     messages = await getMessagesForSummary(sessionId);
   }
 
-  const messages2 = cleanMessages(messages);
+  const messages2: MessagesArray = messages.map((msg) => {
+    return JSON.parse(msg.content);
+  });
 
   const content = `<messages>${compactionSummary?.content ?? ''} ${JSON.stringify(messages2)}</messages>`;
   // console.log(content);
   const systemInstructions = readFileSync(compactionInstructionFilePath).toString();
-  const systemMessage: Message = {
+  const systemMessage: SystemMessage = {
     role: Role.system,
     content: systemInstructions,
   };
-  const transcript: Message = { role: Role.user, content: content };
+  const transcript: UserMessage = { role: Role.user, content: content };
   // console.log(systemInstructions, transcript);
   const response = await agent.client.chatCompletion(
     [systemMessage, transcript],
