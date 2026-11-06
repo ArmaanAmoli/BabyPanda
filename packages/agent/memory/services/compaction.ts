@@ -3,7 +3,7 @@ import { Role } from '@baby-panda/types';
 // import { MessageContentSchema } from '@baby-panda/types';
 import { BabyPandaAgent } from '@agent/agent';
 import { readFileSync } from 'fs';
-import { getContent } from '@agent/utils/getContent';
+import { getContent } from '@/packages/agent/utils/extractFromRawLLMRes';
 import { cleanMessages } from '@agent/utils/cleanMessages';
 // import { jsonrepair } from 'jsonrepair';
 
@@ -86,7 +86,9 @@ export async function compaction(agent: BabyPandaAgent) {
               line = line.slice(6);
               if (line === '[DONE]') continue;
               const content = getContent(line);
-              fullReply += content;
+              if (typeof content === 'string') {
+                fullReply += content;
+              }
             }
           });
           response.response?.data.on('end', () => {
