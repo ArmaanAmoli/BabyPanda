@@ -1,11 +1,11 @@
-import {Role} from '@baby-panda/types';
-import type {CleanedMessage} from '@baby-panda/types';
+import {ContentType} from '@baby-panda/types';
+import type {ChatMessage} from '../types';
 
 /**
- * Returns consecutive thought messages as one selectable group.
+ * Returns consecutive reasoning_content messages as one selectable group.
  * Every other message remains its own group.
  */
-export function getMessageGroups(messages: readonly CleanedMessage[]) {
+export function getMessageGroups(messages: readonly ChatMessage[]) {
 	const groups: number[][] = [];
 
 	for (const [index, message] of messages.entries()) {
@@ -14,8 +14,8 @@ export function getMessageGroups(messages: readonly CleanedMessage[]) {
 			previous == null ? undefined : messages[previous[0]];
 
 		if (
-			message.role === Role.thought &&
-			previousMessage?.role === Role.thought
+			message.role === ContentType.reasoning_content &&
+			previousMessage?.role === ContentType.reasoning_content
 		) {
 			previous?.push(index);
 		} else {

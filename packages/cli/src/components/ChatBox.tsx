@@ -5,21 +5,21 @@ import {useViewPortMessage} from '../hooks/useViewPortMessage';
 import {useTerminal} from '../hooks/useTerminal';
 import {PADDING_APP} from '../app';
 import {useVisibleMessages} from '../hooks/useVisibleMessages';
-import {Role} from '@baby-panda/types';
+import {ContentType, Role} from '@baby-panda/types';
 import {getMessageGroups} from '../utils/messageGroups';
 import {APP_BACKGROUND_COLOR} from '../theme';
 
 interface ChatRow {
 	content: string;
-	role: Role;
+	role: Role | ContentType;
 	messageIndices: number[];
 	isSeparator?: boolean;
 }
 
 const EMPTY_ROW = '\u00a0';
 
-function getRoleColor(role: Role) {
-	if (role === Role.thought) return '#863737';
+function getRoleColor(role: Role | ContentType) {
+	if (role === ContentType.reasoning_content) return '#863737';
 	if (role === Role.assistant) return '#7e7474';
 	if (role === Role.tool) return '#4d3838';
 	return '#f6eeee';
@@ -102,7 +102,10 @@ export function ChatBox({height}: {height: number}) {
 											: APP_BACKGROUND_COLOR
 									}
 								>
-									<Text wrap="truncate" dimColor={item.role === Role.thought}>
+									<Text
+										wrap="truncate"
+										dimColor={item.role === ContentType.reasoning_content}
+									>
 										{item.content}
 									</Text>
 								</Box>
