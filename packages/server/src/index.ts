@@ -7,11 +7,12 @@ import {
   getSessionsByProjectDirectory,
 } from '@baby-panda/db';
 import { BabyPandaAgent } from '@baby-panda/agent';
-import { cleanMessageHistroy } from './utils/cleanMessageHistory';
+// import { cleanMessageHistroy } from './utils/cleanMessageHistory';
 import { websocketHandler } from './webSocket';
 import type { WSContext } from 'hono/ws';
 import { websocket } from '@hono/bun';
 import { Models } from '@agent/config/models';
+import { dbToAgentMessages } from '@baby-panda/utils';
 
 const defaultPort = 3500;
 const configuredPort = Number(process.env['BABY_PANDA_PORT'] ?? defaultPort);
@@ -52,7 +53,7 @@ app.post('/get-messages', async (c) => {
   }
   try {
     const messages = await getMessages(body.sessionId);
-    const result = await cleanMessageHistroy(messages);
+    const result = dbToAgentMessages(messages);
     const response = JSON.stringify(result);
     return new Response(response, { status: 200, statusText: 'OK' });
   } catch (err) {

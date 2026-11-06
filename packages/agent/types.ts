@@ -1,4 +1,4 @@
-import type { Message } from '@baby-panda/types';
+// import type { Message } from '@baby-panda/types';
 // import { z } from 'zod';
 
 export enum MessageQueueEvents {
@@ -13,7 +13,7 @@ export interface UrlApi {
   url: string;
   apikey: string;
 }
-export type MessageQueueMessage = Message & { isResponded: boolean | false };
+// export type MessageQueueMessage = Message & { isResponded: boolean | false };
 export interface Tool {
   id: string;
   name: string;

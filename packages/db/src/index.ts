@@ -4,7 +4,6 @@ import {
   createSession as createSessionMethod,
   createMessage as createMessageMethod,
   getMessages as getMessagesMethod,
-  getMessagesAfterTimestamp as getMessagesAfterTimestampMethod,
   addProvider as addProviderMethod,
   getProviders as getProvidersMethod,
   getSessions as getSessionsMethod,
@@ -13,7 +12,6 @@ import {
   getSessionsByProjectDirectory as getSessionsByProjectDirectoryMethod,
   getCompactionSummaries as getCompactionSummariesMethod,
   getMostRecentCompactionSummary as getMostRecentCompactionSummaryMethod,
-  addCompactionSummary as addCompactionSummaryMethod,
   getMessagesForSummary as getMessagesForSummaryMethod,
 } from './methods';
 import { LogType } from '@baby-panda/types';
@@ -35,7 +33,6 @@ export { SQLSafeExecutor };
 export const createSession = wrapWithSQLSafeExecutor(createSessionMethod);
 export const createMessage = wrapWithSQLSafeExecutor(createMessageMethod);
 export const getMessages = wrapWithSQLSafeExecutor(getMessagesMethod);
-export const getMessagesAfterTimestamp = wrapWithSQLSafeExecutor(getMessagesAfterTimestampMethod);
 export const addProvider = wrapWithSQLSafeExecutor(addProviderMethod);
 export const getProviders = wrapWithSQLSafeExecutor(getProvidersMethod);
 export const getSessions = wrapWithSQLSafeExecutor(getSessionsMethod);
@@ -48,5 +45,4 @@ export const getCompactionSummaries = wrapWithSQLSafeExecutor(getCompactionSumma
 export const getMostRecentCompactionSummary = wrapWithSQLSafeExecutor(
   getMostRecentCompactionSummaryMethod,
 );
-export const addCompactionSummary = wrapWithSQLSafeExecutor(addCompactionSummaryMethod);
 export const getMessagesForSummary = wrapWithSQLSafeExecutor(getMessagesForSummaryMethod);

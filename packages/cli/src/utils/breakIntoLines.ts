@@ -1,16 +1,10 @@
-import {CleanedMessage, Role} from '@baby-panda/types';
+import type {ChatMessage, MessageLine} from '../types';
 import wcwidth from 'ts-wcwidth';
 
-export interface MessageLine {
-	role: Role;
-	content: string;
-	isFirstLine: boolean;
-	createdAt: number | null;
-	lineLength: number;
-	isIncomplete?: boolean;
-}
+export type {MessageLine};
+
 export function breakMessageIntoLines(
-	message: CleanedMessage,
+	message: ChatMessage,
 	maxWidth: number,
 ): MessageLine[] {
 	const {content, role, createdAt} = message;

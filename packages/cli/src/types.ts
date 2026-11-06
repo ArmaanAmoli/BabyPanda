@@ -1,7 +1,6 @@
-import type {Message, CleanedMessage} from '@baby-panda/types';
+import type {ContentType, Role} from '@baby-panda/types';
 import type {MutableRefObject, SetStateAction} from 'react';
 import React from 'react';
-import {Role} from '@baby-panda/types';
 import type {DOMElement} from 'ink';
 
 export interface APIProvider {
@@ -18,7 +17,17 @@ export interface Session {
 export interface ReactChildPropInterface {
 	children: React.ReactNode;
 }
-export type MessageStatusElement = Message & {sended: boolean};
+
+/**
+ * Display message for the chat UI. History fetched from the server uses the
+ * `Role` enum, while live stream chunks arriving over the WebSocket use the
+ * `ContentType` enum (content / reasoning_content), so both are allowed here.
+ */
+export type ChatMessage = {
+	role: Role | ContentType;
+	content: string;
+	createdAt: number | null;
+};
 
 export enum ComponentName {
 	chatBox = 'chatBox',
@@ -26,15 +35,15 @@ export enum ComponentName {
 }
 
 export interface MessagesContext {
-	messageHistory: CleanedMessage[];
-	setMessageHistory: React.Dispatch<SetStateAction<CleanedMessage[]>>;
-	lastRole: MutableRefObject<Role | null>;
+	messageHistory: ChatMessage[];
+	setMessageHistory: React.Dispatch<SetStateAction<ChatMessage[]>>;
+	lastRole: MutableRefObject<Role | ContentType | null>;
 }
 
 export type Focused = 'ChatBox' | 'PromptBox';
 
 export interface MessageLine {
-	role: Role;
+	role: Role | ContentType;
 	content: string;
 	isFirstLine: boolean;
 	createdAt: number | null;
@@ -43,7 +52,7 @@ export interface MessageLine {
 }
 
 export interface ViewPortMessage {
-	role: Role;
+	role: Role | ContentType;
 	createdAt: number | null;
 	lines: MessageLine[];
 }

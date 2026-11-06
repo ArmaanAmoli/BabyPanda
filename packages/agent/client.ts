@@ -1,10 +1,11 @@
 import axios, { type AxiosResponse } from 'axios';
 import { setTimeout } from 'node:timers/promises';
-import type { Message } from '@baby-panda/types';
-import type { ReasoningEffort } from '@baby-panda/types';
+// import type { Message } from '@baby-panda/types';
+import type { MessagesArray, ReasoningEffort } from '@baby-panda/types';
 import { LogType } from '@baby-panda/types';
 import { getProjectName, writeLogs } from '@baby-panda/utils';
 import type { UrlApi } from './types'; // verbatimModuleSyntax
+import { tools } from './config/tools';
 
 interface ChatCompletionArgs {
   response?: AxiosResponse;
@@ -33,7 +34,7 @@ class BabyPandaClient {
     this.url = url;
   }
   private async _attempt(
-    messages: Message[],
+    messages: MessagesArray,
     model: string,
     reasoningEffort: ReasoningEffort,
     isRetrying: boolean,
@@ -50,18 +51,23 @@ class BabyPandaClient {
         'content-type': 'application/json',
         authorization: this.token,
       },
-      timeout: 120_000,
+      // Axios `timeout` only bounds the wait for response headers, which is
+      // exactly what busy inference queues hold for minutes. Once the stream
+      // starts flowing, inactivity is guarded separately in the agent loop.
+      timeout: 600_000,
       data: {
         model,
         messages,
+        tools,
         temperature: 0.5,
         top_p: 1,
-        max_tokens: 4096,
+        max_tokens: 8192,
         frequency_penalty: 0,
         presence_penalty: 0,
         reasoning_effort: reasoningEffort,
         stream: true,
         stream_options: { include_usage: true },
+        tool_choice: 'auto',
       },
     };
     try {
@@ -69,9 +75,19 @@ class BabyPandaClient {
         attempt,
         model,
         reasoningEffort,
+        url: this.url,
         messageCount: messages.length,
         messageRoles: messages.map((message) => message.role),
         requestBytes: Buffer.byteLength(JSON.stringify(options.data)),
+        tools: tools.map((tool) => tool.function.name),
+        messages: messages.map((message) => ({
+          role: message.role,
+          chars: message.content.length,
+          preview:
+            message.content.length > 300
+              ? `${message.content.slice(0, 300)}…(+${message.content.length - 300} chars)`
+              : message.content,
+        })),
       });
       if (isRetrying) retrysDone += 1;
       const response = await axios(options);
@@ -100,19 +116,37 @@ class BabyPandaClient {
         if (error.response?.status === 401) {
           return { systemError: true, error: 'Wrong API key' };
         }
-        if (error.response?.status === 429) {
-          await setTimeout(5_000);
-        } else if (
-          error.response?.status &&
-          (error.response.status >= 500 || error.response.status === 400)
-        ) {
+        const status = error.response?.status;
+        // No response at all (timeouts, ECONNRESET, aborted streams), rate
+        // limits, request timeouts and server-side (5xx) errors are transient,
+        // especially when the inference queue is busy. Everything else
+        // (4xx validation errors like 400/404, auth) is deterministic and
+        // must not be retried.
+        const retriable = status == null || status === 429 || status === 408 || status >= 500;
+        if (!retriable) {
           return { systemError: true, error: details.responseBody };
         }
+        // Rate limits get a fixed cool-down; every other transient failure
+        // backs off linearly with the attempt number (5s, 10s, 15s, capped at
+        // 30s) so retries do not hammer a queue that is already congested.
+        const delayMs = status === 429 ? 5_000 : Math.min(30_000, 5_000 * attempt);
+        await logClientEvent(this.sessionId, 'backoff before retry', {
+          attempt,
+          delayMs,
+          status: status ?? null,
+          code: error.code ?? null,
+        });
+        await setTimeout(delayMs);
       }
       if (!isRetrying && retrysDone === 0) {
         isRetrying = true;
       }
       if (isRetrying && retrysDone < this.maxRetrys) {
+        await logClientEvent(this.sessionId, 'scheduling retry', {
+          failedAttempt: attempt,
+          nextAttempt: attempt + 1,
+          maxRetrys: this.maxRetrys,
+        });
         return await this._attempt(messages, model, reasoningEffort, true, retrysDone);
       } else {
         if (retrysDone >= this.maxRetrys) {
@@ -127,7 +161,7 @@ class BabyPandaClient {
   }
 
   async chatCompletion(
-    messages: Message[],
+    messages: MessagesArray,
     model: string,
     reasoningEffort: ReasoningEffort,
   ): Promise<ChatCompletionArgs> {

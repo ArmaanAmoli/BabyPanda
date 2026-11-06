@@ -11,7 +11,8 @@ export function ToolCallStatus() {
 
 	const toolCall = toolCalls.at(-1);
 	return (
-		<Text color="#4d3838">
+		<Text color="#4d3838" wrap="truncate-end">
+			{toolCalls.length > 1 ? `(${toolCalls.length}) ` : ''}
 			{toolCall?.name}
 			{toolCall?.content ? `: ${toolCall.content}` : ''}
 		</Text>
