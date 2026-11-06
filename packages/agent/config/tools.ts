@@ -1,4 +1,4 @@
-import { z } from "zod";
+import { z } from 'zod';
 
 export interface ModelTool {
   type: 'function';
@@ -15,7 +15,7 @@ export interface ModelTool {
 }
 
 export interface AgentToolCallUncertain {
-  index:number
+  index: number;
   id?: string;
   type?: 'function';
   function?: {
@@ -25,14 +25,14 @@ export interface AgentToolCallUncertain {
 }
 
 export const AgentToolCallSchema = z.object({
-  index:z.number(),
+  index: z.number(),
   id: z.string(),
   type: z.literal('function'),
   function: z.object({
     name: z.string(),
     arguments: z.string(),
-  })
-})
+  }),
+});
 
 export type AgentToolCall = z.infer<typeof AgentToolCallSchema>;
 

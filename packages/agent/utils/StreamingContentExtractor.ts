@@ -19,6 +19,8 @@ export function extractStreamingField(text: string, field: 'answer' | 'thought')
   if (text[valueStart] !== ':') return '';
 
   valueStart += 1;
+
+  // reaching at the begining of the string thought/answer: " <- to this (")
   while (/\s/.test(text[valueStart] ?? '')) valueStart += 1;
   if (text[valueStart] !== '"') return '';
 

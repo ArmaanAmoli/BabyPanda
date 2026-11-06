@@ -36,7 +36,11 @@ import { shell } from './mcp/tools/Shell/shell';
 import type { ShellResult } from './mcp/tools/Shell/shell';
 import { runSandboxed, type SandboxResult } from './mcp/tools/Shell/sandbox';
 import { jsonrepair } from 'jsonrepair';
-import { AgentToolCallSchema, type AgentToolCall, type AgentToolCallUncertain } from './config/tools';
+import {
+  AgentToolCallSchema,
+  type AgentToolCall,
+  type AgentToolCallUncertain,
+} from './config/tools';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -337,7 +341,7 @@ export class BabyPandaAgent extends EventEmitter {
         const regex = /^data:\s/;
 
         const processLine = (rawLine: string) => {
-          void writeLogs(LogType.mcp , this.projectDirectoryName , this.sessionId , `${rawLine}`)
+          void writeLogs(LogType.mcp, this.projectDirectoryName, this.sessionId, `${rawLine}`);
           let line = rawLine.trim();
           if (!regex.test(line)) return;
           line = line.slice(6);
@@ -464,15 +468,13 @@ export class BabyPandaAgent extends EventEmitter {
                 reject(new Error(`Unable to classify model response: ${String(err)}`));
                 return;
               }
-            }
-            else if (contentType === ContentType.thought && parsedContent.thought != undefined) {
+            } else if (contentType === ContentType.thought && parsedContent.thought != undefined) {
               if (!this.messageQueue.includes(MessageQueueEvents.lastReplyFromLLMWasThought)) {
                 this.messageQueue.push(MessageQueueEvents.lastReplyFromLLMWasThought);
               }
               await createMessage(this.sessionId, parsedContent.thought, Role.thought, false);
               responsePersisted = true;
-            }
-            else if(contentType === ContentType.answer && parsedContent.answer !== undefined){
+            } else if (contentType === ContentType.answer && parsedContent.answer !== undefined) {
               await createMessage(this.sessionId, parsedContent.answer, Role.assistant, false);
               responsePersisted = true;
             }
@@ -505,10 +507,9 @@ export class BabyPandaAgent extends EventEmitter {
                 }
                 const toolCallsT: AgentToolCall[] = toolCalls.filter(Boolean).map((tool) => {
                   const parsedTool = AgentToolCallSchema.safeParse(tool);
-                  if(parsedTool.success){
+                  if (parsedTool.success) {
                     return parsedTool.data;
-                  }
-                  else{
+                  } else {
                     throw parsedTool.error;
                   }
                 });
@@ -548,11 +549,11 @@ export class BabyPandaAgent extends EventEmitter {
                 const executeToolCall = async () => {
                   const MCPTools: Tool[] = [];
                   for (const rawcall of toolCallsT) {
-                    const call:Tool = {
-                      id:rawcall.id,
-                      name:rawcall.function.name,
-                      arguments: JSON.parse(rawcall.function.arguments)
-                    }
+                    const call: Tool = {
+                      id: rawcall.id,
+                      name: rawcall.function.name,
+                      arguments: JSON.parse(rawcall.function.arguments),
+                    };
                     if (call.name === 'shell') {
                       //execute nonShellToolCalls
                       if (MCPTools.length !== 0) {
