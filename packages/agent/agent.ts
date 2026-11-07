@@ -15,7 +15,7 @@ import {
   ShellCallSchema,
 } from '@baby-panda/types';
 import { Role } from '@baby-panda/types';
-import type { UrlApi, Tool, ToolResult } from './types';
+import type { UrlApi, Tool } from './types';
 import { MessageQueueEvents } from './types';
 import { readFileSync, existsSync, lstatSync, mkdirSync, writeFileSync } from 'fs';
 import { EventEmitter } from 'events';
@@ -35,7 +35,7 @@ import {
   getContent,
   type RawReplyChunkFromLLM,
 } from '@/packages/agent/utils/extractFromRawLLMRes';
-import { cleanMessages, contentToText, normalizeToolCalls } from './utils/cleanMessages';
+import { cleanMessages, normalizeToolCalls } from './utils/cleanMessages';
 // import { cleanMessages } from '@agent/utils/cleanMessages';
 // import { extractStreamingField } from '@agent/utils/StreamingContentExtractor';
 import { compaction } from '@agent/memory/services/compaction';
