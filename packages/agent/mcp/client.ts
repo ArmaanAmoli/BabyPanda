@@ -73,7 +73,7 @@ export class MCPClient {
       return {
         role: Role.tool,
         tool_call_id: result.id,
-        content: JSON.stringify(`${result.result} \n ${result.error ?? ''}`),
+        content: JSON.stringify(result),
       };
     });
     return result;
