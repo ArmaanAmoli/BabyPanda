@@ -612,7 +612,11 @@ export class BabyPandaAgent extends EventEmitter {
             }
           }
 
-          if (fullReply.tool_calls.length === 0 && fullReply.finish_reason !== 'length') {
+          if (
+            fullReply.tool_calls.length === 0 &&
+            fullReply.finish_reason !== 'length' &&
+            fullReply.finish_reason !== null
+          ) {
             // The model produced a final answer without tool calls, so this
             // turn is complete and the loop may end.
             toBreak = true;
