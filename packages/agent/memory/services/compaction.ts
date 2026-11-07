@@ -1,9 +1,13 @@
-import type { MessagesArray, SystemMessage, UserMessage } from '@baby-panda/types';
+import type { MessagesArray, SystemMessage } from '@baby-panda/types';
 import { Role } from '@baby-panda/types';
 // import { MessageContentSchema } from '@baby-panda/types';
 import { BabyPandaAgent } from '@agent/agent';
 import { readFileSync } from 'fs';
-import { getContent } from '@/packages/agent/utils/extractFromRawLLMRes';
+import {
+  appendResponse,
+  getContent,
+  type RawReplyChunkFromLLM,
+} from '@/packages/agent/utils/extractFromRawLLMRes';
 import { cleanMessages } from '@agent/utils/cleanMessages';
 // import { jsonrepair } from 'jsonrepair';
 
@@ -50,23 +54,30 @@ export async function compaction(agent: BabyPandaAgent) {
 
   // The same normalization used in the agent's history read path: legacy rows
   // may miss `role` or hold MCP-shaped content.
-  const messages2: MessagesArray = cleanMessages(messages);
+  let messages2: MessagesArray = cleanMessages(messages);
 
-  const content = `<messages>${compactionSummary?.content ?? ''} ${JSON.stringify(messages2)}</messages>`;
-  // console.log(content);
+  if (compactionSummary !== undefined) {
+    messages2 = [{ role: Role.user, content: compactionSummary.content }, ...messages2];
+  }
   const systemInstructions = readFileSync(compactionInstructionFilePath).toString();
   const systemMessage: SystemMessage = {
     role: Role.system,
     content: systemInstructions,
   };
-  const transcript: UserMessage = { role: Role.user, content: content };
-  // console.log(systemInstructions, transcript);
+
+  // const transcript: UserMessage = { role: Role.user, content: content };
   const response = await agent.client.chatCompletion(
-    [systemMessage, transcript],
+    [systemMessage, ...messages2],
     agent.model,
     agent.reasoningEffort,
   );
-  let fullReply = '';
+
+  let fullReply: RawReplyChunkFromLLM = {
+    content: '',
+    reasoning_content: '',
+    tool_calls: [],
+    finish_reason: '',
+  };
   let isRetrying: boolean = false;
   let retriesDone = 0;
   try {
@@ -88,9 +99,7 @@ export async function compaction(agent: BabyPandaAgent) {
               line = line.slice(6);
               if (line === '[DONE]') continue;
               const content = getContent(line);
-              if (typeof content === 'string') {
-                fullReply += content;
-              }
+              fullReply = appendResponse(fullReply, content);
             }
           });
           response.response?.data.on('end', () => {
@@ -101,7 +110,7 @@ export async function compaction(agent: BabyPandaAgent) {
             throw error;
           });
         });
-        console.log(`COMPACTION RESULT: ${fullReply.length} characters`);
+        // console.log(`COMPACTION RESULT: ${fullReply.length} characters`);
         return fullReply;
       } catch (err) {
         console.log(err);

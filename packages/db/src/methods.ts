@@ -1,7 +1,7 @@
 import { db } from './index.db';
 import { Session, Message, ApiKeys } from './db/schema';
 import { Role } from '@baby-panda/types';
-import { asc, desc, eq, and, lt, ne, gte } from 'drizzle-orm';
+import { asc, desc, eq, and, lt, ne, gte, gt } from 'drizzle-orm';
 import { ulid } from 'ulid';
 interface APIProvider {
   provider: string;
@@ -198,22 +198,42 @@ export async function deleteSession(sessionId: string) {
 }
 
 export async function getMessagesForSummary(sessionId: string, index: number = 0) {
-  const cutoffMessage = await db
-    .select({
-      sequence: Message.sequence,
-    })
-    .from(Message)
-    .where(and(eq(Message.sessionId, sessionId), gte(Message.sequence, index)))
-    .orderBy(desc(Message.sequence))
-    .limit(1)
-    .offset(49);
-  const cutoffIndex = cutoffMessage[0]?.sequence;
-
-  if (cutoffIndex == null) {
-    return [];
+  const messagesCount = (
+    await db
+      .select({ messagesCount: Session.messagesCount })
+      .from(Session)
+      .where(eq(Session.id, sessionId))
+  ).at(0);
+  if (messagesCount == undefined) {
+    throw new Error(`Invalid SessionId, session do not exist`);
   }
-  return db
-    .select()
-    .from(Message)
-    .where(and(eq(Message.sessionId, sessionId), lt(Message.sequence, cutoffIndex)));
+
+  if (messagesCount.messagesCount >= 10) {
+    const cutoffMessage = await db
+      .select({
+        sequence: Message.sequence,
+      })
+      .from(Message)
+      .where(and(eq(Message.sessionId, sessionId), gt(Message.sequence, index)))
+      .orderBy(desc(Message.sequence))
+      .limit(1)
+      .offset(10);
+    const cutoffIndex = cutoffMessage[0]?.sequence;
+
+    if (cutoffIndex == null) {
+      return [];
+    }
+    return db
+      .select()
+      .from(Message)
+      .where(
+        and(
+          eq(Message.sessionId, sessionId),
+          lt(Message.sequence, cutoffIndex),
+          gt(Message.sequence, index),
+        ),
+      );
+  } else {
+    return db.select().from(Message).where(eq(Message.sessionId, sessionId));
+  }
 }
