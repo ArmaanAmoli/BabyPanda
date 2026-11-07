@@ -1,5 +1,4 @@
 import { BabyPandaClient } from './client';
-// import type { Message, MessageAPI, MessageContent, UserPermission } from '@baby-panda/types';
 import type {
   UserPermission,
   MessagesArray,
@@ -59,47 +58,6 @@ const __dirname = path.dirname(__filename);
 const cwd = process.cwd();
 
 const instructionsFilePath = path.join(__dirname, 'memory', 'BabyPanda', 'BabyPanda.md');
-
-// function parseMessageContent(rawReply: string) {
-//   const parsed = JSON.parse(jsonrepair(rawReply)) as {
-//     role?: unknown;
-//     content?: {
-//       // tool_call?: Array<{
-//       //   id?: unknown;
-//       //   type?: unknown;
-//       //   function?: unknown;
-//       //   arguments?: unknown;
-//       // }>;
-//       thought?: unknown;
-//       answer?: unknown;
-//     };
-//   };
-
-//   // if (Array.isArray(parsed.content?.tool_call)) {
-//   //   parsed.content.tool_call = parsed.content.tool_call.map((call) => {
-//   //     let args = call.arguments;
-//   //     if (typeof args === 'string') {
-//   //       args = JSON.parse(jsonrepair(args));
-//   //     }
-
-//   //     let functionName = call.function;
-//   //     if (functionName && typeof functionName === 'object' && 'name' in functionName) {
-//   //       functionName = functionName.name;
-//   //     }
-
-//   //     return {
-//   //       ...call,
-//   //       function: functionName,
-//   //       arguments: args,
-//   //     };
-//   //   });
-//   // }
-
-//   return MessageContentSchema.parse(parsed);
-// }
-
-// let compact = true;
-// type MessageHistory = Awaited<ReturnType<typeof getMessages>>;
 
 export class BabyPandaAgent extends EventEmitter {
   client: BabyPandaClient;
@@ -270,10 +228,8 @@ export class BabyPandaAgent extends EventEmitter {
       }
       this.messageQueue.splice(0, 1);
 
-      // console.log(messages)
       if (this.contextWindowUsed >= this.contextWindow * 0.75) {
         try {
-          // console.log('started compacting...');
           await writeLogs(
             LogType.agent,
             this.projectDirectoryName,
@@ -285,14 +241,12 @@ export class BabyPandaAgent extends EventEmitter {
             await createMessage(this.sessionId, summary, Role.compaction);
             this.contextWindowUsed = 0;
           }
-          // console.log(summary);
           await writeLogs(
             LogType.agent,
             this.projectDirectoryName,
             this.sessionId,
             '\n [COMPACTION] done \n',
           );
-          // console.log('stopped compacting...');
           continue;
         } catch (err) {
           await writeLogs(
@@ -332,36 +286,21 @@ export class BabyPandaAgent extends EventEmitter {
         continue;
       }
 
-      // let contentType: ContentType = ContentType.unidentified;
-      // Set to true only when the model answered without any tool calls, so the
-      // loop keeps running across tool-call turns and ends after a final answer.
       let toBreak = false;
 
       await new Promise((resolve, reject) => {
-        // const parentContentPropertyRegex = /^.*"content":.*$/m;
-        // const thoughtRegex = /^.*"thought":.*$/m;
-        // const answerRegex = /^.*"answer":.*$/m;
-        /*
-        While contentType is unidentified we want to save the data in the full Reply
-        we will use the thought , answer , toolCall Regex to identify the stream only in case of toolCall we will not produce event
-        */
         let toolCall = false;
-        // let responsePersisted = false;
         let fullReply: RawReplyChunkFromLLM = {
           content: '',
           reasoning_content: '',
           tool_calls: [],
           finish_reason: null,
         };
-        // const streamedReply = '';
         let buffer: string = '';
         let finalized = false;
         let firstChunkAt: number | null = null;
         let lastChunkAt: number | null = null;
         const streamStartedAt = Date.now();
-
-        // const inParentContentProperty: boolean = false;
-        // const lineBuffer: string[] = [];
         const regex = /^data:\s/;
 
         const processLine = (rawLine: string) => {
@@ -390,51 +329,6 @@ export class BabyPandaAgent extends EventEmitter {
           if (content.reasoning_content.length > 0) {
             this.emit(ContentType.reasoning_content, content.reasoning_content);
           }
-          // if (typeof content !== 'string') {
-          //   toolCall = true;
-          //   appendToolCallArray(toolCalls, content);
-          // } else {
-          //   fullReply += content;
-          //   if (!inParentContentProperty && parentContentPropertyRegex.test(fullReply)) {
-          //     inParentContentProperty = true;
-          //   }
-
-          //   if (inParentContentProperty) {
-          //     if (contentType === ContentType.unidentified) {
-          //       if (answerRegex.test(fullReply)) {
-          //         contentType = ContentType.content;
-          // void writeLogs(
-          //   LogType.agent,
-          //   this.projectDirectoryName,
-          //   this.sessionId,
-          //   'received an answer',
-          // );
-          //         toBreak = true;
-          //       } else if (thoughtRegex.test(fullReply)) {
-          //         contentType = ContentType.reasoning_content;
-          //         void writeLogs(
-          //           LogType.agent,
-          //           this.projectDirectoryName,
-          //           this.sessionId,
-          //           'received a thought',
-          //         );
-          //         this.messageQueue.push(MessageQueueEvents.lastReplyFromLLMWasThought);
-          //       }
-          //       lineBuffer.push(content);
-          //     }
-          //     if (
-          //       !toolCall &&
-          //       (contentType === ContentType.content || contentType === ContentType.reasoning_content)
-          //     ) {
-          //       const field = contentType === ContentType.content ? 'answer' : 'thought';
-          //       const visibleReply = extractStreamingField(fullReply, field);
-          //       if (visibleReply.length > streamedReply.length) {
-          //         this.emit(contentType, visibleReply.slice(streamedReply.length));
-          //         streamedReply = visibleReply;
-          //       }
-          //     }
-          //   }
-          // }
         };
 
         response.response?.data.on('data', (chunk: Buffer | string) => {
@@ -513,106 +407,17 @@ export class BabyPandaAgent extends EventEmitter {
           };
           await createMessage(this.sessionId, JSON.stringify(assistantMessage), Role.assistant);
 
-          // if (!toolCall) {
-          /*
-
-            common store to db fn
-            
-             
-             */
-          // if (!fullReply && fullReply.trim().length > 0) {
-          //   this.emit(ContentType.content, fullReply);
-          //   await createMessage(this.sessionId, fullReply, Role.assistant);
-          //   responsePersisted = true;
-          //   toBreak = true;
-          //   await writeLogs(
-          //     LogType.agent,
-          //     this.projectDirectoryName,
-          //     this.sessionId,
-          //     `[REPLY]: ${fullReply}`,
-          //   );
-          //   resolve('single iteration of loop done.');
-          //   return;
-          // }
-          // fullReply = fullReply ?? '';
-          // if (!fullReply && toolCalls.length === 0) {
-          //   await writeLogs(
-          //     LogType.agent,
-          //     this.projectDirectoryName,
-          //     this.sessionId,
-          //     'Reply received was empty retrying...',
-          //   );
-          //   this.messageQueue.push(MessageQueueEvents.lastReplyFromLLMWasEmpty);
-          //   toBreak = false;
-          //   resolve('empty reply');
-          //   return;
-          // }
-          // let parsedReply: MessageContent;
-          // try {
-          //   parsedReply = parseMessageContent(fullReply);
-          // } catch (error) {
-          //   reject(new Error(`Unable to parse model response: ${String(error)}`));
-          //   return;
-          // }
-          // const parsedContent = parsedReply.content;
-          // if (contentType === ContentType.unidentified) {
-          //   try {
-          //     if (typeof parsedContent.answer === 'string') {
-          //       contentType = ContentType.content;
-          //       toBreak = true;
-          //     } else if (typeof parsedContent.thought === 'string') {
-          //       contentType = ContentType.reasoning_content;
-          //       this.messageQueue.push(MessageQueueEvents.lastReplyFromLLMWasThought);
-          //       if (streamedReply.length === 0) {
-          //         this.emit(ContentType.reasoning_content, parsedContent.thought);
-          //       }
-          //     }
-          //   } catch (err) {
-          //     reject(new Error(`Unable to classify model response: ${String(err)}`));
-          //     return;
-          //   }
-          // } else if (
-          //   contentType === ContentType.reasoning_content &&
-          //   parsedContent.thought != undefined
-          // ) {
-          //   if (!this.messageQueue.includes(MessageQueueEvents.lastReplyFromLLMWasThought)) {
-          //     this.messageQueue.push(MessageQueueEvents.lastReplyFromLLMWasThought);
-          //   }
-          //   await createMessage(this.sessionId, parsedContent.thought, Role.thought, false);
-          //   responsePersisted = true;
-          // } else if (contentType === ContentType.content && parsedContent.answer !== undefined) {
-          //   await createMessage(this.sessionId, parsedContent.answer, Role.assistant, false);
-          //   responsePersisted = true;
-          // }
-          // await writeLogs(
-          //   LogType.agent,
-          //   this.projectDirectoryName,
-          //   this.sessionId,
-          //   `[REPLY]: ${fullReply}`,
-          // );
-          // }
           if (toolCall) {
             try {
-              // try {
-              //   replyJson = parseMessageContent(fullReply);
-              // } catch (err) {
-              //   reject(new Error(`Unable to parse model tool call: ${String(err)}`));
-
-              //   await createMessage(
-              //     this.sessionId,
-              //     `Their is an issue in the reply structure that you gave ${err}`,
-              //     Role.system,
-              //     false,
-              //   );
-              //   return;
-              // }
-              // const toolCalls = replyJson.content.tool_call;
               const toolCalls = fullReply.tool_calls;
               const toolCallsT: AgentToolCall[] = toolCalls.filter(Boolean).map((tool) => {
                 const parsedTool = AgentToolCallSchema.safeParse(tool);
                 if (parsedTool.success) {
                   return parsedTool.data;
                 } else {
+                  /*
+                   add this error as tool result for agent
+                  */
                   throw parsedTool.error;
                 }
               });
@@ -805,7 +610,7 @@ export class BabyPandaAgent extends EventEmitter {
             }
           }
 
-          if (fullReply.tool_calls.length === 0) {
+          if (fullReply.tool_calls.length === 0 && fullReply.finish_reason !== 'length') {
             // The model produced a final answer without tool calls, so this
             // turn is complete and the loop may end.
             toBreak = true;

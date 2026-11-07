@@ -15,6 +15,7 @@ import type { CompactionMessage, UserMessage, SystemMessage } from '@baby-panda/
 
 type HistoryRow = Pick<DBMessage, 'content' | 'role'>;
 
+// all possible types of messages covered in this type
 type MessageLike = {
   role?: unknown;
   content?: unknown;
@@ -34,7 +35,11 @@ const isRole = (value: unknown): value is Role =>
  */
 export function contentToText(content: unknown): string {
   if (content == null) return '';
+
+  /* Tool content will be string in case of error */
   if (typeof content === 'string') return content;
+
+  /* Array can have two types of elements -> string(err) or object ({type:'text' , 'text':<tool_result>}) */
   if (Array.isArray(content)) {
     return content
       .map((part) => {
@@ -53,6 +58,7 @@ export function contentToText(content: unknown): string {
 }
 
 /**
+ * normalizeToolCalls -> raw toolCall array from provider -> fills default values where model left null
  * Accumulated tool-call fragments may miss `id`, `type` or `arguments` after
  * a malformed or aborted stream; the provider needs the canonical shape.
  */
