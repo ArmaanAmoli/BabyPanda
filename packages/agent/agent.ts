@@ -32,7 +32,6 @@ import { fileURLToPath } from 'url';
 import { Models, ProvidersEnum } from '@agent/config/models';
 import {
   appendResponse,
-  // appendToolCallArray,
   getContent,
   type RawReplyChunkFromLLM,
 } from '@/packages/agent/utils/extractFromRawLLMRes';
@@ -238,7 +237,15 @@ export class BabyPandaAgent extends EventEmitter {
           );
           const summary = await compaction(this);
           if (summary) {
-            await createMessage(this.sessionId, summary, Role.compaction);
+            /* Storing compaction result as tool because provider only support native roles user , tool , assistant , system */
+            const compactionMessage: AssistantMessage = {
+              role: Role.assistant,
+              content: summary.content,
+              reasoning_content: '',
+              tool_calls: [],
+            };
+
+            await createMessage(this.sessionId, JSON.stringify(compactionMessage), Role.compaction);
             this.contextWindowUsed = 0;
           }
           await writeLogs(
@@ -436,7 +443,7 @@ export class BabyPandaAgent extends EventEmitter {
                 this.emit(ContentType.tool_call, visibleToolCalls);
               }
 
-              const toolResults: ToolResult[] = [];
+              const toolResults: ToolMessage[] = [];
 
               const executeToolCall = async () => {
                 const MCPTools: Tool[] = [];
@@ -467,7 +474,8 @@ export class BabyPandaAgent extends EventEmitter {
                           })),
                         )}`,
                       );
-                      const nonShellToolResults = await this.mcpClient.callTools(MCPTools);
+                      const nonShellToolResults: ToolMessage[] =
+                        await this.mcpClient.callTools(MCPTools);
                       toolResults.push(...nonShellToolResults);
                       MCPTools.length = 0;
                     } else {
@@ -525,17 +533,18 @@ export class BabyPandaAgent extends EventEmitter {
                             );
                           }
 
-                          const fullResult: ToolResult = {
-                            ...call,
-                            result: JSON.stringify(rawResult),
-                            error: rawResult.error,
+                          const fullResult: ToolMessage = {
+                            role: Role.tool,
+                            tool_call_id: call.id,
+                            content: JSON.stringify(rawResult),
                           };
                           toolResults.push(fullResult);
                         } else {
-                          const fullResult: ToolResult = {
-                            ...call,
-                            result:
-                              'Command execution denied by user. Ask the user for clarification or alternative instructions.',
+                          const fullResult: ToolMessage = {
+                            role: Role.tool,
+                            tool_call_id: call.id,
+                            content:
+                              '[PERMISSION DENIED] Command execution denied by user. Ask the user for clarification or alternative instructions.',
                           };
                           toolResults.push(fullResult);
                         }
@@ -568,14 +577,7 @@ export class BabyPandaAgent extends EventEmitter {
                 LogType.agent,
                 this.projectDirectoryName,
                 this.sessionId,
-                `[TOOL RESULT] all tool calls finished, ${toolResults.length} result(s): ${JSON.stringify(
-                  toolResults.map((result) => ({
-                    id: result.id,
-                    name: result.name,
-                    error: result.error ?? null,
-                    resultPreview: String(result.result).slice(0, 1000),
-                  })),
-                )}`,
+                `[TOOL RESULT] all tool calls finished, ${toolResults.length} result(s): ${JSON.stringify(toolResults)}`,
               );
 
               let i = 0;
@@ -587,12 +589,12 @@ export class BabyPandaAgent extends EventEmitter {
                   try {
                     const toolResult = toolResults.at(i);
                     if (toolResult == undefined) continue;
-                    const toolMessage: ToolMessage = {
-                      role: Role.tool,
-                      tool_call_id: toolResult.id,
-                      content: toolResult.error ?? contentToText(toolResult.result),
-                    };
-                    await createMessage(this.sessionId, JSON.stringify(toolMessage), Role.tool);
+                    // const toolMessage: ToolMessage = {
+                    //   role: Role.tool,
+                    //   tool_call_id: toolResult.id,
+                    //   content: toolResult.error ?? contentToText(toolResult.result),
+                    // };
+                    await createMessage(this.sessionId, JSON.stringify(toolResult), Role.tool);
                   } catch (err) {
                     throw new Error(`Unable to store tool message to database`, { cause: err });
                   }
