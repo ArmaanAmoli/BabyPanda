@@ -2,7 +2,7 @@ import { Client } from '@modelcontextprotocol/client';
 import { StdioClientTransport } from '@modelcontextprotocol/client/stdio';
 import type { Tool, ToolResult } from '@agent/types';
 import { getProjectName, writeLogs } from '@baby-panda/utils';
-import { LogType } from '@baby-panda/types';
+import { LogType, Role, type ToolMessage } from '@baby-panda/types';
 
 export class MCPClient {
   private mcp: Client;
@@ -46,21 +46,21 @@ export class MCPClient {
       throw err;
     }
   }
-  async callTools(tools: Tool[]): Promise<ToolResult[]> {
-    const finalResult: ToolResult[] = [];
+  async callTools(tools: Tool[]): Promise<ToolMessage[]> {
+    const mcpResult: ToolResult[] = [];
     for (const tool of tools) {
       try {
         // console.log("[MCP CLIENT]:", tool);
         const result = await this.mcp.callTool(tool);
         await writeLogs(LogType.mcp, getProjectName(), this.sessionId, `[TOOL RESULT]: ${result}`);
-        finalResult.push({
+        mcpResult.push({
           id: tool.id,
           name: tool.name,
           arguments: tool.arguments,
           result: result,
         });
       } catch (err) {
-        finalResult.push({
+        mcpResult.push({
           id: tool.id,
           name: tool.name,
           arguments: tool.arguments,
@@ -69,6 +69,13 @@ export class MCPClient {
         console.error(`An error occured while calling ${tool} \n ${err}`);
       }
     }
-    return finalResult;
+    const result: ToolMessage[] = mcpResult.map((result) => {
+      return {
+        role: Role.tool,
+        tool_call_id: result.id,
+        content: JSON.stringify(`${result.result} \n ${result.error ?? ''}`),
+      };
+    });
+    return result;
   }
 }

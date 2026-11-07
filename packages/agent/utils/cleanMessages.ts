@@ -24,7 +24,10 @@ type MessageLike = {
   reasoning_content?: unknown;
 };
 
-const ROLE_VALUES = new Set<Role>(Object.values(Role));
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+const { compaction, ...AllowedRoles } = Role;
+
+const ROLE_VALUES = new Set<Role>(Object.values(AllowedRoles));
 
 const isRole = (value: unknown): value is Role =>
   typeof value === 'string' && ROLE_VALUES.has(value as Role);
