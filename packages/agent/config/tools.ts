@@ -14,15 +14,29 @@ export interface ModelTool {
   };
 }
 
-export interface AgentToolCallUncertain {
-  index: number;
-  id?: string;
-  type?: 'function';
-  function?: {
-    name?: string;
-    arguments?: string;
-  };
-}
+// export interface AgentToolCallUncertain {
+//   index: number;
+//   id?: string;
+//   type?: 'function';
+//   function?: {
+//     name?: string;
+//     arguments?: string;
+//   };
+// }
+
+export const AgentToolCallSchemaUncertain = z.object({
+  index: z.number(),
+  id: z.string().optional(),
+  type: z.literal('function').optional(),
+  function: z
+    .object({
+      name: z.string().optional(),
+      arguments: z.string().optional(),
+    })
+    .optional(),
+});
+
+export type AgentToolCallUncertain = z.infer<typeof AgentToolCallSchemaUncertain>;
 
 export const AgentToolCallSchema = z.object({
   index: z.number(),

@@ -1,12 +1,13 @@
 // Get content from raw json of llm
 import { BabyPandaAgent } from '@agent/agent';
 import type { AgentToolCallUncertain } from '../config/tools';
+import type { FinishReason } from '../types';
 
 export interface RawReplyChunkFromLLM {
   tool_calls: AgentToolCallUncertain[];
   reasoning_content: string;
   content: string;
-  finish_reason: string | null;
+  finish_reason: FinishReason;
 }
 
 export const getContent = (encoded: string, agent?: BabyPandaAgent): RawReplyChunkFromLLM => {
@@ -28,7 +29,7 @@ export const getContent = (encoded: string, agent?: BabyPandaAgent): RawReplyChu
       delta.reasoning_content !== undefined ? `${delta.reasoning_content}` : '';
 
     const content = delta.content !== undefined ? `${delta.content}` : '';
-    const finish_reason = (firstChoice?.finish_reason ?? null) as string | null;
+    const finish_reason = (firstChoice?.finish_reason ?? null) as FinishReason;
 
     let tool_calls: AgentToolCallUncertain[] = [];
     if (tool_calls_raw != undefined && Array.isArray(tool_calls_raw)) {
