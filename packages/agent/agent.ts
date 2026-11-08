@@ -154,7 +154,7 @@ export class BabyPandaAgent extends EventEmitter {
     }
     if (summary) {
       const { content } = summary;
-      const messageHistory = await this.getMessageHistory(summary.sequence);
+      const messageHistory = await this.getMessageHistory(summary.sequence + 1);
       const memory = (await readFromMemory()) ?? null;
       if (memory) {
         return [
