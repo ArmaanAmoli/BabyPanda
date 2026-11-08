@@ -1,4 +1,13 @@
 import z from 'zod';
+import { ToolError } from './error';
+
+export enum OpenAiRoles {
+  system = 'system',
+  user = 'user',
+  assistant = 'assistant',
+  tool = 'tool',
+}
+
 export enum Role {
   system = 'system',
   user = 'user',
@@ -22,46 +31,74 @@ export enum ReasoningEffort {
 //   tool_call_id?: string;
 // }
 
-export interface ToolCall {
-  id: string;
-  type: 'function';
-  function: {
-    name: string;
-    arguments: string;
-  };
-}
+// export interface ToolCall {
+//   id: string;
+//   type: 'function';
+//   function: {
+//     name: string;
+//     arguments: string;
+//   };
+// }
 
-export interface UserMessage {
-  role: Role.user;
-  content: string;
-}
+export const ToolCallSchema = z.object({
+  id: z.string(),
+  type: z.literal('function'),
+  function: z.object({
+    name: z.string(),
+    arguments: z.string(),
+  }),
+});
 
-export interface SystemMessage {
-  role: Role.system;
-  content: string;
-}
+export type ToolCall = z.infer<typeof ToolCallSchema>;
 
-export interface AssistantMessage {
-  role: Role.assistant;
-  reasoning_content: string;
-  content: string;
-  tool_calls: ToolCall[];
-}
+export const UserMessageSchema = z.object({
+  role: z.literal(Role.user),
+  content: z.string(),
+});
 
-export interface ToolMessage {
-  role: Role.tool;
-  tool_call_id: string;
-  content: string;
-}
+export type UserMessage = z.infer<typeof UserMessageSchema>;
 
-export interface CompactionMessage {
-  role: Role.compaction;
-  content: string;
-}
+export const SystemMessageSchema = z.object({
+  role: z.literal(Role.system),
+  content: z.string(),
+});
 
-export type MessagesArray = (
-  AssistantMessage | UserMessage | ToolMessage | CompactionMessage | SystemMessage
-)[];
+export type SystemMessage = z.infer<typeof SystemMessageSchema>;
+
+// const AgentToolCallSchemaUncertain = z.object({
+//   index: z.number(),
+//   id: z.string().optional(),
+//   type: z.literal('function').optional(),
+//   function: z.object({
+//     name: z.string().optional(),
+//     arguments: z.string().optional(),
+//   }).optional(),
+// });
+
+export const AssistantMessageSchema = z.object({
+  role: z.literal(Role.assistant),
+  content: z.string(),
+  reasoning_content: z.string(),
+  tool_calls: z.array(ToolCallSchema),
+});
+
+export type AssistantMessage = z.infer<typeof AssistantMessageSchema>;
+
+export const ToolMessageSchema = z.object({
+  role: z.literal(Role.tool),
+  content: z.string(),
+  tool_call_id: z.string(),
+});
+
+export type ToolMessage = z.infer<typeof ToolMessageSchema>;
+
+export const CompactionMessageSchema = z.object({
+  role: z.literal(Role.compaction),
+  content: z.string(),
+});
+export type CompactionMessage = z.infer<typeof CompactionMessageSchema>;
+
+export type MessagesArray = (AssistantMessage | UserMessage | ToolMessage | SystemMessage)[];
 
 export type DBMessage = {
   id: string;
@@ -278,3 +315,5 @@ export const GetWebPageSchema = z.object({
 });
 
 export const ToolContentFrontEndSchema = z.object({ name: z.string(), argument: z.unknown() });
+
+export { ToolError };
