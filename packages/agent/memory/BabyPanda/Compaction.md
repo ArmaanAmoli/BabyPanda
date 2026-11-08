@@ -67,3 +67,4 @@ Produce the summary using exactly these nine sections, in this order, with the e
 - When referring to code or configs, prefer precise identifiers (file:line, symbol names, commit hashes if present) over paraphrase.
 - If the history contains multiple iterations of the same component, summarize the evolution and the final chosen version.
 - End the summary with no additional commentary outside the nine sections.
+- Do not call any tools.
