@@ -211,6 +211,6 @@ export async function getMessagesForSummary(sessionId: string, index: number = 0
   return await db
     .select()
     .from(Message)
-    .where(and((eq(Message.sessionId, sessionId), gt(Message.sequence, index))))
+    .where(and(eq(Message.sessionId, sessionId), gt(Message.sequence, index)))
     .orderBy(Message.sequence);
 }
