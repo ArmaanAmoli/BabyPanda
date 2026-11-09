@@ -51,6 +51,7 @@ import {
   type AgentToolCall,
   // type AgentToolCallUncertain,
 } from './config/tools';
+import { getAgentInstructions } from './memory/services/fetchAgentInstructions';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -146,29 +147,34 @@ export class BabyPandaAgent extends EventEmitter {
   }
 
   private async createContext(): Promise<MessagesArray> {
+    const context: MessagesArray = [this.systemInstructions];
+    const memory = (await readFromMemory()) ?? null;
+
+    if (memory) {
+      context.push({ role: Role.system, content: memory });
+    }
+
+    //fetch AGENT.md | BABYPANDA.md and insert it in the context.
+    const instructions = await getAgentInstructions();
+    context.push(...instructions);
+
     let summary: Awaited<ReturnType<typeof getMostRecentCompactionSummary>> | undefined = undefined;
     try {
       summary = await getMostRecentCompactionSummary(this.sessionId);
     } catch (err) {
       writeLogs(LogType.agent, this.projectDirectoryName, this.sessionId, `${err}`);
     }
+
+    const messageHistory: MessagesArray = [];
     if (summary) {
-      const { content } = summary;
-      const messageHistory = await this.getMessageHistory(summary.sequence + 1);
-      const memory = (await readFromMemory()) ?? null;
-      if (memory) {
-        return [
-          this.systemInstructions,
-          { role: Role.system, content: content! },
-          { role: Role.user, content: `[MEMORY]: ${memory}` },
-          ...messageHistory,
-        ];
-      }
-      return [this.systemInstructions, { role: Role.system, content: content! }, ...messageHistory];
+      // fetch 10 messages before the compaction summary.
+      messageHistory.push(...(await this.getMessageHistory(summary.sequence + 1)));
     } else {
-      const messageHistory = await this.getMessageHistory();
-      return [this.systemInstructions, ...messageHistory];
+      messageHistory.push(...(await this.getMessageHistory()));
     }
+
+    context.push(...messageHistory);
+    return context;
   }
 
   private async waitForPermission(toolCallId: string) {
