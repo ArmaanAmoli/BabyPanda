@@ -26,4 +26,5 @@ const dbFile = 'file://' + sqliteFilePath;
 const db = drizzle(dbFile);
 await db.run(sql`PRAGMA journal_mode = WAL;`);
 await db.run(sql`PRAGMA synchronous = NORMAL;`);
+await db.run(sql`PRAGMA foreign_keys = ON;`);
 export { db, dbFile };
