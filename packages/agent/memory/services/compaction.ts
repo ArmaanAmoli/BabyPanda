@@ -1,5 +1,5 @@
 import type { MessagesArray, SystemMessage, UserMessage } from '@baby-panda/types';
-import { Role } from '@baby-panda/types';
+import { LogType, Role } from '@baby-panda/types';
 // import { MessageContentSchema } from '@baby-panda/types';
 import { BabyPandaAgent } from '@agent/agent';
 import { readFileSync } from 'fs';
@@ -14,6 +14,7 @@ import { cleanMessages, normalizeToolCalls } from '@agent/utils/cleanMessages';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { getMostRecentCompactionSummary, getMessagesForSummary } from '@baby-panda/db';
+import { writeLogs } from '@baby-panda/utils';
 
 const MAX_RETRIES = 2;
 const MAX_CONTINUES = 3;
@@ -72,7 +73,7 @@ export async function compaction(agent: BabyPandaAgent) {
   let toBreak: boolean = false;
   let continueMessagesCount = 0;
 
-  const summary: RawReplyChunkFromLLM = {
+  let summary: RawReplyChunkFromLLM = {
     content: '',
     reasoning_content: '',
     tool_calls: [],
@@ -123,7 +124,13 @@ export async function compaction(agent: BabyPandaAgent) {
           });
 
           response.response?.data.on('end', () => {
-            appendResponse(summary, fullReply);
+            summary = appendResponse(summary, fullReply);
+            writeLogs(
+              LogType.agent,
+              agent.projectDirectoryName,
+              agent.sessionId,
+              JSON.stringify(summary),
+            );
             if (!(fullReply.finish_reason === 'length' || fullReply.finish_reason === null)) {
               // can break safely we have reached a natural stop
               toBreak = true;

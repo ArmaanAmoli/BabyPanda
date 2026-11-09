@@ -67,7 +67,7 @@ export class BabyPandaAgent extends EventEmitter {
   private messagesHistory: MessagesArray = [];
   private mcpClient: MCPClient;
   private cwd = cwd;
-  private projectDirectoryName = '';
+  public projectDirectoryName = '';
   private contextWindow: number = 0;
   public contextWindowUsed: number = 0;
   private systemInstructions: SystemMessage;
