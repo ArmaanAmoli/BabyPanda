@@ -32,7 +32,9 @@ const websocketHandler = (c: Context, next: Next) => {
           const apikey = configured?.hasKey ?? '';
           const agent = new BabyPandaAgent({ url, apikey }, sessionId);
           const initAgent = async () => await agent.init();
-          initAgent();
+          initAgent().catch((err) => {
+            void writeLogs(LogType.agent, cwd, sessionId, `${err}`);
+          });
           agentStore.set(sessionId, agent);
         }
         //attach event listners

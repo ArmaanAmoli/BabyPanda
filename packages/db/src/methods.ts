@@ -1,7 +1,7 @@
 import { db } from './index.db';
 import { Session, Message, ApiKeys } from './db/schema';
 import { Role } from '@baby-panda/types';
-import { asc, desc, eq, and, lt, ne, gte, gt } from 'drizzle-orm';
+import { asc, desc, eq, and, ne, gt, gte } from 'drizzle-orm';
 import { ulid } from 'ulid';
 interface APIProvider {
   provider: string;
@@ -14,17 +14,29 @@ type SqliteError = Error & {
   rawCode?: number;
 };
 
-function isSqliteError(error: unknown): error is SqliteError {
-  if (!(error instanceof Error)) {
-    return false;
+function findSqliteError(error: unknown): SqliteError | undefined {
+  let current: unknown = error;
+  while (current instanceof Error) {
+    const err = current as SqliteError & { cause?: unknown };
+    if (err.code != undefined || err.rawCode !== undefined) {
+      return err;
+    }
+    current = err.cause;
   }
-
-  if ('code' in error || 'rawCode' in error) {
-    return true;
-  }
-
-  return error.cause !== undefined && isSqliteError(error.cause);
+  return undefined;
 }
+
+// function isSqliteError(error: unknown): error is SqliteError {
+//   if (!(error instanceof Error)) {
+//     return false;
+//   }
+
+//   if ('code' in error || 'rawCode' in error) {
+//     return true;
+//   }
+
+//   return error.cause !== undefined && isSqliteError(error.cause);
+// }
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 export async function SQLSafeExecutor<TArgs extends readonly unknown[], TResult>(
@@ -36,15 +48,14 @@ export async function SQLSafeExecutor<TArgs extends readonly unknown[], TResult>
     const output = await fn(...args);
     return output;
   } catch (err: unknown) {
-    if (isSqliteError(err)) {
-      if (err.code === 'SQLITE_BUSY' || err.rawCode === 5) {
-        // attempt retry
-        if (retry > 0) {
-          await delay(5000);
-          return await SQLSafeExecutor(fn, args, retry - 1);
-        } else {
-          throw err;
-        }
+    const sqliteError = findSqliteError(err);
+    if (sqliteError && (sqliteError.code === 'SQLITE_BUSY' || sqliteError.rawCode === 5)) {
+      // attempt retry
+      if (retry > 0) {
+        await delay(5000);
+        return await SQLSafeExecutor(fn, args, retry - 1);
+      } else {
+        throw err;
       }
     }
     throw err;
@@ -183,13 +194,12 @@ export async function getCompactionSummaries(sessionId: string) {
   return summaries;
 }
 export async function getMostRecentCompactionSummary(sessionId: string) {
-  const summary = (
-    await db
-      .select()
-      .from(Message)
-      .where(and(eq(Message.sessionId, sessionId), eq(Message.role, Role.compaction)))
-      .orderBy(desc(Message.sequence))
-  )[0];
+  const [summary] = await db
+    .select()
+    .from(Message)
+    .where(and(eq(Message.sessionId, sessionId), eq(Message.role, Role.compaction)))
+    .orderBy(desc(Message.sequence))
+    .limit(1);
   return summary;
 }
 
@@ -198,42 +208,9 @@ export async function deleteSession(sessionId: string) {
 }
 
 export async function getMessagesForSummary(sessionId: string, index: number = 0) {
-  const messagesCount = (
-    await db
-      .select({ messagesCount: Session.messagesCount })
-      .from(Session)
-      .where(eq(Session.id, sessionId))
-  ).at(0);
-  if (messagesCount == undefined) {
-    throw new Error(`Invalid SessionId, session do not exist`);
-  }
-
-  if (messagesCount.messagesCount >= 10) {
-    const cutoffMessage = await db
-      .select({
-        sequence: Message.sequence,
-      })
-      .from(Message)
-      .where(and(eq(Message.sessionId, sessionId), gt(Message.sequence, index)))
-      .orderBy(desc(Message.sequence))
-      .limit(1)
-      .offset(10);
-    const cutoffIndex = cutoffMessage[0]?.sequence;
-
-    if (cutoffIndex == null) {
-      return [];
-    }
-    return db
-      .select()
-      .from(Message)
-      .where(
-        and(
-          eq(Message.sessionId, sessionId),
-          lt(Message.sequence, cutoffIndex),
-          gt(Message.sequence, index),
-        ),
-      );
-  } else {
-    return db.select().from(Message).where(eq(Message.sessionId, sessionId));
-  }
+  return await db
+    .select()
+    .from(Message)
+    .where(and(eq(Message.sessionId, sessionId), gt(Message.sequence, index)))
+    .orderBy(Message.sequence);
 }

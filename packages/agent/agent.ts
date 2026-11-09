@@ -13,6 +13,7 @@ import {
   // MessageContentSchema,
   ReasoningEffort,
   ShellCallSchema,
+  ToolError,
 } from '@baby-panda/types';
 import { Role } from '@baby-panda/types';
 import type { UrlApi, Tool } from './types';
@@ -66,7 +67,7 @@ export class BabyPandaAgent extends EventEmitter {
   private messagesHistory: MessagesArray = [];
   private mcpClient: MCPClient;
   private cwd = cwd;
-  private projectDirectoryName = '';
+  public projectDirectoryName = '';
   private contextWindow: number = 0;
   public contextWindowUsed: number = 0;
   private systemInstructions: SystemMessage;
@@ -145,10 +146,15 @@ export class BabyPandaAgent extends EventEmitter {
   }
 
   private async createContext(): Promise<MessagesArray> {
-    const summary = await getMostRecentCompactionSummary(this.sessionId);
+    let summary: Awaited<ReturnType<typeof getMostRecentCompactionSummary>> | undefined = undefined;
+    try {
+      summary = await getMostRecentCompactionSummary(this.sessionId);
+    } catch (err) {
+      writeLogs(LogType.agent, this.projectDirectoryName, this.sessionId, `${err}`);
+    }
     if (summary) {
       const { content } = summary;
-      const messageHistory = await this.getMessageHistory(summary.sequence);
+      const messageHistory = await this.getMessageHistory(summary.sequence + 1);
       const memory = (await readFromMemory()) ?? null;
       if (memory) {
         return [
@@ -238,11 +244,11 @@ export class BabyPandaAgent extends EventEmitter {
           const summary = await compaction(this);
           if (summary) {
             /* Storing compaction result as tool because provider only support native roles user , tool , assistant , system */
-            const compactionMessage: AssistantMessage = {
-              role: Role.assistant,
+            const compactionMessage: UserMessage = {
+              role: Role.user,
               content: summary.content,
-              reasoning_content: '',
-              tool_calls: [],
+              // reasoning_content: '',
+              // tool_calls: [],
             };
 
             await createMessage(this.sessionId, JSON.stringify(compactionMessage), Role.compaction);
@@ -425,7 +431,14 @@ export class BabyPandaAgent extends EventEmitter {
                   /*
                    add this error as tool result for agent
                   */
-                  throw parsedTool.error;
+                  const errorMessage = `Tool Call Syntax Error : id -> ${tool.id}  , error -> ${parsedTool.error}, If ID is undefined here is the index of that tool_call from the tool call array you sended before this message index=${tool.index}`;
+                  const toolErrorMessage: ToolMessage = {
+                    tool_call_id: tool.id ?? 'undefined',
+                    role: Role.tool,
+                    content: errorMessage,
+                  };
+                  createMessage(this.sessionId, JSON.stringify(toolErrorMessage), Role.tool);
+                  throw new ToolError(errorMessage);
                 }
               });
 
@@ -481,11 +494,18 @@ export class BabyPandaAgent extends EventEmitter {
                     } else {
                       const parsed = ShellCallSchema.safeParse(call.arguments);
                       if (!parsed.success) {
+                        const errorMessage = `Tool Call Syntax Error : received bad arguments for bash tool here is what you send ${JSON.stringify(call.arguments)} and here is the parsing error ${parsed.error}`;
+                        const toolErrorMessage: ToolMessage = {
+                          role: Role.tool,
+                          tool_call_id: call.id,
+                          content: errorMessage,
+                        };
                         await createMessage(
                           this.sessionId,
-                          `Tool Call Syntax Error : received bad arguments for bash tool here is what you send ${JSON.stringify(call.arguments)} and here is the parsing error ${parsed.error}`,
+                          JSON.stringify(toolErrorMessage),
                           Role.tool,
                         );
+                        throw new ToolError(errorMessage);
                       } else {
                         const permissionObject: UserPermission = {
                           toolCallId: call.id,
@@ -606,9 +626,20 @@ export class BabyPandaAgent extends EventEmitter {
               this.messageQueue.push(MessageQueueEvents.toolCallDone);
               // to-do save messages code below this
             } catch (err) {
-              const fullErrMessage = `An error occured while resolving tool call at agent.ts: ${err instanceof Error ? `${err.message} ${err.cause}` : err}`;
-              await createMessage(this.sessionId, fullErrMessage, Role.user);
-              reject(fullErrMessage);
+              if (err! instanceof ToolError) {
+                // tool specific errors were already added.
+                const fullErrMessage = `An error occured while resolving tool call: ${err instanceof Error ? `${err.message} ${err.cause}` : err}`;
+                void writeLogs(
+                  LogType.mcp,
+                  this.projectDirectoryName,
+                  this.sessionId,
+                  fullErrMessage,
+                );
+                reject(fullErrMessage);
+              } else {
+                void writeLogs(LogType.mcp, this.projectDirectoryName, this.sessionId, `${err}`);
+                reject(`${err}`);
+              }
             }
           }
 
@@ -617,7 +648,8 @@ export class BabyPandaAgent extends EventEmitter {
             fullReply.finish_reason !== 'length' &&
             fullReply.finish_reason !== null
           ) {
-            // The model produced a final answer without tool calls, so this
+            // The model produced a final answer without tool calls or
+            // reaches end of turn, so this
             // turn is complete and the loop may end.
             toBreak = true;
           }

@@ -1,4 +1,4 @@
-import { getProjectName, writeLogs } from '@baby-panda/utils';
+import { getProjectName, writeLogs, formatErrorChain } from '@baby-panda/utils';
 import {
   SQLSafeExecutor,
   createSession as createSessionMethod,
@@ -23,7 +23,10 @@ function wrapWithSQLSafeExecutor<TArgs extends readonly unknown[], TResult>(
     try {
       return await SQLSafeExecutor(method, args);
     } catch (error: unknown) {
-      await writeLogs(LogType.db, getProjectName(), 'common', `${error}`);
+      // `${error}` would only render the top-level wrapper (e.g. Drizzle's
+      // "Failed query" message) and hide the real driver error in `cause` —
+      // log the full causal chain instead.
+      await writeLogs(LogType.db, getProjectName(), 'common', formatErrorChain(error));
       throw error;
     }
   };

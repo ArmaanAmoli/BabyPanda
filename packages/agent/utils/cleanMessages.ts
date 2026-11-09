@@ -1,5 +1,14 @@
-import { Role, type DBMessage, type MessagesArray, type ToolCall } from '@baby-panda/types';
-import type { CompactionMessage, UserMessage, SystemMessage } from '@baby-panda/types';
+import {
+  AssistantMessageSchema,
+  Role,
+  SystemMessageSchema,
+  ToolMessageSchema,
+  UserMessageSchema,
+  type DBMessage,
+  type MessagesArray,
+  type ToolCall,
+} from '@baby-panda/types';
+// import type { UserMessage, SystemMessage } from '@baby-panda/types';
 
 /**
  * DB rows store each message as a JSON-encoded string in `content`, and the
@@ -14,51 +23,6 @@ import type { CompactionMessage, UserMessage, SystemMessage } from '@baby-panda/
  */
 
 type HistoryRow = Pick<DBMessage, 'content' | 'role'>;
-
-// all possible types of messages covered in this type
-type MessageLike = {
-  role?: unknown;
-  content?: unknown;
-  tool_calls?: unknown;
-  tool_call_id?: unknown;
-  reasoning_content?: unknown;
-};
-
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-const { compaction, ...AllowedRoles } = Role;
-
-const ROLE_VALUES = new Set<Role>(Object.values(AllowedRoles));
-
-const isRole = (value: unknown): value is Role =>
-  typeof value === 'string' && ROLE_VALUES.has(value as Role);
-
-/**
- * MCP tool results nest text as `{content:[{type:'text','text':'...'}]}`;
- * the model needs it flattened to a plain string.
- */
-export function contentToText(content: unknown): string {
-  if (content == null) return '';
-
-  /* Tool content will be string in case of error */
-  if (typeof content === 'string') return content;
-
-  /* Array can have two types of elements -> string(err) or object ({type:'text' , 'text':<tool_result>}) */
-  if (Array.isArray(content)) {
-    return content
-      .map((part) => {
-        if (typeof part === 'string') return part;
-        if (part != null && typeof part === 'object') {
-          const text = (part as { text?: unknown }).text;
-          if (typeof text === 'string') return text;
-          return JSON.stringify(part);
-        }
-        return String(part);
-      })
-      .join('\n');
-  }
-  if (typeof content === 'object') return JSON.stringify(content);
-  return String(content);
-}
 
 /**
  * normalizeToolCalls -> raw toolCall array from provider -> fills default values where model left null
@@ -84,80 +48,31 @@ export function normalizeToolCalls(toolCalls: unknown): ToolCall[] {
     });
 }
 
+/**
+ * This function converts db message row to OpenAI message syntax
+ */
 export function cleanMessage(row: HistoryRow): MessagesArray[number] {
-  // The DB row role is the most trustworthy signal for the stored content.
-  const rowRole = isRole(row.role) ? row.role : Role.user;
-  let entry: unknown;
-  try {
-    entry = JSON.parse(row.content);
-  } catch {
-    // Plain text content (e.g. compaction summaries stored as raw strings).
-    return plainMessage(rowRole, row.content);
-  }
-
-  if (entry == null || typeof entry !== 'object' || Array.isArray(entry)) {
-    return plainMessage(rowRole, contentToText(entry));
-  }
-
-  let message = entry as MessageLike;
-  // Older rows hid the real message inside a JSON-encoded `content` string.
-  if (
-    !isRole(message.role) &&
-    typeof message.content === 'string' &&
-    message.content.trimStart().startsWith('{')
-  ) {
-    try {
-      const inner = JSON.parse(message.content) as unknown;
-      if (inner !== null && typeof inner === 'object' && !Array.isArray(inner)) {
-        message = { ...message, ...(inner as MessageLike) };
-      }
-    } catch {
-      // Ordinary text content that merely starts with `{` — leave it alone.
+  const { role, content } = row;
+  const parsed = JSON.parse(content);
+  switch (role) {
+    case Role.tool: {
+      return ToolMessageSchema.parse(parsed);
+    }
+    case Role.compaction: {
+      return UserMessageSchema.parse(parsed);
+    }
+    case Role.assistant: {
+      return AssistantMessageSchema.parse(parsed);
+    }
+    case Role.system: {
+      return SystemMessageSchema.parse(parsed);
+    }
+    case Role.user: {
+      return UserMessageSchema.parse(parsed);
     }
   }
-
-  const text = contentToText(message.content);
-
-  let role: Role;
-  if (isRole(message.role)) {
-    role = message.role;
-  } else if (typeof message.tool_call_id === 'string') {
-    role = Role.tool;
-  } else if (message.tool_calls != null) {
-    role = Role.assistant;
-  } else {
-    role = rowRole;
-  }
-
-  if (role === Role.tool) {
-    return {
-      role: Role.tool,
-      tool_call_id:
-        typeof message.tool_call_id === 'string' ? message.tool_call_id : 'unknown-tool-call',
-      content: text,
-    };
-  }
-  if (role === Role.assistant) {
-    return {
-      role: Role.assistant,
-      content: text,
-      reasoning_content:
-        typeof message.reasoning_content === 'string' ? message.reasoning_content : '',
-      tool_calls: normalizeToolCalls(message.tool_calls),
-    };
-  }
-  return plainMessage(role, text);
 }
 
 export function cleanMessages(rows: HistoryRow[]): MessagesArray {
   return rows.map((row) => cleanMessage(row));
-}
-
-function plainMessage(
-  role: Role,
-  content: string,
-): UserMessage | SystemMessage | CompactionMessage {
-  if (role === Role.system) return { role: Role.system, content };
-  if (role === Role.compaction) return { role: Role.compaction, content };
-  return { role: Role.user, content };
 }

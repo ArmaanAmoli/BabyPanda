@@ -13,7 +13,6 @@ export interface UrlApi {
   url: string;
   apikey: string;
 }
-// export type MessageQueueMessage = Message & { isResponded: boolean | false };
 export interface Tool {
   id: string;
   name: string;
@@ -21,16 +20,4 @@ export interface Tool {
 }
 export type ToolResult = Tool & { result?: unknown; error?: string };
 
-// export const ShellCallSchema = z.object({
-//   command: z.string().min(1),
-//   timeout: z.number().int().positive().max(600_000).default(120000).optional(),
-// });
-
-// export const ReadToolSchema = z.object({
-//       path: z.string().describe('Location of file'),
-//       offset: z.number().optional().describe('Starting line number'),
-//       limit: z
-//         .number()
-//         .optional()
-//         .describe('Number of lines coming after offset (including offset)'),
-//     });
+export type FinishReason = 'length' | 'stop' | 'tool_calls' | 'content_filter' | null;
