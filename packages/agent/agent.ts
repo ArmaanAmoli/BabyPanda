@@ -197,6 +197,12 @@ export class BabyPandaAgent extends EventEmitter {
 
   private async loop() {
     // let finalBreak: boolean = false;
+    const continuePrompt: UserMessage = {
+      role: Role.user,
+      content: 'Continue',
+    };
+
+    let injectContinuePrompt: boolean = false;
     while (true) {
       console.log('in the loop');
       this.isRunning = true;
@@ -214,8 +220,8 @@ export class BabyPandaAgent extends EventEmitter {
 
       if (
         userInput !== MessageQueueEvents.errorInLastIteration &&
-        userInput !== MessageQueueEvents.lastReplyFromLLMWasEmpty &&
-        userInput !== MessageQueueEvents.answerMessageBreakPreventer
+        userInput !== MessageQueueEvents.lastReplyFromLLMWasEmpty
+        // userInput !== MessageQueueEvents.answerMessageBreakPreventer
       ) {
         if (this.userMessageQueue.length >= 1) {
           for (const msg of this.userMessageQueue) {
@@ -228,7 +234,7 @@ export class BabyPandaAgent extends EventEmitter {
             );
           }
           this.userMessageQueue.length = 0;
-          this.messageQueue.push(MessageQueueEvents.answerMessageBreakPreventer);
+          // this.messageQueue.push(MessageQueueEvents.answerMessageBreakPreventer);
         }
       }
       this.messageQueue.splice(0, 1);
@@ -274,6 +280,11 @@ export class BabyPandaAgent extends EventEmitter {
       }
 
       const messages = await this.createContext();
+      // some models dont validate assistant prompt at the end. They only allow role: user | tool as the last message
+      if (injectContinuePrompt) {
+        messages.push(continuePrompt);
+        injectContinuePrompt = false;
+      }
 
       await writeLogs(
         LogType.agent,
@@ -652,6 +663,14 @@ export class BabyPandaAgent extends EventEmitter {
             // reaches end of turn, so this
             // turn is complete and the loop may end.
             toBreak = true;
+          } else {
+            if (
+              (fullReply.tool_calls.length === 0 && fullReply.finish_reason == 'length') ||
+              fullReply.finish_reason == null
+            ) {
+              // inject continue prompt
+              injectContinuePrompt = true;
+            }
           }
 
           resolve('single iteration of loop done.');
