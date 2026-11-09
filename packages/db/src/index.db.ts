@@ -2,7 +2,7 @@ import * as path from 'path';
 import { drizzle } from 'drizzle-orm/libsql';
 import os from 'os';
 import { existsSync, mkdirSync, writeFileSync } from 'fs';
-import { Database } from 'bun:sqlite';
+import { sql } from 'drizzle-orm';
 
 const dbFilePath = path.join(os.homedir(), '.babypanda', 'db', 'db.db');
 const testDbFilePath = path.join(os.homedir(), '.babypanda', 'db', 'db.test.db');
@@ -22,8 +22,8 @@ if (IN_DEV_MODE && !existsSync(testDbFilePath)) {
 }
 const sqliteFilePath = IN_DEV_MODE ? testDbFilePath : dbFilePath;
 const dbFile = 'file://' + sqliteFilePath;
-const sqlite = new Database(sqliteFilePath);
-sqlite.run('PRAGMA journal_mode = WAL;');
-sqlite.run('PRAGMA synchronous = NORMAL;');
+
 const db = drizzle(dbFile);
+await db.run(sql`PRAGMA journal_mode = WAL;`);
+await db.run(sql`PRAGMA synchronous = NORMAL;`);
 export { db, dbFile };
