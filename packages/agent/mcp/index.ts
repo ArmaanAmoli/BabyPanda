@@ -19,8 +19,7 @@ import {
   GetWebPageSchema,
   ReadSkillSchema,
 } from '@baby-panda/types';
-import fs from 'fs';
-import path from 'path';
+import { getSkillByName, readSkillBody } from '@baby-panda/utils';
 
 const server = new McpServer({
   name: 'baby-panda/mcp',
@@ -271,10 +270,34 @@ server.registerTool(
     inputSchema: ReadSkillSchema,
   },
   async (args) => {
-    const pathOfSkill = path.join(process.cwd(), '.babypanda', args.name, 'SKILL.md');
-    const result = await fs.promises.readFile(pathOfSkill, 'utf-8');
+    // Two-tier resolution with project (cwd) precedence, shared with the CLI
+    // and the agent context list.
+    const skill = await getSkillByName(args.name);
+    if (!skill) {
+      return {
+        content: [
+          {
+            type: 'text',
+            text: `Unknown skill: ${args.name}. Use one of the skills listed in the system instructions.`,
+          },
+        ],
+        isError: true,
+      };
+    }
+    if (skill.disableModelInvocation) {
+      return {
+        content: [
+          {
+            type: 'text',
+            text: `Skill "${args.name}" is user-only (disable-model-invocation) and cannot be invoked by the model.`,
+          },
+        ],
+        isError: true,
+      };
+    }
+    const result = await readSkillBody(skill.filePath);
     return {
-      content: [{ type: 'text', text: `Skill: ${args.name} \n${result}` }],
+      content: [{ type: 'text', text: `Skill: ${skill.name} (${skill.source}) \n${result}` }],
     };
   },
 );

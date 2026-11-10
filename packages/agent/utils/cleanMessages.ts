@@ -70,6 +70,12 @@ export function cleanMessage(row: HistoryRow): MessagesArray[number] {
     case Role.user: {
       return UserMessageSchema.parse(parsed);
     }
+    case Role.skill: {
+      // Stored as {"role":"user","name":...,"content":"<skill>...</skill>"};
+      // the provider only accepts native roles, so it goes out as a user
+      // message (UserMessageSchema strips the extra `name` key).
+      return UserMessageSchema.parse(parsed);
+    }
   }
 }
 
