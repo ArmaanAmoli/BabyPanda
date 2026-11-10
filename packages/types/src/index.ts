@@ -316,4 +316,8 @@ export const GetWebPageSchema = z.object({
 
 export const ToolContentFrontEndSchema = z.object({ name: z.string(), argument: z.unknown() });
 
+export const ReadSkillSchema = z.object({
+  name: z.string(),
+});
+
 export { ToolError };

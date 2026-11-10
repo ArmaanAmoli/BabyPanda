@@ -11,7 +11,6 @@
     "@modelcontextprotocol/server": "^2.0.0",
     "exa-js": "^2.22.0",
     "glob": "^13.0.6",
-    "gray-matter": "^4.0.3",
     "node-pty": "^1.1.0"
   },
   "devDependencies": {

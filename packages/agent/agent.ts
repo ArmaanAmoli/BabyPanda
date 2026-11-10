@@ -39,12 +39,13 @@ import { cleanMessages, normalizeToolCalls } from './utils/cleanMessages';
 import { compaction } from '@agent/memory/services/compaction';
 import { projectDir, memoryFile } from '@agent/memory/constants';
 import { readFromMemory } from '@agent/memory/utils/memory';
-import { writeLogs } from '@baby-panda/utils';
+import { writeLogs, getSkillsFiles, getSkillsInstructions } from '@baby-panda/utils';
 import { shell } from './mcp/tools/Shell/shell';
 import type { ShellResult } from './mcp/tools/Shell/shell';
 import { runSandboxed, type SandboxResult } from './mcp/tools/Shell/sandbox';
 import { AgentToolCallSchema, type AgentToolCall } from './config/tools';
 import { getAgentInstructions } from './memory/services/fetchAgentInstructions';
+// import { getSkillsFiles, getSkillsInstructions } from './skill/skill';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -150,6 +151,24 @@ export class BabyPandaAgent extends EventEmitter {
     //fetch AGENT.md | BABYPANDA.md and insert it in the context.
     const instructions = await getAgentInstructions();
     context.push(...instructions);
+
+    //fetch metadata of all SKILL.md in ./.babypanda folder
+
+    const skillInstruction = getSkillsInstructions();
+    const listOfAvailableSkills = (await getSkillsFiles())
+      .map((skill) => {
+        const { name, description } = skill;
+        return `- ${name} : ${description}`;
+      })
+      .join('\n');
+
+    if (listOfAvailableSkills.length > 0) {
+      const listOfAvailableSkillsWithInstructions: SystemMessage = {
+        role: Role.system,
+        content: skillInstruction + '\n' + listOfAvailableSkills,
+      };
+      context.push(listOfAvailableSkillsWithInstructions);
+    }
 
     let summary: Awaited<ReturnType<typeof getMostRecentCompactionSummary>> | undefined = undefined;
     try {

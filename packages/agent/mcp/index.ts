@@ -17,7 +17,10 @@ import {
   MkdirSchema,
   WebSearchSchema,
   GetWebPageSchema,
+  ReadSkillSchema,
 } from '@baby-panda/types';
+import fs from 'fs';
+import path from 'path';
 
 const server = new McpServer({
   name: 'baby-panda/mcp',
@@ -256,6 +259,22 @@ server.registerTool(
     const result = await editNotes(args.fileName, args.old_str, args.new_str);
     return {
       content: [{ type: 'text', text: `${result}` }],
+    };
+  },
+);
+
+//skills
+server.registerTool(
+  'readSkill',
+  {
+    description: 'Read SKILL.md file of a skill',
+    inputSchema: ReadSkillSchema,
+  },
+  async (args) => {
+    const pathOfSkill = path.join(process.cwd(), '.babypanda', args.name, 'SKILL.md');
+    const result = await fs.promises.readFile(pathOfSkill, 'utf-8');
+    return {
+      content: [{ type: 'text', text: `Skill: ${args.name} \n${result}` }],
     };
   },
 );

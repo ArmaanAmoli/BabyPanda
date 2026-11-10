@@ -1,8 +1,9 @@
 import fs from 'fs';
 import path from 'path';
-import { getMatchingFolders } from '../utils/getMatchingFolders';
-import { getYamlHeaders } from '../utils/getYAMLHeaders';
+import { getMatchingFolders } from '../getMatchingFolders';
+import { getYamlHeaders } from '../getYAMLHeaders';
 import { z } from 'zod';
+import { fileURLToPath } from 'url';
 
 const skillFoldersNameRegex = /^[a-z]+(-+[a-z]+)*$/;
 
@@ -15,7 +16,10 @@ const SkillHeadersSchema = z.object({
   description: z.string().nonempty(),
 });
 
-interface SkillFile {
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+export interface SkillFile {
   name: string;
   description: string;
   filePath: string;
@@ -43,4 +47,10 @@ export async function getSkillsFiles(): Promise<SkillFile[]> {
   );
   const result = skillFiles.filter((item): item is SkillFile => item !== null);
   return result;
+}
+
+export async function getSkillsInstructions(): Promise<string> {
+  const filePath = path.join(__dirname, 'SKILLS.md');
+  const content = await fs.promises.readFile(filePath, 'utf-8');
+  return content;
 }
