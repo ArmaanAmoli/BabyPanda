@@ -11,6 +11,7 @@ import type {
   UserPermission,
   WsCommonMessage,
   ServerStreamChunkSchemaType,
+  SkillEventPayload,
 } from '@baby-panda/types';
 
 const cwd = process.cwd().replaceAll('/', '-').replace('-', '');
@@ -106,6 +107,10 @@ const websocketHandler = (c: Context, next: Next) => {
         const onLoopEnd = () => {
           ws.send(JSON.stringify({ eventType: WsEventTypes.setting, payload: { end: true } }));
         };
+        const onSkillEvent = (payload: SkillEventPayload) => {
+          const msg: WsCommonMessage = { eventType: WsEventTypes.skill, payload };
+          wsCollection.get(sessionId)?.send(JSON.stringify(msg));
+        };
         const onContextUpdate = (state: ReturnType<BabyPandaAgent['getModelState']>) => {
           ws.send(JSON.stringify({ eventType: WsEventTypes.setting, payload: state }));
         };
@@ -118,6 +123,7 @@ const websocketHandler = (c: Context, next: Next) => {
           });
           babyPanda.off(ContentType.permission, onAskForPermission);
           babyPanda.off(ContentType.tool_call, onToolData);
+          babyPanda.off('skill', onSkillEvent);
           babyPanda.off('end', onLoopEnd);
           babyPanda.off('error', onError);
           babyPanda.off('context-update', onContextUpdate);
@@ -132,6 +138,7 @@ const websocketHandler = (c: Context, next: Next) => {
         });
         babyPanda.on(ContentType.tool_call, onToolData);
         babyPanda.on(ContentType.permission, onAskForPermission);
+        babyPanda.on('skill', onSkillEvent);
         babyPanda.on('end', onLoopEnd);
         babyPanda.on('error', onError);
         babyPanda.on('context-update', onContextUpdate);
@@ -172,6 +179,13 @@ const websocketHandler = (c: Context, next: Next) => {
           case WsEventTypes.message: {
             const agent = agentStore.get(sessionId);
             agent?.message({ content: parse.content, role: Role.user });
+            break;
+          }
+          case WsEventTypes.skill: {
+            const agent = agentStore.get(sessionId);
+            // injectSkill persists the skill row, notifies the CLI itself and
+            // only starts the loop when leftover args form a user message
+            void agent?.injectSkill(parse.name, parse.args);
             break;
           }
           case WsEventTypes.setting: {
