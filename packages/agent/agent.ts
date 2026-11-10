@@ -27,7 +27,6 @@ import {
   createMessage,
   getMostRecentCompactionSummary,
 } from '@baby-panda/db';
-// import { extractFirstJSON } from './utils/FirstJsonExtractor';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { Models, ProvidersEnum } from '@agent/config/models';
@@ -37,8 +36,6 @@ import {
   type RawReplyChunkFromLLM,
 } from '@/packages/agent/utils/extractFromRawLLMRes';
 import { cleanMessages, normalizeToolCalls } from './utils/cleanMessages';
-// import { cleanMessages } from '@agent/utils/cleanMessages';
-// import { extractStreamingField } from '@agent/utils/StreamingContentExtractor';
 import { compaction } from '@agent/memory/services/compaction';
 import { projectDir, memoryFile } from '@agent/memory/constants';
 import { readFromMemory } from '@agent/memory/utils/memory';
@@ -46,11 +43,7 @@ import { writeLogs } from '@baby-panda/utils';
 import { shell } from './mcp/tools/Shell/shell';
 import type { ShellResult } from './mcp/tools/Shell/shell';
 import { runSandboxed, type SandboxResult } from './mcp/tools/Shell/sandbox';
-import {
-  AgentToolCallSchema,
-  type AgentToolCall,
-  // type AgentToolCallUncertain,
-} from './config/tools';
+import { AgentToolCallSchema, type AgentToolCall } from './config/tools';
 import { getAgentInstructions } from './memory/services/fetchAgentInstructions';
 
 const __filename = fileURLToPath(import.meta.url);
