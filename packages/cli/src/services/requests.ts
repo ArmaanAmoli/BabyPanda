@@ -166,6 +166,19 @@ function toChatMessage(entry: unknown): ChatMessage[] {
 			return [];
 		}
 
+		// Skill rows (outer role wins) render as a one-line loaded notice,
+		// never as a user bubble with the whole SKILL.md body.
+		if (role === Role.skill) {
+			const name = typeof record.name === 'string' ? record.name : '';
+			return [
+				{
+					role: Role.skill,
+					content: `⚡ skill loaded: ${name}`,
+					createdAt: null,
+				},
+			];
+		}
+
 		// Assistant messages carry their reasoning inline; render it as a
 		// separate entry so its styling matches the streamed reasoning chunks.
 		if (role === Role.assistant) {

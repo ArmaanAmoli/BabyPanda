@@ -15,6 +15,8 @@ export interface PromptBoxArgs {
 	start?: number;
 	end?: number;
 	maxHeight?: number;
+	/** When a slash menu is open it owns up/down/enter; the input only filters. */
+	menuOpen?: boolean;
 }
 
 interface VisualLine {
@@ -93,6 +95,7 @@ function PromptInput({
 	maxLines,
 	start,
 	end,
+	menuOpen,
 }: {
 	value: string;
 	placeholder: string;
@@ -102,6 +105,7 @@ function PromptInput({
 	maxLines: number;
 	start: number;
 	end: number;
+	menuOpen: boolean;
 }) {
 	const [cursor, setCursor] = React.useState(value.length);
 	const [scrollTop, setScrollTop] = React.useState(0);
@@ -154,6 +158,8 @@ function PromptInput({
 
 	useInput((input, key) => {
 		if (key.tab || (key.shift && key.tab)) return;
+		// while the slash menu is open, navigation/submit keys belong to the menu
+		if (menuOpen && (key.return || key.upArrow || key.downArrow)) return;
 		if (key.return) {
 			onSubmit();
 			return;
@@ -303,6 +309,7 @@ export default function PromptBox({
 	start,
 	end,
 	maxHeight = 8,
+	menuOpen = false,
 }: PromptBoxArgs) {
 	const terminal = useTerminal();
 	const width = Math.max(10, terminal.columns - 5);
@@ -326,6 +333,7 @@ export default function PromptBox({
 					maxLines={inputHeight}
 					start={start ?? terminal.rows - 3}
 					end={end ?? terminal.rows}
+					menuOpen={menuOpen}
 				/>
 			) : (
 				<Text dimColor>{placeholder}</Text>

@@ -22,6 +22,7 @@ function getRoleColor(role: Role | ContentType) {
 	if (role === ContentType.reasoning_content) return '#863737';
 	if (role === Role.assistant) return '#7e7474';
 	if (role === Role.tool) return '#4d3838';
+	if (role === Role.skill) return '#9fe3bd';
 	return '#f6eeee';
 }
 

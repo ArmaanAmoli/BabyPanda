@@ -19,6 +19,8 @@ import {useInput} from 'ink';
 import {useVisibleMessages} from './hooks/useVisibleMessages';
 import {copyToClipboard} from './utils/copyToClipboard';
 import {executeCommand} from './utils/commands/executeCommands';
+import {getSkillsFiles} from '@baby-panda/utils';
+import type {SkillFile} from '@baby-panda/utils';
 import {useSettings} from './hooks/useSettings';
 import {LodingIndicator} from './components/LodingIndicator';
 import {ToolCallStatus} from './components/ToolCallStatus';
@@ -28,6 +30,13 @@ import {APP_BACKGROUND_COLOR} from './theme';
 
 export const PADDING_APP = 2;
 export const GAP_CHAT_BOX_PROMPT_BOX = 1;
+
+const SLASH_COMMANDS: {name: string; description: string}[] = [
+	{name: 'provider', description: 'switch provider'},
+	{name: 'model', description: 'switch model'},
+	{name: 'efforts', description: 'set reasoning effort'},
+	{name: 'sandbox', description: 'toggle shell sandbox'},
+];
 export default function App() {
 	const [focus, setFocus] = useState<Focused | null>('ChatBox');
 	const socket = useSocket();
@@ -38,6 +47,8 @@ export default function App() {
 	const messageGroups = getMessageGroups(messageHistory);
 	const [prompt, setPrompt] = useState('');
 	const [isCommand, setIsCommand] = useState(false);
+	const [skills, setSkills] = useState<SkillFile[]>([]);
+	const [slashMenuOpen, setSlashMenuOpen] = useState(false);
 	const [providersLoaded, setProvidersLoaded] = useState(false);
 	const [setupProviderName, setSetupProviderName] = useState<string>();
 	const [clipboardStatus, setClipboardStatus] = useState<string>();
@@ -48,7 +59,21 @@ export default function App() {
 	const {focusMessage, moveFocus, focusedMessageIndex} = useVisibleMessages();
 	const settings = useSettings();
 	const {clearToolCalls} = useToolCalls();
+	const refreshSkills = () => {
+		getSkillsFiles()
+			.then(setSkills)
+			.catch(error =>
+				showClipboardStatus(`Skill loading failed: ${String(error)}`),
+			);
+	};
 	const onChange = (value: string) => {
+		if (value.startsWith('/') && !prompt.startsWith('/')) {
+			// entering slash mode: pick up skills added since startup and open the menu
+			refreshSkills();
+			setSlashMenuOpen(true);
+		} else if (!value.startsWith('/')) {
+			setSlashMenuOpen(false);
+		}
 		setIsCommand(value.startsWith('/'));
 		setPrompt(value);
 	};
@@ -67,6 +92,34 @@ export default function App() {
 		isCommand && command === '/model' && activeProvider != null;
 	const showEffortMenu =
 		isCommand && command === '/efforts' && activeProvider != null;
+	const slashQuery = isCommand ? (command ?? '').slice(1).toLowerCase() : '';
+	const slashItems = React.useMemo(() => {
+		const items: {label: string; value: string}[] = [];
+		for (const cmd of SLASH_COMMANDS) {
+			if (cmd.name.includes(slashQuery)) {
+				items.push({
+					label: `/${cmd.name} — ${cmd.description}`,
+					value: `command:${cmd.name}`,
+				});
+			}
+		}
+		for (const skill of skills) {
+			if (skill.name.includes(slashQuery)) {
+				const hint = skill.argumentHint ? ` ${skill.argumentHint}` : '';
+				items.push({
+					label: `/${skill.name}${hint} — ${skill.description} (${skill.source})`,
+					value: `skill:${skill.name}`,
+				});
+			}
+		}
+		return items;
+	}, [skills, slashQuery]);
+	const showSlashMenu =
+		slashMenuOpen &&
+		!showProviderMenu &&
+		!showModelMenu &&
+		!showEffortMenu &&
+		slashItems.length > 0;
 	const statusHeight = 1;
 	const promptMaxHeight = Math.min(8, Math.max(3, Math.floor(rows * 0.25)));
 	const promptWidth = Math.max(10, columns - 2 * PADDING_APP - 1);
@@ -103,9 +156,21 @@ export default function App() {
 	);
 	const menuHeight =
 		menuItemCount > 0 ? Math.min(menuItemCount, menuLimit) + 2 : 0;
+	const slashMenuHeight = showSlashMenu
+		? Math.min(slashItems.length, menuLimit) + 2
+		: 0;
 	const bottomHeight =
-		menuHeight + statusHeight + promptHeight + activityHeight + setupHeight;
+		menuHeight +
+		slashMenuHeight +
+		statusHeight +
+		promptHeight +
+		activityHeight +
+		setupHeight;
 	const chatHeight = Math.max(1, rows - bottomHeight - GAP_CHAT_BOX_PROMPT_BOX);
+
+	useEffect(() => {
+		refreshSkills();
+	}, []);
 
 	useEffect(() => {
 		void getProviders()
@@ -185,30 +250,81 @@ export default function App() {
 		setIsCommand(false);
 	};
 
+	const onSlashSelect = (value: string) => {
+		setSlashMenuOpen(false);
+		if (value.startsWith('skill:')) {
+			// complete the input, do not submit; the user presses enter to send
+			setPrompt(`/${value.slice('skill:'.length)} `);
+			setIsCommand(true);
+		} else {
+			setPrompt(`/${value.slice('command:'.length)}`);
+			setIsCommand(true);
+		}
+	};
+
 	const onSubmit = async () => {
 		if (prompt.trim().length === 0) {
 			return;
 		}
 		if (isCommand) {
 			if (showProviderMenu || showModelMenu || showEffortMenu) return;
+			const parts = prompt.trim().split(/\s+/);
+			const token = (parts[0] ?? '').substring(1);
+			const rest = parts.slice(1).join(' ');
+			// commands win collisions; otherwise a matching skill name activates the skill
+			const skill = skills.find(item => item.name === token);
+			if (skill) {
+				setSlashMenuOpen(false);
+				const skillMessage: WsEventMessage = {
+					eventType: WsEventTypes.skill,
+					name: skill.name,
+					...(rest ? {args: rest} : {}),
+				};
+				socket?.send(JSON.stringify(skillMessage));
+				setPrompt('');
+				setIsCommand(false);
+				if (rest) {
+					// leftover text after the skill arguments is a normal user message
+					setMessageHistory(prev => [
+						...prev,
+						{role: Role.user, content: rest, createdAt: Date.now()},
+					]);
+					lastRole.current = Role.user;
+					settings.responding.setResponding(true);
+					clearToolCalls();
+					const wsMessage: WsEventMessage = {
+						eventType: WsEventTypes.message,
+						role: Role.user,
+						content: rest,
+					};
+					socket?.send(JSON.stringify(wsMessage));
+				}
+				return;
+			}
 			// execute command
-			const setting = executeCommand(prompt);
-			const wsMessage: WsEventMessage = {
-				eventType: WsEventTypes.setting,
-				setting,
-			};
+			try {
+				const setting = executeCommand(prompt);
+				const wsMessage: WsEventMessage = {
+					eventType: WsEventTypes.setting,
+					setting,
+				};
 
-			if (setting.sandbox != undefined) {
-				settings.sandbox.setSandBox(setting.sandbox);
+				if (setting.sandbox != undefined) {
+					settings.sandbox.setSandBox(setting.sandbox);
+				}
+				if (setting.reasoningEffort !== undefined) {
+					settings.model.setModelState({
+						reasoningEffort: setting.reasoningEffort,
+					});
+				}
+				socket?.send(JSON.stringify(wsMessage));
+			} catch (error) {
+				// unknown slash input: local error only, nothing is sent
+				showClipboardStatus(`Unknown command or skill: ${String(error)}`);
 			}
-			if (setting.reasoningEffort !== undefined) {
-				settings.model.setModelState({
-					reasoningEffort: setting.reasoningEffort,
-				});
-			}
-			socket?.send(JSON.stringify(wsMessage));
 			setPrompt('');
 			setIsCommand(false);
+			setSlashMenuOpen(false);
 			return;
 		}
 		setMessageHistory(prev => [
@@ -296,6 +412,10 @@ export default function App() {
 			}
 		}
 		if (key.escape) {
+			if (slashMenuOpen) {
+				setSlashMenuOpen(false);
+				return;
+			}
 			if (focus != null) {
 				setFocus(null);
 				focusMessage(null);
@@ -479,6 +599,14 @@ export default function App() {
 									limit={menuLimit}
 								/>
 							)}
+							{showSlashMenu && (
+								<CommandMenu
+									title="Commands & skills"
+									items={slashItems}
+									onSelect={onSlashSelect}
+									limit={menuLimit}
+								/>
+							)}
 						</>
 					)}
 
@@ -497,6 +625,7 @@ export default function App() {
 								start={rows - statusHeight - promptHeight + 1}
 								end={rows - statusHeight}
 								maxHeight={promptHeight}
+								menuOpen={showSlashMenu}
 							/>
 						</Box>
 					)}

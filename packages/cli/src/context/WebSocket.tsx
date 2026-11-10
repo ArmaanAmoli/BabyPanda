@@ -5,10 +5,15 @@ import {writeLogs} from '@baby-panda/utils';
 import {
 	ReasoningEffort,
 	LogType,
+	Role,
 	WsCommonMessageSchema,
 	WsEventTypes,
 } from '@baby-panda/types';
-import {UserPermissionSchema, ServerStreamChunkSchema} from '@baby-panda/types';
+import {
+	UserPermissionSchema,
+	ServerStreamChunkSchema,
+	SkillEventPayloadSchema,
+} from '@baby-panda/types';
 import usePendingPermissionMessages from '../hooks/usePendingPermissionMessages';
 import {setTimeout} from 'node:timers';
 import {getProjectName} from '@baby-panda/utils';
@@ -136,6 +141,22 @@ export function SocketProvider({children}: ReactChildPropInterface) {
 							toolCallContext.clearToolCalls();
 							setting.responding.setResponding(false);
 						}
+						break;
+					}
+					case WsEventTypes.skill: {
+						// the server confirms the skill was loaded into context
+						// (or failed); only then is the notice shown
+						const skillPayload = SkillEventPayloadSchema.parse(payload);
+						const content = skillPayload.ok
+							? `⚡ skill loaded: ${skillPayload.name}`
+							: `⚡ skill failed to load: ${skillPayload.name}${
+									skillPayload.error ? ` (${skillPayload.error})` : ''
+								}`;
+						messageContext.lastRole.current = Role.skill;
+						messageContext.setMessageHistory(prev => [
+							...prev,
+							{role: Role.skill, content, createdAt: Date.now()},
+						]);
 						break;
 					}
 					case WsEventTypes.tool: {
