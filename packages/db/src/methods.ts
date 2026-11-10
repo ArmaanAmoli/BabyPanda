@@ -208,9 +208,18 @@ export async function deleteSession(sessionId: string) {
 }
 
 export async function getMessagesForSummary(sessionId: string, index: number = 0) {
+  // role='skill' rows are user-injected skill content: they are never
+  // summarized away and keep their position in the history, so compaction
+  // skips them here (readSkill results stay role='tool' and compact normally).
   return await db
     .select()
     .from(Message)
-    .where(and(eq(Message.sessionId, sessionId), gt(Message.sequence, index)))
+    .where(
+      and(
+        eq(Message.sessionId, sessionId),
+        gt(Message.sequence, index),
+        ne(Message.role, Role.skill),
+      ),
+    )
     .orderBy(Message.sequence);
 }
