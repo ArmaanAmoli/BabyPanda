@@ -14,6 +14,9 @@ export enum Role {
   assistant = 'assistant',
   tool = 'tool',
   compaction = 'compaction',
+  // User-invoked skill injection. Stored in the DB like any other row, but the
+  // provider only ever sees it as a `user` message (see cleanMessage).
+  skill = 'skill',
 }
 
 export enum ReasoningEffort {
@@ -97,6 +100,34 @@ export const CompactionMessageSchema = z.object({
   content: z.string(),
 });
 export type CompactionMessage = z.infer<typeof CompactionMessageSchema>;
+
+/**
+ * A skill activated by the user via `/<skill-name>` in the CLI. The DB row has
+ * `role: 'skill'` and its content is the JSON of the inner provider-facing
+ * message plus the skill name (used by the CLI to render the loaded notice).
+ */
+export const SkillMessageSchema = z.object({
+  role: z.literal(Role.user),
+  name: z.string(),
+  content: z.string(),
+});
+export type SkillMessage = z.infer<typeof SkillMessageSchema>;
+
+/** History entry as the CLI sees it: the outer DB row role wins. */
+export const SkillHistoryEntrySchema = z.object({
+  role: z.literal(Role.skill),
+  name: z.string(),
+  content: z.string(),
+});
+export type SkillHistoryEntry = z.infer<typeof SkillHistoryEntrySchema>;
+
+/** Server -> CLI notification about a skill activation attempt. */
+export const SkillEventPayloadSchema = z.object({
+  name: z.string(),
+  ok: z.boolean(),
+  error: z.string().optional(),
+});
+export type SkillEventPayload = z.infer<typeof SkillEventPayloadSchema>;
 
 export type MessagesArray = (AssistantMessage | UserMessage | ToolMessage | SystemMessage)[];
 
@@ -194,7 +225,7 @@ export const UserPermissionSchema = z.object({
 
 export type UserPermission = z.infer<typeof UserPermissionSchema>;
 
-export const WsEventTypeSchema = z.enum(['permission', 'message', 'setting', 'tool']);
+export const WsEventTypeSchema = z.enum(['permission', 'message', 'setting', 'tool', 'skill']);
 
 export const WsEventTypes = WsEventTypeSchema.enum;
 
@@ -219,7 +250,8 @@ export const WsEventMessageSchema = z.discriminatedUnion('eventType', [
   z.discriminatedUnion('role', [
     BaseSchema.extend({
       eventType: z.literal(WsEventTypeSchema.enum.message),
-      role: z.enum(Role).exclude([Role.assistant]),
+      // skill content only travels via the dedicated `skill` event
+      role: z.enum(Role).exclude([Role.assistant, Role.skill]),
       content: z.string(),
     }),
     BaseSchema.extend({
@@ -238,6 +270,11 @@ export const WsEventMessageSchema = z.discriminatedUnion('eventType', [
       reasoningEffort: z.enum(ReasoningEffort).optional(),
       apiKey: z.string().optional(),
     }),
+  }),
+  BaseSchema.extend({
+    eventType: z.literal(WsEventTypeSchema.enum.skill),
+    name: z.string().min(1),
+    args: z.string().optional(),
   }),
 ]);
 
@@ -315,5 +352,9 @@ export const GetWebPageSchema = z.object({
 });
 
 export const ToolContentFrontEndSchema = z.object({ name: z.string(), argument: z.unknown() });
+
+export const ReadSkillSchema = z.object({
+  name: z.string(),
+});
 
 export { ToolError };

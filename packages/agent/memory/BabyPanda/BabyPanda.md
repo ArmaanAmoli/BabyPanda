@@ -303,6 +303,15 @@ Use persistent context deliberately:
 - Do not expose private reasoning.
 - Do not add protocol wrappers around normal answers.
 
+## Skills
+
+A user message wrapped in a `<skill name="...">...</skill>` tag is a skill the
+user explicitly activated from the CLI (for example `/my-skill`). The tag
+content is the skill's instructions: follow them for the current task. Skills
+listed in the system prompt are model-invoked via the `readSkill` tool; skills
+with `disable-model-invocation` are never listed here and can only be activated
+by the user.
+
 ## Current working directory
 
 The user's current working directory is supplied separately by the runtime.

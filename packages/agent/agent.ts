@@ -16,6 +16,7 @@ import {
   ToolError,
 } from '@baby-panda/types';
 import { Role } from '@baby-panda/types';
+import type { SkillMessage } from '@baby-panda/types';
 import type { UrlApi, Tool } from './types';
 import { MessageQueueEvents } from './types';
 import { readFileSync, existsSync, lstatSync, mkdirSync, writeFileSync } from 'fs';
@@ -39,12 +40,22 @@ import { cleanMessages, normalizeToolCalls } from './utils/cleanMessages';
 import { compaction } from '@agent/memory/services/compaction';
 import { projectDir, memoryFile } from '@agent/memory/constants';
 import { readFromMemory } from '@agent/memory/utils/memory';
-import { writeLogs } from '@baby-panda/utils';
+import {
+  writeLogs,
+  getSkillsFiles,
+  getSkillsInstructions,
+  getSkillByName,
+  readSkillBody,
+  applySkillArguments,
+  wrapSkillContent,
+} from '@baby-panda/utils';
+import type { SkillEventPayload } from '@baby-panda/types';
 import { shell } from './mcp/tools/Shell/shell';
 import type { ShellResult } from './mcp/tools/Shell/shell';
 import { runSandboxed, type SandboxResult } from './mcp/tools/Shell/sandbox';
 import { AgentToolCallSchema, type AgentToolCall } from './config/tools';
 import { getAgentInstructions } from './memory/services/fetchAgentInstructions';
+// import { getSkillsFiles, getSkillsInstructions } from './skill/skill';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -150,6 +161,25 @@ export class BabyPandaAgent extends EventEmitter {
     //fetch AGENT.md | BABYPANDA.md and insert it in the context.
     const instructions = await getAgentInstructions();
     context.push(...instructions);
+
+    //fetch metadata of all SKILL.md in ./.babypanda folder
+
+    const skillInstruction = getSkillsInstructions();
+    const listOfAvailableSkills = (await getSkillsFiles())
+      .filter((skill) => !skill.disableModelInvocation) // user-only skills are never listed for the model
+      .map((skill) => {
+        const hint = skill.argumentHint ? ` ${skill.argumentHint}` : '';
+        return `- ${skill.name}${hint} : ${skill.description} (${skill.source})`;
+      })
+      .join('\n');
+
+    if (listOfAvailableSkills.length > 0) {
+      const listOfAvailableSkillsWithInstructions: SystemMessage = {
+        role: Role.system,
+        content: skillInstruction + '\n' + listOfAvailableSkills,
+      };
+      context.push(listOfAvailableSkillsWithInstructions);
+    }
 
     let summary: Awaited<ReturnType<typeof getMostRecentCompactionSummary>> | undefined = undefined;
     try {
@@ -735,6 +765,54 @@ export class BabyPandaAgent extends EventEmitter {
     } else {
       await writeLogs(LogType.agent, this.projectDirectoryName, this.sessionId, `Called loop`);
       await this.loop();
+    }
+  }
+
+  /**
+   * Activates a skill on behalf of the user (`/<skill-name> [args...]` from the
+   * CLI). The SKILL.md body (frontmatter stripped, `$arg` placeholders filled)
+   * is wrapped in a <skill> tag and persisted as a role='skill' row, keeping
+   * its sequence position in the history. Any leftover text after the declared
+   * arguments is queued as a normal user message. Emits a 'skill' event with a
+   * SkillEventPayload so the server can notify the CLI; on failure nothing is
+   * persisted.
+   */
+  async injectSkill(name: string, args?: string) {
+    try {
+      const skill = await getSkillByName(name);
+      if (!skill) {
+        throw new Error(`unknown skill "${name}"`);
+      }
+      const body = await readSkillBody(skill.filePath);
+      const { content, leftover } = applySkillArguments(body, skill.arguments ?? [], args ?? '');
+      const wrapped = wrapSkillContent(skill.name, content);
+      const stored: SkillMessage = { role: Role.user, name: skill.name, content: wrapped };
+      await createMessage(this.sessionId, JSON.stringify(stored), Role.skill);
+      await writeLogs(
+        LogType.agent,
+        this.projectDirectoryName,
+        this.sessionId,
+        `[SKILL] loaded ${skill.name} (${skill.source}) args=${JSON.stringify(args ?? '')}`,
+      );
+      const payload: SkillEventPayload = { name: skill.name, ok: true };
+      this.emit('skill', payload);
+      if (leftover.trim().length > 0) {
+        // leftover text is the user's actual message; do not await the loop
+        void this.message({ role: Role.user, content: leftover });
+      }
+    } catch (err) {
+      await writeLogs(
+        LogType.agent,
+        this.projectDirectoryName,
+        this.sessionId,
+        `[SKILL] failed to load ${name}: ${err}`,
+      );
+      const payload: SkillEventPayload = {
+        name,
+        ok: false,
+        error: err instanceof Error ? err.message : String(err),
+      };
+      this.emit('skill', payload);
     }
   }
 
