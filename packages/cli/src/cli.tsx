@@ -26,6 +26,7 @@ import {VisibleMessageProvider} from './context/VisibleMessages';
 import {SettingsProvider} from './context/Settings';
 import {FilteredStdin} from './utils/terminal/filterStdin';
 import {ToolCallsProvider} from './context/ToolCalls';
+import {ToolCallUiProvider} from './context/ToolCallUi';
 import {ScrollProvider} from './context/Scroll';
 
 const filteredStdin = new FilteredStdin(process.stdin);
@@ -143,7 +144,9 @@ const {waitUntilExit, unmount} = render(
 										<VisibleMessageProvider>
 											<ToolCallsProvider>
 												<SocketProvider>
-													<App />
+													<ToolCallUiProvider>
+														<App />
+													</ToolCallUiProvider>
 												</SocketProvider>
 											</ToolCallsProvider>
 										</VisibleMessageProvider>
