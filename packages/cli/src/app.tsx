@@ -9,7 +9,10 @@ import {ReasoningEffort, Role, WsEventTypes} from '@baby-panda/types';
 import type {WsEventMessage} from '@baby-panda/types';
 import {getMessages, getProviders, saveProviderKey} from './services/requests';
 import {useSession} from './hooks/useSession';
-import {PermissionBox} from './components/permissionBox';
+import {
+	PermissionBox,
+	getPermissionBoxHeight,
+} from './components/permissionBox';
 import usePendingPermissionMessages from './hooks/usePendingPermissionMessages';
 import {useMessageHistory} from './hooks/useMessageHistroy';
 import useSocket from './hooks/useSocket';
@@ -125,9 +128,24 @@ export default function App() {
 	const promptWidth = Math.max(10, columns - 2 * PADDING_APP - 1);
 	const promptLineCount = getWrappedLineCount(prompt, promptWidth);
 	const promptHeight = Math.min(promptMaxHeight, promptLineCount + 2);
+	// the permission box grows with the command length so every option
+	// stays visible; it is capped so the prompt and status bar keep room
+	const permissionContent = pendingPermissionMessages.at(-1)?.content;
+	const permissionBoxWidth = Math.max(
+		10,
+		Math.floor((columns - 2 * PADDING_APP) / 2),
+	);
+	const permissionContentHeight =
+		permissionContent == null
+			? 0
+			: getPermissionBoxHeight(permissionContent, permissionBoxWidth);
+	const permissionMaxHeight = Math.max(
+		4,
+		rows - statusHeight - promptHeight - GAP_CHAT_BOX_PROMPT_BOX - 1,
+	);
 	const activityHeight =
 		pendingPermissionMessages.length > 0
-			? 4
+			? Math.min(permissionContentHeight, permissionMaxHeight)
 			: settings.responding.responding
 				? 4
 				: 0;
@@ -463,7 +481,7 @@ export default function App() {
 				>
 					{pendingPermissionMessages.length > 0 && (
 						<Box
-							height="100%"
+							height={activityHeight}
 							width="50%"
 							backgroundColor={APP_BACKGROUND_COLOR}
 						>
