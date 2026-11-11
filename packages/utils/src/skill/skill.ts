@@ -28,7 +28,7 @@ const SkillHeadersSchema = z.object({
   description: z.string().nonempty(),
   arguments: stringOrList,
   'argument-hint': stringOrList,
-  'disable-model-invocation': z.boolean().optional(),
+  'disable-model-invocation': z.boolean().optional().default(false),
 });
 
 const __filename = fileURLToPath(import.meta.url);
@@ -85,7 +85,7 @@ async function scanSkillDir(dir: string, source: SkillSource): Promise<SkillFile
           source,
           arguments: args ? args.split(/\s+/).filter(Boolean) : undefined,
           argumentHint: hint,
-          disableModelInvocation: disable ?? false,
+          disableModelInvocation: disable,
         } as SkillFile;
       } catch {
         return null;
