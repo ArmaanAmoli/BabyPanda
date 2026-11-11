@@ -311,6 +311,7 @@ content is the skill's instructions: follow them for the current task. Skills
 listed in the system prompt are model-invoked via the `readSkill` tool; skills
 with `disable-model-invocation` are never listed here and can only be activated
 by the user.
+If `readSkill` tool is not listed it means skills can only be invoked by user
 
 ## Current working directory
 

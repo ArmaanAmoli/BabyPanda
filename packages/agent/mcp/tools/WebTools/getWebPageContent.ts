@@ -38,6 +38,6 @@ export async function getWebPage(url: string[]): Promise<WebPageResults> {
     const parsed = WebPageResultsSchema.parse(results);
     return parsed;
   } catch (err) {
-    throw new Error(`Error occured while parsing results from WebPage: ${err}`);
+    throw new Error(`Error occured while parsing results from WebPage: ${err}`, { cause: err });
   }
 }
