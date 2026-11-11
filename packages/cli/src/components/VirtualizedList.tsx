@@ -90,10 +90,16 @@ export function VirtualizedList<T>({
 
 			if (current === target) return;
 
-			// Ink renders whole terminal rows, so moving one row per frame is
-			// the smallest visible step and avoids large jumps during wheel bursts.
-			const next = current + Math.sign(target - current);
-			updateScrollTop(next);
+			// Move a fraction of the remaining distance per frame (at least one
+			// row, capped at about one viewport): small wheel steps stay smooth,
+			// long scrolls catch up fast instead of creeping one row per frame.
+			const delta = target - current;
+			const maxStep = Math.max(8, height);
+			const step = Math.min(
+				maxStep,
+				Math.max(1, Math.ceil(Math.abs(delta) / 6)),
+			);
+			updateScrollTop(current + Math.sign(delta) * step);
 			animationTimerRef.current = setTimeout(animate, 16);
 		};
 
@@ -122,14 +128,23 @@ export function VirtualizedList<T>({
 		const itemEnd = offsets[ensureVisibleIndex + 1] ?? itemStart;
 		let nextScrollTop = scrollTop;
 
-		// Move up only when the focused item is above the viewport.
-		if (itemStart < scrollTop) {
-			nextScrollTop = itemStart;
-		}
+		if (itemEnd - itemStart >= height) {
+			// Item taller than the viewport: clamp into its scrollable range so
+			// the effect settles instead of oscillating between its two edges.
+			nextScrollTop = Math.max(
+				itemStart,
+				Math.min(scrollTop, itemEnd - height),
+			);
+		} else {
+			// Move up only when the focused item is above the viewport.
+			if (itemStart < scrollTop) {
+				nextScrollTop = itemStart;
+			}
 
-		// Move down only when the focused item is below the viewport.
-		if (itemEnd > scrollTop + height) {
-			nextScrollTop = itemEnd - height;
+			// Move down only when the focused item is below the viewport.
+			if (itemEnd > scrollTop + height) {
+				nextScrollTop = itemEnd - height;
+			}
 		}
 
 		nextScrollTop = Math.max(0, Math.min(maximumScrollTop, nextScrollTop));
@@ -196,26 +211,23 @@ export function VirtualizedList<T>({
 	const lastVisibleIndex = useMemo(() => {
 		let index = firstVisibleIndex;
 		const visibleEnd = scrollTop + height;
-		while (index < data.length - 1 && offsets[index] < visibleEnd) {
+		// Advance while the NEXT item still starts above the bottom edge, so the
+		// last rendered item is the one containing the bottom edge — never the
+		// item after it (its first line must not peek into the viewport).
+		while (index < data.length - 1 && offsets[index + 1] < visibleEnd) {
 			index++;
 		}
-		return Math.min(data.length - 1, index);
+		return index;
 	}, [data.length, firstVisibleIndex, height, offsets, scrollTop]);
 
-	// Spacers are measured relative to the current viewport. Using the
-	// absolute item offset here would push the visible items off-screen after
-	// scrolling down because the viewport already starts at `scrollTop`.
-	const emptyViewportSpace =
-		totalHeight <= height && scrollTop >= maximumScrollTop
-			? height - totalHeight
-			: 0;
-	const topSpacer = Math.max(
-		0,
-		emptyViewportSpace + (offsets[firstVisibleIndex] ?? 0) - scrollTop,
-	);
+	// Spacers are measured relative to the current viewport: the first visible
+	// item is clipped at the top edge, so only the rows below the last visible
+	// item (within the viewport) need blank space. When the content is shorter
+	// than the viewport this bottom-aligns it.
+	const topSpacer = Math.max(0, (offsets[firstVisibleIndex] ?? 0) - scrollTop);
 	const bottomSpacer = Math.max(
 		0,
-		totalHeight - (offsets[lastVisibleIndex + 1] ?? totalHeight),
+		scrollTop + height - (offsets[lastVisibleIndex + 1] ?? totalHeight),
 	);
 
 	const scrollBy = (delta: number) => {

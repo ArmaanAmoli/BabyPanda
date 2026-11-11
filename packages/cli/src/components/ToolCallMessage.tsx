@@ -57,8 +57,15 @@ function BulletRow({
 				? '#f08a8a'
 				: '#8a7f7f';
 	const stats = bullet.stats ?? '';
-	// icon(1) + space(1) + indent(2) + stats
-	const reserved = 2 + 2 + (stats.length > 0 ? stats.length + 1 : 0);
+	const verb = `${bullet.verb} `;
+	// Fixed segments: padding(1) + icon(1) + space(1) + indent(2) + verb + stats.
+	const reserved =
+		ROW_PADDING_LEFT +
+		1 +
+		1 +
+		2 +
+		verb.length +
+		(stats.length > 0 ? stats.length + 1 : 0);
 	const targetMax = Math.max(1, width - reserved);
 
 	let targetText: string;
@@ -73,6 +80,7 @@ function BulletRow({
 
 	return (
 		<Box
+			width={width}
 			height={1}
 			flexShrink={0}
 			paddingLeft={ROW_PADDING_LEFT}
@@ -82,8 +90,12 @@ function BulletRow({
 			<Text color={iconColor}>{icon}</Text>
 			<Text> </Text>
 			<Text color="#c9bebe">{'  '}</Text>
-			<Text color="#e8dede">{bullet.verb} </Text>
-			<Text color="#9fb4c7">{targetText}</Text>
+			<Text color="#e8dede" wrap="truncate">
+				{verb}
+			</Text>
+			<Text color="#9fb4c7" wrap="truncate">
+				{targetText}
+			</Text>
 			{stats.length > 0 && <Text color="#8a7f7f"> {stats}</Text>}
 		</Box>
 	);
