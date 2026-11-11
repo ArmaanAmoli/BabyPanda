@@ -5,7 +5,12 @@ import {useState, useEffect, useRef} from 'react';
 import PromptBox, {getWrappedLineCount} from './components/promptBox';
 import {CommandMenu, ProviderSetupBox} from './components/commandMenu';
 import {ChatBox} from './components/ChatBox';
-import {ReasoningEffort, Role, WsEventTypes} from '@baby-panda/types';
+import {
+	ContentType,
+	ReasoningEffort,
+	Role,
+	WsEventTypes,
+} from '@baby-panda/types';
 import type {WsEventMessage} from '@baby-panda/types';
 import {getMessages, getProviders, saveProviderKey} from './services/requests';
 import {useSession} from './hooks/useSession';
@@ -18,6 +23,8 @@ import {useMessageHistory} from './hooks/useMessageHistroy';
 import useSocket from './hooks/useSocket';
 import {useTerminal} from './hooks/useTerminal';
 import type {Focused} from './types';
+import {decodeToolCallBatch} from './types';
+import {useToolCallUi} from './hooks/useToolCallUi';
 import {useInput} from 'ink';
 import {useVisibleMessages} from './hooks/useVisibleMessages';
 import {copyToClipboard} from './utils/copyToClipboard';
@@ -62,6 +69,7 @@ export default function App() {
 	const {focusMessage, moveFocus, focusedMessageIndex} = useVisibleMessages();
 	const settings = useSettings();
 	const {clearToolCalls} = useToolCalls();
+	const {toggleGroup} = useToolCallUi();
 	const refreshSkills = () => {
 		getSkillsFiles()
 			.then(setSkills)
@@ -427,6 +435,16 @@ export default function App() {
 					.catch(error => {
 						showClipboardStatus(`Copy failed: ${String(error)}`);
 					});
+			}
+		}
+		if (_input === ' ' && focus === 'ChatBox' && focusedMessageIndex !== null) {
+			// expand/collapse the focused tool-call group
+			const focusedMessage = messageHistory[focusedMessageIndex];
+			if (focusedMessage?.role === ContentType.tool_call) {
+				const batch = decodeToolCallBatch(focusedMessage.content);
+				if (batch) {
+					toggleGroup(batch.id);
+				}
 			}
 		}
 		if (key.escape) {
