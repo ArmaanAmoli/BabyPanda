@@ -38,7 +38,7 @@ const SLASH_COMMANDS: {name: string; description: string}[] = [
 	{name: 'sandbox', description: 'toggle shell sandbox'},
 ];
 export default function App() {
-	const [focus, setFocus] = useState<Focused | null>('ChatBox');
+	const [focus, setFocus] = useState<Focused | null>('PromptBox');
 	const socket = useSocket();
 	const sessionState = useSession();
 	const {pendingPermissionMessages} = usePendingPermissionMessages();
