@@ -28,8 +28,9 @@ export interface VirtualizedListProps<T> {
 	 */
 	ensureVisibleIndex?: number | null;
 	/**
-	 * When true, the list always stays scrolled to the bottom (used to anchor
-	 * the active tool-call message while the agent responds).
+	 * When true, the list stays anchored to the bottom while the user is at
+	 * the bottom (used to anchor the active tool-call message while the agent
+	 * responds). It never overrides a user who has scrolled up.
 	 */
 	forceStickToBottom?: boolean;
 }
@@ -152,10 +153,11 @@ export function VirtualizedList<T>({
 		previousTotalHeight.current = totalHeight;
 		previousOffsets.current = offsets;
 
-		// New streamed content should stay visible when the user was already
-		// at the bottom (or when the active message is bottom-anchored).
-		// If the user scrolled up, preserve their position.
-		if (forceStickToBottom || (stickToBottomRef.current && grewBy !== 0)) {
+		// New streamed content should stay visible only while the user is at
+		// the bottom (optionally forced while the active message is
+		// bottom-anchored). If the user scrolled up, never yank them down:
+		// preserve their position via the anchor-stability branch below.
+		if (stickToBottomRef.current && (forceStickToBottom || grewBy !== 0)) {
 			targetScrollTopRef.current = maximumScrollTop;
 			updateScrollTop(maximumScrollTop);
 			return;
