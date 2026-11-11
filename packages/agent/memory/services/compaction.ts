@@ -150,13 +150,19 @@ export async function compaction(agent: BabyPandaAgent) {
                 });
                 context.push(continueMessage);
                 continueMessagesCount += 1;
+                // resolve so the do-while loop iterates and issues the
+                // continuation request. The next iteration builds a fresh
+                // promise; accumulated state lives in `summary` and `context`.
+                resolve(summary);
               }
             }
           });
 
           response.response?.data.on('error', (error: unknown) => {
+            // Do not `throw` here: a throw inside a stream event callback
+            // escapes the emitter as an uncaught exception instead of landing
+            // in the surrounding catch (the await was already rejected).
             reject(error);
-            throw error;
           });
         });
       } catch (err) {
