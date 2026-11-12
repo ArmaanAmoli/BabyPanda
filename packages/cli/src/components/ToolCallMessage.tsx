@@ -8,8 +8,14 @@ import {
 	buildToolCallLayout,
 	type LayoutRow,
 	COLLAPSED_MAX_BULLETS,
+	COMMAND_INDENT,
 } from '../utils/toolCallLayout';
-import {statusIcon, type BulletView} from '../utils/toolCallBullets';
+import {
+	bulletTargetMax,
+	BULLET_PADDING_LEFT,
+	statusIcon,
+	type BulletView,
+} from '../utils/toolCallBullets';
 import {
 	linkDisplayText,
 	osc8Link,
@@ -20,7 +26,7 @@ import {DiffViewer} from './DiffViewer';
 import {APP_BACKGROUND_COLOR} from '../theme';
 
 const TOOL_COLOR = '#4d3838';
-const MARKER_WIDTH = 1;
+export const MARKER_WIDTH = 1;
 const ROW_PADDING_LEFT = 1;
 
 export interface ToolCallMessageProps {
@@ -29,6 +35,8 @@ export interface ToolCallMessageProps {
 	onToggleGroup: () => void;
 	isDiffExpanded: (callId: string) => boolean;
 	onToggleDiff: (callId: string) => void;
+	isCommandExpanded: (bulletKey: string) => boolean;
+	onToggleCommand: (bulletKey: string) => void;
 	/** First visible terminal row of this item (1-based). */
 	startRow: number;
 	/** Rows clipped above the viewport. */
@@ -58,15 +66,7 @@ function BulletRow({
 				: '#8a7f7f';
 	const stats = bullet.stats ?? '';
 	const verb = `${bullet.verb} `;
-	// Fixed segments: padding(1) + icon(1) + space(1) + indent(2) + verb + stats.
-	const reserved =
-		ROW_PADDING_LEFT +
-		1 +
-		1 +
-		2 +
-		verb.length +
-		(stats.length > 0 ? stats.length + 1 : 0);
-	const targetMax = Math.max(1, width - reserved);
+	const targetMax = bulletTargetMax(bullet, width);
 
 	let targetText: string;
 	if (bullet.link) {
@@ -83,7 +83,7 @@ function BulletRow({
 			width={width}
 			height={1}
 			flexShrink={0}
-			paddingLeft={ROW_PADDING_LEFT}
+			paddingLeft={BULLET_PADDING_LEFT}
 			overflow="hidden"
 			backgroundColor={highlighted ? '#242424' : APP_BACKGROUND_COLOR}
 		>
@@ -114,6 +114,8 @@ export function ToolCallMessage({
 	onToggleGroup,
 	isDiffExpanded,
 	onToggleDiff,
+	isCommandExpanded,
+	onToggleCommand,
 	startRow,
 	clipTop,
 	visibleRows,
@@ -121,9 +123,24 @@ export function ToolCallMessage({
 	width,
 	focused,
 }: ToolCallMessageProps) {
+	const contentWidth = Math.max(10, width - MARKER_WIDTH);
 	const layout = useMemo(
-		() => buildToolCallLayout(batch, expanded, isDiffExpanded, chatHeight),
-		[batch, expanded, isDiffExpanded, chatHeight],
+		() =>
+			buildToolCallLayout(batch, {
+				expanded,
+				isDiffExpanded,
+				isCommandExpanded,
+				chatHeight,
+				width: contentWidth,
+			}),
+		[
+			batch,
+			expanded,
+			isDiffExpanded,
+			isCommandExpanded,
+			chatHeight,
+			contentWidth,
+		],
 	);
 	const height = layout.height;
 	const maxGroupScroll = Math.max(0, layout.expandedFullHeight - height);
@@ -162,11 +179,18 @@ export function ToolCallMessage({
 			if (row.type === 'bullet') {
 				if (row.bullet.hasDiff) {
 					onToggleDiff(row.bullet.diffCallIds[0]!);
+				} else if (row.bullet.expandable) {
+					// shell command: reveal the part cut off by the '…' below
+					// the bullet (expanding the group too if it is collapsed)
+					onToggleCommand(row.bullet.key);
+					if (!expanded) onToggleGroup();
 				} else {
 					onToggleGroup();
 				}
 			} else if (row.type === 'diff') {
 				onToggleDiff(row.call.id);
+			} else if (row.type === 'command') {
+				onToggleCommand(row.bullet.key);
 			} else {
 				onToggleGroup();
 			}
@@ -176,10 +200,11 @@ export function ToolCallMessage({
 		}
 	});
 
-	const contentWidth = Math.max(10, width - MARKER_WIDTH);
 	const callCount = batch.calls.length;
+	// only offer "click to collapse" when expanding actually added rows
+	const canCollapse = layout.expandedFullHeight > layout.collapsedHeight;
 	const headerText = `⚒ ${callCount} tool call${callCount === 1 ? '' : 's'}${
-		expanded ? ' · click to collapse' : ''
+		expanded && canCollapse ? ' · click to collapse' : ''
 	}`;
 
 	const renderRow = (row: LayoutRow, index: number) => {
@@ -221,6 +246,22 @@ export function ToolCallMessage({
 					>
 						<Text color="#f08a8a" wrap="truncate">
 							{row.bullet.error ?? 'failed'}
+						</Text>
+					</Box>
+				);
+			case 'command':
+				// continuation of an expanded shell command: wrapped to the
+				// content width so it never crosses the message boundary
+				return (
+					<Box
+						key={index}
+						height={1}
+						flexShrink={0}
+						paddingLeft={COMMAND_INDENT}
+						overflow="hidden"
+					>
+						<Text color="#9fb4c7" wrap="truncate">
+							{row.line}
 						</Text>
 					</Box>
 				);

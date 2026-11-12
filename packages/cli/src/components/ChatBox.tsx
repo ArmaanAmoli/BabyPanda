@@ -13,7 +13,7 @@ import type {MessageLine, ToolCallBatch} from '../types';
 import {decodeToolCallBatch} from '../types';
 import {getMessageGroups} from '../utils/messageGroups';
 import {buildToolCallLayout} from '../utils/toolCallLayout';
-import {ToolCallMessage} from './ToolCallMessage';
+import {MARKER_WIDTH, ToolCallMessage} from './ToolCallMessage';
 import {APP_BACKGROUND_COLOR} from '../theme';
 
 interface ChatItem {
@@ -41,8 +41,15 @@ export function ChatBox({height}: {height: number}) {
 	const {columns} = useTerminal();
 	const {focusedMessageIndex} = useVisibleMessages();
 	const settings = useSettings();
-	const {isGroupExpanded, toggleGroup, expandedDiffs, toggleDiff, expandGroup} =
-		useToolCallUi();
+	const {
+		isGroupExpanded,
+		toggleGroup,
+		expandedDiffs,
+		toggleDiff,
+		expandGroup,
+		isCommandExpanded,
+		toggleCommand,
+	} = useToolCallUi();
 
 	const chatWidth = Math.max(10, columns - 2 * PADDING_APP);
 
@@ -84,17 +91,25 @@ export function ChatBox({height}: {height: number}) {
 		() =>
 			items.map(item => {
 				if (item.batch) {
-					const layout = buildToolCallLayout(
-						item.batch,
-						isGroupExpanded(item.batch.id),
+					const layout = buildToolCallLayout(item.batch, {
+						expanded: isGroupExpanded(item.batch.id),
 						isDiffExpanded,
-						height,
-					);
+						isCommandExpanded,
+						chatHeight: height,
+						width: Math.max(10, chatWidth - MARKER_WIDTH),
+					});
 					return layout.height + 1;
 				}
 				return item.lines.length + 1;
 			}),
-		[items, isGroupExpanded, isDiffExpanded, height, columns],
+		[
+			items,
+			isGroupExpanded,
+			isDiffExpanded,
+			isCommandExpanded,
+			height,
+			chatWidth,
+		],
 	);
 
 	const getItemHeight = useCallback(
@@ -151,6 +166,8 @@ export function ChatBox({height}: {height: number}) {
 									onToggleGroup={() => toggleGroup(batch.id)}
 									isDiffExpanded={isDiffExpanded}
 									onToggleDiff={toggleDiff}
+									isCommandExpanded={isCommandExpanded}
+									onToggleCommand={toggleCommand}
 									startRow={startRow}
 									clipTop={clipTop}
 									visibleRows={visibleRows}
