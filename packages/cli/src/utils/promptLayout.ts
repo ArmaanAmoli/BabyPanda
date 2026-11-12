@@ -1,4 +1,5 @@
 import wcwidth from 'ts-wcwidth';
+import type {PromptValue} from './promptValue';
 
 /**
  * Columns permanently reserved on the right edge of the prompt box for the
@@ -188,4 +189,107 @@ export function wrapText(source: string, width: number): VisualLine[] {
  */
 export function getWrappedLineCount(value: string, width: number): number {
 	return wrapText(value, width).length;
+}
+
+/** One row of rendered prompt text, tagged with the segment it came from. */
+export interface PromptVisualLine extends VisualLine {
+	segmentIndex: number;
+	/** True when the row renders a collapsed paste chip, not literal text. */
+	isChip: boolean;
+}
+
+function byteLength(text: string): number {
+	return new TextEncoder().encode(text).length;
+}
+
+function formatBytes(size: number): string {
+	if (size < 1024) return `${size} B`;
+	if (size < 1024 * 1024) return `${(size / 1024).toFixed(1)} KB`;
+	return `${(size / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function countLines(text: string): number {
+	return text.split('\n').length;
+}
+
+/**
+ * Label for a collapsed paste chip: `[Pasted text #1 · 123 lines · 4.2 KB]`.
+ *
+ * The line count says how much was pasted and the size says whether it will
+ * survive the model's context window. Parts are dropped, then the whole label
+ * truncated, so a chip is always exactly one row even on a narrow terminal.
+ */
+export function formatPasteChip(
+	index: number,
+	text: string,
+	width: number,
+): string {
+	const lines = countLines(text);
+	const size = formatBytes(byteLength(text));
+
+	const full = `[Pasted text #${index} · ${lines} lines · ${size}]`;
+	if (measureWidth(full) <= width) return full;
+
+	const withoutSize = `[Pasted text #${index} · ${lines} lines]`;
+	if (measureWidth(withoutSize) <= width) return withoutSize;
+
+	const minimal = `[Pasted #${index}]`;
+	if (measureWidth(minimal) <= width) return minimal;
+
+	return minimal.slice(0, Math.max(1, width));
+}
+
+/**
+ * Splits a prompt value into visual lines.
+ *
+ * A collapsed paste segment contributes exactly one row carrying its chip label;
+ * every other segment contributes its real wrapped lines. Offsets stay in the
+ * flattened text, so the cursor the prompt box keeps maps straight onto them.
+ */
+export function wrapPromptValue(
+	value: PromptValue,
+	width: number,
+): PromptVisualLine[] {
+	const lines: PromptVisualLine[] = [];
+	let chipIndex = 0;
+	let offset = 0;
+
+	value.segments.forEach((segment, segmentIndex) => {
+		const segmentStart = offset;
+
+		if (segment.kind === 'paste' && segment.collapsed) {
+			chipIndex += 1;
+			const label = formatPasteChip(chipIndex, segment.text, width);
+			lines.push({
+				text: label,
+				start: segmentStart,
+				end: segmentStart + segment.text.length,
+				displayWidth: measureWidth(label),
+				segmentIndex,
+				isChip: true,
+			});
+		} else {
+			for (const line of wrapText(segment.text, width)) {
+				lines.push({
+					text: line.text,
+					start: segmentStart + line.start,
+					end: segmentStart + line.end,
+					displayWidth: line.displayWidth,
+					segmentIndex,
+					isChip: false,
+				});
+			}
+		}
+
+		offset = segmentStart + segment.text.length;
+	});
+
+	return lines;
+}
+
+/** Rows a prompt value occupies at `width`, counting a collapsed chip as one. */
+export function getPromptLineCount(value: PromptValue, width: number): number {
+	// Derived from the same function the box renders with, so the height the
+	// app reserves and the rows actually drawn can never drift apart.
+	return wrapPromptValue(value, width).length;
 }
