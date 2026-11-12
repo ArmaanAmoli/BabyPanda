@@ -6,6 +6,11 @@ import type {
   SystemMessage,
   AssistantMessage,
   ToolMessage,
+  WsToolCallRequest,
+  WsToolResultEvent,
+  WsToolCallStats,
+  WsToolPageResult,
+  ToolResultRecord,
 } from '@baby-panda/types';
 import {
   ContentType,
@@ -17,9 +22,16 @@ import {
 } from '@baby-panda/types';
 import { Role } from '@baby-panda/types';
 import type { SkillMessage } from '@baby-panda/types';
-import type { UrlApi, Tool } from './types';
+import type { UrlApi, Tool, ToolResult } from './types';
 import { MessageQueueEvents } from './types';
-import { readFileSync, existsSync, lstatSync, mkdirSync, writeFileSync } from 'fs';
+import {
+  readFileSync,
+  existsSync,
+  lstatSync,
+  mkdirSync,
+  writeFileSync,
+  promises as fsPromises,
+} from 'fs';
 import { EventEmitter } from 'events';
 import { MCPClient } from './mcp/client';
 import {
@@ -63,6 +75,146 @@ const __dirname = path.dirname(__filename);
 const cwd = process.cwd();
 
 const instructionsFilePath = path.join(__dirname, 'memory', 'BabyPanda', 'BabyPanda.md');
+
+function countLines(text: string): number {
+  if (text.length === 0) return 0;
+  return text.split('\n').length - (text.endsWith('\n') ? 1 : 0);
+}
+
+function parseToolArguments(raw: string): Record<string, unknown> {
+  try {
+    const parsed: unknown = JSON.parse(raw);
+    if (parsed != null && typeof parsed === 'object' && !Array.isArray(parsed)) {
+      return parsed as Record<string, unknown>;
+    }
+  } catch {
+    // fall through: malformed arguments become an empty object
+  }
+  return {};
+}
+
+/** Extract the concatenated text of an MCP CallToolResult. */
+function mcpResultText(result: unknown): string {
+  if (typeof result === 'string') return result;
+  if (result != null && typeof result === 'object' && 'content' in result) {
+    const content = (result as { content: unknown }).content;
+    if (Array.isArray(content)) {
+      return content
+        .map((item) =>
+          item != null &&
+          typeof item === 'object' &&
+          'text' in item &&
+          typeof (item as { text: unknown }).text === 'string'
+            ? (item as { text: string }).text
+            : '',
+        )
+        .join('');
+    }
+  }
+  return JSON.stringify(result ?? '');
+}
+
+/** Per-tool stats for the CLI bullets, derived from arguments + result text. */
+function computeToolStats(
+  name: string,
+  args: Record<string, unknown>,
+  resultText: string,
+  failed: boolean,
+): WsToolCallStats | undefined {
+  if (failed) return undefined;
+  switch (name) {
+    case 'write': {
+      const content = typeof args['content'] === 'string' ? (args['content'] as string) : '';
+      return { lines: countLines(content) };
+    }
+    case 'edit': {
+      const oldStr = typeof args['old_str'] === 'string' ? (args['old_str'] as string) : '';
+      const newStr = typeof args['new_str'] === 'string' ? (args['new_str'] as string) : '';
+      return { added: countLines(newStr), removed: countLines(oldStr) };
+    }
+    case 'grep': {
+      try {
+        const parsed: unknown = JSON.parse(resultText);
+        const stdout =
+          parsed != null &&
+          typeof parsed === 'object' &&
+          typeof (parsed as { stdout?: unknown }).stdout === 'string'
+            ? ((parsed as { stdout: string }).stdout as string)
+            : '';
+        return { matches: stdout.split('\n').filter((line) => line.length > 0).length };
+      } catch {
+        return undefined;
+      }
+    }
+    case 'web_search': {
+      try {
+        const parsed: unknown = JSON.parse(resultText);
+        return Array.isArray(parsed) ? { results: parsed.length } : undefined;
+      } catch {
+        return undefined;
+      }
+    }
+    default:
+      return undefined;
+  }
+}
+
+/** Per-URL outcomes for get_web_page: one entry per requested URL. */
+function computeToolPages(
+  name: string,
+  args: Record<string, unknown>,
+  resultText: string,
+  error: string | undefined,
+): WsToolPageResult[] | undefined {
+  if (name !== 'get_web_page') return undefined;
+  const urls = Array.isArray(args['url'])
+    ? (args['url'] as unknown[]).filter((item): item is string => typeof item === 'string')
+    : [];
+  if (error !== undefined) {
+    return urls.map((url) => ({ url, success: false, error }));
+  }
+  try {
+    const parsed: unknown = JSON.parse(resultText);
+    const returned = new Set(
+      Array.isArray(parsed)
+        ? parsed
+            .map((item) =>
+              item != null &&
+              typeof item === 'object' &&
+              typeof (item as { url?: unknown }).url === 'string'
+                ? (item as { url: string }).url
+                : undefined,
+            )
+            .filter((url): url is string => url !== undefined)
+        : [],
+    );
+    return urls.map((url) =>
+      returned.has(url)
+        ? { url, success: true }
+        : { url, success: false, error: 'no content returned for this url' },
+    );
+  } catch {
+    return urls.map((url) => ({ url, success: false, error: 'unparseable result' }));
+  }
+}
+
+/**
+ * File content immediately before a write/edit mutation. Returns null when
+ * the file does not exist (new file), undefined for non-file tools.
+ */
+async function captureBeforeContent(
+  name: string,
+  args: Record<string, unknown>,
+): Promise<string | null | undefined> {
+  if (name !== 'write' && name !== 'edit') return undefined;
+  const filePath = args['path'];
+  if (typeof filePath !== 'string') return undefined;
+  try {
+    return await fsPromises.readFile(filePath, 'utf8');
+  } catch {
+    return null;
+  }
+}
 
 export class BabyPandaAgent extends EventEmitter {
   client: BabyPandaClient;
@@ -119,7 +271,6 @@ export class BabyPandaAgent extends EventEmitter {
 
   public async init() {
     await this.connectToMCP();
-    this.messagesHistory = await this.getMessageHistory();
     console.log('agent:init');
   }
   private async connectToMCP() {
@@ -191,6 +342,7 @@ export class BabyPandaAgent extends EventEmitter {
     const messageHistory: MessagesArray = [];
     if (summary) {
       // fetch 10 messages before the compaction summary.
+      messageHistory.push(JSON.parse(summary.content));
       messageHistory.push(...(await this.getMessageHistory(summary.sequence + 1)));
     } else {
       messageHistory.push(...(await this.getMessageHistory()));
@@ -482,24 +634,162 @@ export class BabyPandaAgent extends EventEmitter {
                 }
               });
 
-              const visibleToolCalls = toolCallsT
-                .filter((tool) => tool.function.name !== 'write' && tool.function.name !== 'edit')
-                .map((tool) => ({
-                  sessionId: this.sessionId,
-                  content: JSON.stringify({
-                    name: tool.function.name,
-                    argument: tool.function.arguments,
-                  }),
-                  role: Role.tool,
-                }));
-              if (visibleToolCalls.length > 0) {
-                this.emit(ContentType.tool_call, visibleToolCalls);
-              }
+              // One request batch per assistant message, all tools included
+              // (write/edit included so the CLI can render their diffs).
+              const toolCallRequests: WsToolCallRequest[] = toolCallsT.map((tool) => ({
+                id: tool.id,
+                name: tool.function.name,
+                arguments: parseToolArguments(tool.function.arguments),
+              }));
+              this.emit(ContentType.tool_call, toolCallRequests);
 
-              const toolResults: ToolMessage[] = [];
+              // Persists the extended tool row and notifies the CLI, so a
+              // call's status/before/stats are visible live and after reload.
+              const persistAndEmitResult = async (
+                call: Tool,
+                content: string,
+                success: boolean,
+                error: string | undefined,
+                before: string | null | undefined,
+                stats: WsToolCallStats | undefined,
+                pages: WsToolPageResult[] | undefined,
+              ) => {
+                const record: ToolResultRecord = {
+                  role: Role.tool,
+                  tool_call_id: call.id,
+                  content,
+                  success,
+                  ...(error !== undefined ? { error } : {}),
+                  ...(before !== undefined ? { before } : {}),
+                  ...(stats !== undefined ? { stats } : {}),
+                  ...(pages !== undefined ? { pages } : {}),
+                };
+                await createMessage(this.sessionId, JSON.stringify(record), Role.tool);
+                const event: WsToolResultEvent = {
+                  id: call.id,
+                  name: call.name,
+                  success,
+                  ...(error !== undefined ? { error } : {}),
+                  ...(before !== undefined ? { before } : {}),
+                  ...(stats !== undefined ? { stats } : {}),
+                  ...(pages !== undefined ? { pages } : {}),
+                };
+                this.emit(ContentType.tool_result, event);
+              };
+
+              // Executes one non-shell tool and reports the outcome. write/edit
+              // always run through here individually so `before` is captured
+              // immediately before that mutation (a later edit to the same file
+              // must not reuse an older snapshot).
+              const executeSingleMcpTool = async (call: Tool) => {
+                const args = call.arguments ?? {};
+                const before = await captureBeforeContent(call.name, args);
+                const raw: ToolResult = await this.mcpClient.callToolRaw(call);
+                const content = JSON.stringify(raw);
+                const resultText = mcpResultText(raw.result);
+                const stats = computeToolStats(call.name, args, resultText, raw.error != null);
+                const pages = computeToolPages(call.name, args, resultText, raw.error);
+                await persistAndEmitResult(
+                  call,
+                  content,
+                  raw.error == null,
+                  raw.error,
+                  before,
+                  stats,
+                  pages,
+                );
+              };
+
+              // Executes one shell call: validates the arguments, asks the
+              // user for permission (unless always-allow is on), runs the
+              // command (sandboxed when enabled) and reports the outcome.
+              const executeShellCall = async (call: Tool) => {
+                const parsed = ShellCallSchema.safeParse(call.arguments);
+                if (!parsed.success) {
+                  const errorMessage = `Tool Call Syntax Error : received bad arguments for bash tool here is what you send ${JSON.stringify(call.arguments)} and here is the parsing error ${parsed.error}`;
+                  const toolErrorMessage: ToolMessage = {
+                    role: Role.tool,
+                    tool_call_id: call.id,
+                    content: errorMessage,
+                  };
+                  await createMessage(this.sessionId, JSON.stringify(toolErrorMessage), Role.tool);
+                  throw new ToolError(errorMessage);
+                }
+                const permissionObject: UserPermission = {
+                  toolCallId: call.id,
+                  permission: false,
+                  content: parsed.data.command,
+                };
+                let granted: boolean = this.alwaysAllowBash === true;
+                if (!granted) {
+                  this.emit(ContentType.permission, permissionObject);
+                  granted = await this.waitForPermission(permissionObject.toolCallId);
+                }
+
+                if (granted) {
+                  let rawResult: ShellResult | SandboxResult;
+
+                  await writeLogs(
+                    LogType.agent,
+                    this.projectDirectoryName,
+                    this.sessionId,
+                    `[TOOL CALL EXECUTING] shell sandbox=${this.sandbox} command=${JSON.stringify(parsed.data.command)} timeout=${parsed.data.timeout ?? 'default'}ms`,
+                  );
+                  const shellStartedAt = Date.now();
+                  if (this.sandbox) {
+                    rawResult = await runSandboxed({
+                      workspace: process.cwd(),
+                      command: parsed.data.command,
+                      timeoutMs: parsed.data.timeout,
+                    });
+                    await writeLogs(
+                      LogType.agent,
+                      this.projectDirectoryName,
+                      this.sessionId,
+                      `[TOOL RESULT] shell (sandboxed, ${Date.now() - shellStartedAt}ms) ${JSON.stringify(rawResult)}`,
+                    );
+                  } else {
+                    rawResult = await shell(parsed.data.command, parsed.data.timeout!);
+                    await writeLogs(
+                      LogType.agent,
+                      this.projectDirectoryName,
+                      this.sessionId,
+                      `[TOOL RESULT] shell (${Date.now() - shellStartedAt}ms) ${JSON.stringify(rawResult)}`,
+                    );
+                  }
+
+                  await persistAndEmitResult(
+                    call,
+                    JSON.stringify(rawResult),
+                    true,
+                    undefined,
+                    undefined,
+                    undefined,
+                    undefined,
+                  );
+                } else {
+                  const deniedMessage =
+                    '[PERMISSION DENIED] Command execution denied by user. Ask the user for clarification or alternative instructions.';
+                  await persistAndEmitResult(
+                    call,
+                    deniedMessage,
+                    false,
+                    deniedMessage,
+                    undefined,
+                    undefined,
+                    undefined,
+                  );
+                }
+              };
 
               const executeToolCall = async () => {
                 const MCPTools: Tool[] = [];
+                const flushBatch = async () => {
+                  for (const batched of MCPTools) {
+                    await executeSingleMcpTool(batched);
+                  }
+                  MCPTools.length = 0;
+                };
                 for (const rawcall of toolCallsT) {
                   const call: Tool = {
                     id: rawcall.id,
@@ -513,7 +803,10 @@ export class BabyPandaAgent extends EventEmitter {
                     `[TOOL CALL] id=${call.id} name=${call.name} arguments=${JSON.stringify(call.arguments)}`,
                   );
                   if (call.name === 'shell') {
-                    //execute nonShellToolCalls
+                    // run pending non-shell tools first so execution order is
+                    // preserved, then handle the shell call itself — it must
+                    // never be skipped, otherwise no permission prompt is sent
+                    // and the CLI stays stuck on "running"
                     if (MCPTools.length !== 0) {
                       await writeLogs(
                         LogType.agent,
@@ -527,89 +820,15 @@ export class BabyPandaAgent extends EventEmitter {
                           })),
                         )}`,
                       );
-                      const nonShellToolResults: ToolMessage[] =
-                        await this.mcpClient.callTools(MCPTools);
-                      toolResults.push(...nonShellToolResults);
-                      MCPTools.length = 0;
-                    } else {
-                      const parsed = ShellCallSchema.safeParse(call.arguments);
-                      if (!parsed.success) {
-                        const errorMessage = `Tool Call Syntax Error : received bad arguments for bash tool here is what you send ${JSON.stringify(call.arguments)} and here is the parsing error ${parsed.error}`;
-                        const toolErrorMessage: ToolMessage = {
-                          role: Role.tool,
-                          tool_call_id: call.id,
-                          content: errorMessage,
-                        };
-                        await createMessage(
-                          this.sessionId,
-                          JSON.stringify(toolErrorMessage),
-                          Role.tool,
-                        );
-                        throw new ToolError(errorMessage);
-                      } else {
-                        const permissionObject: UserPermission = {
-                          toolCallId: call.id,
-                          permission: false,
-                          content: parsed.data.command,
-                        };
-                        // eslint-disable-next-line no-useless-assignment
-                        let granted: boolean = false;
-                        if (this.alwaysAllowBash === true) granted = true;
-                        else {
-                          this.emit(ContentType.permission, permissionObject);
-                          granted = await this.waitForPermission(permissionObject.toolCallId);
-                        }
-
-                        if (granted) {
-                          // eslint-disable-next-line no-useless-assignment
-                          let rawResult: ShellResult | null | SandboxResult = null;
-
-                          await writeLogs(
-                            LogType.agent,
-                            this.projectDirectoryName,
-                            this.sessionId,
-                            `[TOOL CALL EXECUTING] shell sandbox=${this.sandbox} command=${JSON.stringify(parsed.data.command)} timeout=${parsed.data.timeout ?? 'default'}ms`,
-                          );
-                          const shellStartedAt = Date.now();
-                          if (this.sandbox) {
-                            rawResult = await runSandboxed({
-                              workspace: process.cwd(),
-                              command: parsed.data.command,
-                              timeoutMs: parsed.data.timeout,
-                            });
-                            await writeLogs(
-                              LogType.agent,
-                              this.projectDirectoryName,
-                              this.sessionId,
-                              `[TOOL RESULT] shell (sandboxed, ${Date.now() - shellStartedAt}ms) ${JSON.stringify(rawResult)}`,
-                            );
-                          } else {
-                            rawResult = await shell(parsed.data.command, parsed.data.timeout!);
-                            await writeLogs(
-                              LogType.agent,
-                              this.projectDirectoryName,
-                              this.sessionId,
-                              `[TOOL RESULT] shell (${Date.now() - shellStartedAt}ms) ${JSON.stringify(rawResult)}`,
-                            );
-                          }
-
-                          const fullResult: ToolMessage = {
-                            role: Role.tool,
-                            tool_call_id: call.id,
-                            content: JSON.stringify(rawResult),
-                          };
-                          toolResults.push(fullResult);
-                        } else {
-                          const fullResult: ToolMessage = {
-                            role: Role.tool,
-                            tool_call_id: call.id,
-                            content:
-                              '[PERMISSION DENIED] Command execution denied by user. Ask the user for clarification or alternative instructions.',
-                          };
-                          toolResults.push(fullResult);
-                        }
-                      }
+                      await flushBatch();
                     }
+                    await executeShellCall(call);
+                  } else if (call.name === 'write' || call.name === 'edit') {
+                    // file mutations run individually (after flushing pending
+                    // tools) so the before-snapshot is taken right before the
+                    // mutation, in execution order
+                    await flushBatch();
+                    await executeSingleMcpTool(call);
                   } else {
                     MCPTools.push(call);
                   }
@@ -628,8 +847,7 @@ export class BabyPandaAgent extends EventEmitter {
                       })),
                     )}`,
                   );
-                  const results = await this.mcpClient.callTools(MCPTools);
-                  toolResults.push(...results);
+                  await flushBatch();
                 }
               };
               await executeToolCall();
@@ -637,32 +855,9 @@ export class BabyPandaAgent extends EventEmitter {
                 LogType.agent,
                 this.projectDirectoryName,
                 this.sessionId,
-                `[TOOL RESULT] all tool calls finished, ${toolResults.length} result(s): ${JSON.stringify(toolResults)}`,
+                `[TOOL RESULT] all tool calls finished`,
               );
 
-              let i = 0;
-              while (i < toolResults.length) {
-                if (toolResults.at(i) === undefined) {
-                  i++;
-                  continue;
-                } else {
-                  try {
-                    const toolResult = toolResults.at(i);
-                    if (toolResult == undefined) continue;
-                    // const toolMessage: ToolMessage = {
-                    //   role: Role.tool,
-                    //   tool_call_id: toolResult.id,
-                    //   content: toolResult.error ?? contentToText(toolResult.result),
-                    // };
-                    await createMessage(this.sessionId, JSON.stringify(toolResult), Role.tool);
-                  } catch (err) {
-                    throw new Error(`Unable to store tool message to database`, { cause: err });
-                  }
-                }
-                i += 1;
-              }
-              toolResults.length = 0;
-              i = 0;
               this.messageQueue.push(MessageQueueEvents.toolCallDone);
               // to-do save messages code below this
             } catch (err) {

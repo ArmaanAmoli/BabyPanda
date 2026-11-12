@@ -46,28 +46,35 @@ export class MCPClient {
       throw err;
     }
   }
+  /**
+   * Executes a single tool and returns the raw result (with `result` or
+   * `error`), so the caller can derive stats / before-snapshots and emit
+   * per-call events.
+   */
+  async callToolRaw(tool: Tool): Promise<ToolResult> {
+    try {
+      const result = await this.mcp.callTool(tool);
+      await writeLogs(LogType.mcp, getProjectName(), this.sessionId, `[TOOL RESULT]: ${result}`);
+      return {
+        id: tool.id,
+        name: tool.name,
+        arguments: tool.arguments,
+        result: result,
+      };
+    } catch (err) {
+      console.error(`An error occured while calling ${tool} \n ${err}`);
+      return {
+        id: tool.id,
+        name: tool.name,
+        arguments: tool.arguments,
+        error: String(err),
+      };
+    }
+  }
   async callTools(tools: Tool[]): Promise<ToolMessage[]> {
     const mcpResult: ToolResult[] = [];
     for (const tool of tools) {
-      try {
-        // console.log("[MCP CLIENT]:", tool);
-        const result = await this.mcp.callTool(tool);
-        await writeLogs(LogType.mcp, getProjectName(), this.sessionId, `[TOOL RESULT]: ${result}`);
-        mcpResult.push({
-          id: tool.id,
-          name: tool.name,
-          arguments: tool.arguments,
-          result: result,
-        });
-      } catch (err) {
-        mcpResult.push({
-          id: tool.id,
-          name: tool.name,
-          arguments: tool.arguments,
-          error: String(err),
-        });
-        console.error(`An error occured while calling ${tool} \n ${err}`);
-      }
+      mcpResult.push(await this.callToolRaw(tool));
     }
     const result: ToolMessage[] = mcpResult.map((result) => {
       return {

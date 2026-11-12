@@ -10,6 +10,8 @@ import { ContentType, Role } from '@baby-panda/types';
 import type {
   UserPermission,
   WsCommonMessage,
+  WsToolCallRequest,
+  WsToolResultEvent,
   ServerStreamChunkSchemaType,
   SkillEventPayload,
 } from '@baby-panda/types';
@@ -63,29 +65,13 @@ const websocketHandler = (c: Context, next: Next) => {
           );
         };
 
-        const onToolData = async (data: { role: Role; sessionId: string; content: string }[]) => {
-          // await writeLogs(LogType.server, cwd, sessionId, `[/message]: Received a tool chunk`);
-          // await writeLogs(LogType.server, cwd, sessionId, `[/message]: Raw tool chunk ${data}`);
-          // const cleaned = await cleanMessageHistroy(data);
-          // let content = '';
-          // cleaned.forEach((msg) => {
-          //   if (msg.role === Role.tool) {
-          //     content = content.concat(content ? '\n' : '', msg.content);
-          //   }
-          // });
-          // const chunk: ServerStreamChunkSchemaType = {
-          //   role: Role.tool,
-          //   content,
-          // };
-          // await writeLogs(
-          //   LogType.server,
-          //   cwd,
-          //   sessionId,
-          //   `[/message]: Final tool content ${content}`,
-          // );
+        const onToolData = async (data: WsToolCallRequest[]) => {
           const msg: WsCommonMessage = { eventType: WsEventTypes.tool, payload: data };
-          // ws.send(JSON.stringify(msg));
+          ws.send(JSON.stringify(msg));
+        };
 
+        const onToolResult = async (event: WsToolResultEvent) => {
+          const msg: WsCommonMessage = { eventType: WsEventTypes.tool_result, payload: event };
           ws.send(JSON.stringify(msg));
         };
 
@@ -123,6 +109,7 @@ const websocketHandler = (c: Context, next: Next) => {
           });
           babyPanda.off(ContentType.permission, onAskForPermission);
           babyPanda.off(ContentType.tool_call, onToolData);
+          babyPanda.off(ContentType.tool_result, onToolResult);
           babyPanda.off('skill', onSkillEvent);
           babyPanda.off('end', onLoopEnd);
           babyPanda.off('error', onError);
@@ -137,6 +124,7 @@ const websocketHandler = (c: Context, next: Next) => {
           babyPanda.on(eventName, handlers[eventName]);
         });
         babyPanda.on(ContentType.tool_call, onToolData);
+        babyPanda.on(ContentType.tool_result, onToolResult);
         babyPanda.on(ContentType.permission, onAskForPermission);
         babyPanda.on('skill', onSkillEvent);
         babyPanda.on('end', onLoopEnd);

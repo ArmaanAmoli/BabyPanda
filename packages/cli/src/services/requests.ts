@@ -2,7 +2,8 @@ import app, {getServerPort} from '@baby-panda/server';
 // import type {APIProvider, Session} from '../types';
 import {ContentType, LogType, Role} from '@baby-panda/types';
 import type {ReasoningEffort} from '@baby-panda/types';
-import type {ChatMessage} from '../types';
+import type {ChatMessage, ToolCallBatch, ToolCallEntry} from '../types';
+import {encodeToolCallBatch} from '../types';
 import {writeLogs} from '@baby-panda/utils';
 const cwd = process.cwd().replaceAll('/', '-').replace('-', '');
 const getServerBaseUrl = () => `http://localhost:${getServerPort()}`;
@@ -137,15 +138,56 @@ async function getAllSessions(): Promise<Session[]> {
 const isRole = (value: unknown): value is Role =>
 	typeof value === 'string' && Object.values(Role).includes(value as Role);
 
+interface BatchSlot {
+	entryIndex: number;
+	batch: ToolCallBatch;
+}
+
+function parseToolCallArguments(raw: unknown): Record<string, unknown> {
+	if (typeof raw !== 'string') {
+		return raw != null && typeof raw === 'object' && !Array.isArray(raw)
+			? (raw as Record<string, unknown>)
+			: {};
+	}
+	try {
+		const parsed: unknown = JSON.parse(raw);
+		return parsed != null &&
+			typeof parsed === 'object' &&
+			!Array.isArray(parsed)
+			? (parsed as Record<string, unknown>)
+			: {};
+	} catch {
+		return {};
+	}
+}
+
 /**
- * Turns a raw history entry returned by the server into a display message.
+ * Turns the raw history rows returned by the server into display messages.
  * The server only JSON-parses each stored entry, so the shapes vary per role:
  * user messages are `{role, content}`, assistant messages are full
- * `AssistantMessage` records, tool messages are `{tool_call_id, content}` and
+ * `AssistantMessage` records, tool rows are persisted result records and
  * compaction summaries are plain strings.
+ *
+ * Assistant rows with `tool_calls` additionally produce one
+ * `ContentType.tool_call` entry (a JSON-encoded ToolCallBatch) right after
+ * them; each stored tool row is then merged into the batch that contains its
+ * `tool_call_id`, so a reload renders the same tool-call blocks as the live
+ * stream. Calls without a result row stay `running` in the last batch (the
+ * agent may still be executing) and are marked failed in older batches.
  */
-function toChatMessage(entry: unknown): ChatMessage[] {
-	if (typeof entry === 'object' && entry !== null) {
+function buildChatMessages(messagesList: unknown[]): ChatMessage[] {
+	const entries: ChatMessage[] = [];
+	const batchSlots: BatchSlot[] = [];
+
+	for (const entry of messagesList) {
+		if (typeof entry !== 'object' || entry === null) {
+			entries.push({
+				role: Role.compaction,
+				content: String(entry),
+				createdAt: null,
+			});
+			continue;
+		}
 		const record = entry as Record<string, unknown>;
 		const content =
 			typeof record.content === 'string'
@@ -159,31 +201,61 @@ function toChatMessage(entry: unknown): ChatMessage[] {
 				? Role.tool
 				: Role.user;
 
-		// Tool-call results are not part of the visible chat: during the run
-		// they are only shown in the bottom status bar, and on reload they are
-		// skipped entirely.
 		if (role === Role.tool) {
-			return [];
+			// merge this result row into the batch that owns the call id
+			const callId =
+				typeof record.tool_call_id === 'string'
+					? record.tool_call_id
+					: typeof record.id === 'string'
+						? record.id
+						: undefined;
+			if (callId != null) {
+				for (let index = batchSlots.length - 1; index >= 0; index--) {
+					const slot = batchSlots[index]!;
+					const call = slot.batch.calls.find(item => item.id === callId);
+					if (!call) continue;
+					const success =
+						typeof record.success === 'boolean'
+							? record.success
+							: typeof record.error === 'string'
+								? false
+								: true;
+					call.status = success ? 'done' : 'failed';
+					if (typeof record.error === 'string') call.error = record.error;
+					if ('before' in record) call.before = record.before as string | null;
+					if (record.stats != null && typeof record.stats === 'object') {
+						call.stats = record.stats as ToolCallEntry['stats'];
+					}
+					if (Array.isArray(record.pages)) {
+						call.pages = record.pages as ToolCallEntry['pages'];
+					}
+					const message = entries[slot.entryIndex]!;
+					entries[slot.entryIndex] = {
+						...message,
+						content: encodeToolCallBatch(slot.batch),
+					};
+					break;
+				}
+			}
+			continue;
 		}
 
-		// Skill rows (outer role wins) render as a one-line loaded notice,
-		// never as a user bubble with the whole SKILL.md body.
 		if (role === Role.skill) {
+			// Skill rows (outer role wins) render as a one-line loaded notice,
+			// never as a user bubble with the whole SKILL.md body.
 			const name = typeof record.name === 'string' ? record.name : '';
-			return [
-				{
-					role: Role.skill,
-					content: `⚡ skill loaded: ${name}`,
-					createdAt: null,
-				},
-			];
+			entries.push({
+				role: Role.skill,
+				content: `⚡ skill loaded: ${name}`,
+				createdAt: null,
+			});
+			continue;
 		}
 
-		// Assistant messages carry their reasoning inline; render it as a
-		// separate entry so its styling matches the streamed reasoning chunks.
 		if (role === Role.assistant) {
+			// Assistant messages carry their reasoning inline; render it as a
+			// separate entry so its styling matches the streamed reasoning chunks.
 			const reasoning = record.reasoning_content;
-			const entries: ChatMessage[] = [];
 			if (typeof reasoning === 'string' && reasoning.length > 0) {
 				entries.push({
 					role: ContentType.reasoning_content,
@@ -194,13 +266,58 @@ function toChatMessage(entry: unknown): ChatMessage[] {
 			if (content.length > 0) {
 				entries.push({role, content, createdAt: null});
 			}
-			return entries;
+			// one tool-call block per assistant message that asked for tools
+			const toolCalls = record.tool_calls;
+			if (Array.isArray(toolCalls) && toolCalls.length > 0) {
+				const batch: ToolCallBatch = {
+					id: `toolcall-reload-${entries.length}-${batchSlots.length}`,
+					createdAt: 0,
+					calls: toolCalls.map((rawCall, callIndex) => {
+						const call = (rawCall ?? {}) as Record<string, unknown>;
+						const fn = (call.function ?? {}) as Record<string, unknown>;
+						return {
+							id: typeof call.id === 'string' ? call.id : `call-${callIndex}`,
+							name: typeof fn.name === 'string' ? fn.name : 'unknown',
+							arguments: parseToolCallArguments(fn.arguments),
+							status: 'running' as const,
+						};
+					}),
+				};
+				batchSlots.push({entryIndex: entries.length, batch});
+				entries.push({
+					role: ContentType.tool_call,
+					content: encodeToolCallBatch(batch),
+					createdAt: null,
+				});
+			}
+			continue;
 		}
 
-		return [{role, content, createdAt: null}];
+		entries.push({role, content, createdAt: null});
 	}
 
-	return [{role: Role.compaction, content: String(entry), createdAt: null}];
+	// calls without a result row: running only in the last batch (possibly
+	// still executing), failed everywhere else
+	const lastSlot = batchSlots.at(-1);
+	for (const slot of batchSlots) {
+		const isLast = slot === lastSlot;
+		for (const call of slot.batch.calls) {
+			if (call.status !== 'running') continue;
+			if (!isLast) {
+				call.status = 'failed';
+				call.error = call.error ?? 'no result recorded';
+			}
+		}
+		if (slot.batch.calls.some(call => call.status !== 'running' || !isLast)) {
+			const message = entries[slot.entryIndex]!;
+			entries[slot.entryIndex] = {
+				...message,
+				content: encodeToolCallBatch(slot.batch),
+			};
+		}
+	}
+
+	return entries;
 }
 
 export async function getMessages(sessionId: string): Promise<ChatMessage[]> {
@@ -244,5 +361,5 @@ export async function getMessages(sessionId: string): Promise<ChatMessage[]> {
 		);
 		return [];
 	}
-	return messagesList.flatMap(message => toChatMessage(message));
+	return buildChatMessages(messagesList);
 }

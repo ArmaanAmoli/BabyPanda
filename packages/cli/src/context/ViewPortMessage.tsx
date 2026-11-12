@@ -1,5 +1,6 @@
 import React, {SetStateAction, useEffect, useState} from 'react';
 import {createContext} from 'react';
+import {ContentType} from '@baby-panda/types';
 import {useMessageHistory} from '../hooks/useMessageHistroy';
 import {useTerminal} from '../hooks/useTerminal';
 import {breakMessageIntoLines} from '../utils/breakIntoLines';
@@ -40,7 +41,11 @@ export function ViewPortMessageProvider({
 			messageHistory.map(message => ({
 				role: message.role,
 				createdAt: message.createdAt,
-				lines: breakMessageIntoLines(message, maxWidth),
+				// tool-call entries render as a component, not as text lines
+				lines:
+					message.role === ContentType.tool_call
+						? []
+						: breakMessageIntoLines(message, maxWidth),
 			})),
 		);
 	}, [columns, messageHistory]);

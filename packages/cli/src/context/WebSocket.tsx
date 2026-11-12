@@ -13,46 +13,26 @@ import {
 	UserPermissionSchema,
 	ServerStreamChunkSchema,
 	SkillEventPayloadSchema,
+	WsToolCallRequestSchema,
+	WsToolResultEventSchema,
 } from '@baby-panda/types';
 import usePendingPermissionMessages from '../hooks/usePendingPermissionMessages';
 import {setTimeout} from 'node:timers';
 import {getProjectName} from '@baby-panda/utils';
 import {useMessageHistory} from '../hooks/useMessageHistroy';
 import {appendMessageHistory} from '../utils/appendMessageHistory';
+import {
+	appendToolCallBatch,
+	applyToolResult,
+	failRunningToolCalls,
+} from '../utils/toolCallHistory';
 import {z} from 'zod';
 import {useSettings} from '../hooks/useSettings';
-import {useToolCalls} from '../hooks/useToolCalls';
 import {getServerPort} from '@baby-panda/server';
 
 export const SocketContext = createContext<WebSocket | null>(null);
 
 const projectName = getProjectName();
-
-function parseToolCall(content: string) {
-	try {
-		const parsed = z
-			.object({
-				name: z.string(),
-				argument: z.record(z.string(), z.unknown()).optional(),
-			})
-			.parse(JSON.parse(content));
-		const argument = parsed.argument ?? {};
-		const importantArgument =
-			typeof argument.command === 'string'
-				? argument.command
-				: typeof argument.path === 'string'
-					? argument.path
-					: typeof argument.query === 'string'
-						? argument.query
-						: undefined;
-		return {
-			name: parsed.name,
-			content: importantArgument ?? '',
-		};
-	} catch {
-		return {name: 'tool', content};
-	}
-}
 
 export function SocketProvider({children}: ReactChildPropInterface) {
 	const {sessionId} = useSession();
@@ -61,7 +41,6 @@ export function SocketProvider({children}: ReactChildPropInterface) {
 	const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 	const reconnectDelayRef = useRef(1000);
 	const setting = useSettings();
-	const toolCallContext = useToolCalls();
 	const permissions = usePendingPermissionMessages();
 	useEffect(() => {
 		let isMounted = true;
@@ -84,108 +63,125 @@ export function SocketProvider({children}: ReactChildPropInterface) {
 
 			socketInstance.onmessage = async event => {
 				const data = event.data;
-				const parsed = WsCommonMessageSchema.parse(JSON.parse(data));
-				const {payload} = parsed;
-				switch (parsed.eventType) {
-					case WsEventTypes.message: {
-						const chunk = ServerStreamChunkSchema.parse(payload);
-						await appendMessageHistory(chunk, messageContext);
-						break;
-					}
-					case WsEventTypes.permission: {
-						const permission = UserPermissionSchema.parse(payload);
-						permissions?.setPendingPermissionMessages(prev => [
-							...prev,
-							permission,
-						]);
-						break;
-					}
-					case WsEventTypes.setting: {
-						const SettingSchema = z.object({
-							end: z.boolean().optional(),
-							provider: z.string().optional(),
-							model: z.string().optional(),
-							reasoningEffort: z.enum(ReasoningEffort).optional(),
-							reasoningEfforts: z.array(z.enum(ReasoningEffort)).optional(),
-							contextWindow: z.number().optional(),
-							contextWindowUsed: z.number().optional(),
-						});
-						const chunk = SettingSchema.parse(payload);
-						if (
-							chunk.provider ||
-							chunk.model ||
-							chunk.contextWindow ||
-							chunk.contextWindowUsed !== undefined
-						) {
-							const state: Partial<{
-								provider: string;
-								model: string;
-								reasoningEffort: ReasoningEffort;
-								reasoningEfforts: ReasoningEffort[];
-								contextWindow: number;
-								contextWindowUsed: number;
-							}> = {};
-							if (chunk.provider !== undefined) state.provider = chunk.provider;
-							if (chunk.model !== undefined) state.model = chunk.model;
-							if (chunk.reasoningEffort !== undefined)
-								state.reasoningEffort = chunk.reasoningEffort;
-							if (chunk.reasoningEfforts !== undefined)
-								state.reasoningEfforts = chunk.reasoningEfforts;
-							if (chunk.contextWindow !== undefined)
-								state.contextWindow = chunk.contextWindow;
-							if (chunk.contextWindowUsed !== undefined)
-								state.contextWindowUsed = chunk.contextWindowUsed;
-							setting.model.setModelState(state);
+				// a single malformed message must never reject unhandled (that
+				// would shut the CLI down) or drop a pending permission request
+				// silently, so parse/dispatch errors are logged and swallowed
+				try {
+					const parsed = WsCommonMessageSchema.parse(JSON.parse(data));
+					const {payload} = parsed;
+					switch (parsed.eventType) {
+						case WsEventTypes.message: {
+							const chunk = ServerStreamChunkSchema.parse(payload);
+							await appendMessageHistory(chunk, messageContext);
+							break;
 						}
-						if (chunk.end === true) {
-							toolCallContext.clearToolCalls();
-							setting.responding.setResponding(false);
+						case WsEventTypes.permission: {
+							const permission = UserPermissionSchema.parse(payload);
+							permissions?.setPendingPermissionMessages(prev => [
+								...prev,
+								permission,
+							]);
+							break;
 						}
-						break;
-					}
-					case WsEventTypes.skill: {
-						// the server confirms the skill was loaded into context
-						// (or failed); only then is the notice shown
-						const skillPayload = SkillEventPayloadSchema.parse(payload);
-						const content = skillPayload.ok
-							? `⚡ skill loaded: ${skillPayload.name}`
-							: `⚡ skill failed to load: ${skillPayload.name}${
-									skillPayload.error ? ` (${skillPayload.error})` : ''
-								}`;
-						messageContext.lastRole.current = Role.skill;
-						messageContext.setMessageHistory(prev => [
-							...prev,
-							{role: Role.skill, content, createdAt: Date.now()},
-						]);
-						break;
-					}
-					case WsEventTypes.tool: {
-						const ToolSchema = z.object({
-							role: z.string(),
-							sessionId: z.string(),
-							content: z.string(),
-						});
-						const parsedToolCalls = z
-							.array(ToolSchema)
-							.or(ToolSchema)
-							.safeParse(payload);
-						if (parsedToolCalls.success) {
-							const calls = Array.isArray(parsedToolCalls.data)
-								? parsedToolCalls.data
-								: [parsedToolCalls.data];
-							setting.responding.setResponding(true);
-							toolCallContext.setToolCalls(
-								calls.map(toolCall => parseToolCall(toolCall.content)),
-							);
-						} else {
-							await writeLogs(
-								LogType.cli,
-								projectName,
-								sessionId,
-								`[WS]: Invalid tool payload ${JSON.stringify(payload)}`,
-							);
+						case WsEventTypes.setting: {
+							const SettingSchema = z.object({
+								end: z.boolean().optional(),
+								provider: z.string().optional(),
+								model: z.string().optional(),
+								reasoningEffort: z.enum(ReasoningEffort).optional(),
+								reasoningEfforts: z.array(z.enum(ReasoningEffort)).optional(),
+								contextWindow: z.number().optional(),
+								contextWindowUsed: z.number().optional(),
+							});
+							const chunk = SettingSchema.parse(payload);
+							if (
+								chunk.provider ||
+								chunk.model ||
+								chunk.contextWindow ||
+								chunk.contextWindowUsed !== undefined
+							) {
+								const state: Partial<{
+									provider: string;
+									model: string;
+									reasoningEffort: ReasoningEffort;
+									reasoningEfforts: ReasoningEffort[];
+									contextWindow: number;
+									contextWindowUsed: number;
+								}> = {};
+								if (chunk.provider !== undefined)
+									state.provider = chunk.provider;
+								if (chunk.model !== undefined) state.model = chunk.model;
+								if (chunk.reasoningEffort !== undefined)
+									state.reasoningEffort = chunk.reasoningEffort;
+								if (chunk.reasoningEfforts !== undefined)
+									state.reasoningEfforts = chunk.reasoningEfforts;
+								if (chunk.contextWindow !== undefined)
+									state.contextWindow = chunk.contextWindow;
+								if (chunk.contextWindowUsed !== undefined)
+									state.contextWindowUsed = chunk.contextWindowUsed;
+								setting.model.setModelState(state);
+							}
+							if (chunk.end === true) {
+								failRunningToolCalls(messageContext);
+								setting.responding.setResponding(false);
+							}
+							break;
+						}
+						case WsEventTypes.skill: {
+							// the server confirms the skill was loaded into context
+							// (or failed); only then is the notice shown
+							const skillPayload = SkillEventPayloadSchema.parse(payload);
+							const content = skillPayload.ok
+								? `⚡ skill loaded: ${skillPayload.name}`
+								: `⚡ skill failed to load: ${skillPayload.name}${
+										skillPayload.error ? ` (${skillPayload.error})` : ''
+									}`;
+							messageContext.lastRole.current = Role.skill;
+							messageContext.setMessageHistory(prev => [
+								...prev,
+								{role: Role.skill, content, createdAt: Date.now()},
+							]);
+							break;
+						}
+						case WsEventTypes.tool: {
+							const parsedToolCalls = z
+								.array(WsToolCallRequestSchema)
+								.safeParse(payload);
+							if (parsedToolCalls.success) {
+								setting.responding.setResponding(true);
+								appendToolCallBatch(messageContext, parsedToolCalls.data);
+							} else {
+								await writeLogs(
+									LogType.cli,
+									projectName,
+									sessionId,
+									`[WS]: Invalid tool payload ${JSON.stringify(payload)}`,
+								);
+							}
+							break;
+						}
+						case WsEventTypes.tool_result: {
+							const parsedResult = WsToolResultEventSchema.safeParse(payload);
+							if (parsedResult.success) {
+								applyToolResult(messageContext, parsedResult.data);
+							} else {
+								await writeLogs(
+									LogType.cli,
+									projectName,
+									sessionId,
+									`[WS]: Invalid tool_result payload ${JSON.stringify(payload)}`,
+								);
+							}
+							break;
 						}
 					}
+				} catch (error) {
+					await writeLogs(
+						LogType.cli,
+						projectName,
+						sessionId,
+						`[WS]: failed to handle incoming message: ${String(error)}`,
+					);
 				}
 			};
 

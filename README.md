@@ -1,9 +1,5 @@
 # BabyPanda
 
-> **Project status: under construction and highly unstable.**
->
-> BabyPanda is an experimental terminal AI coding assistant. APIs, database
-> migrations, configuration, and user experience may change without notice.
 > **Only the NVIDIA NIM provider is currently supported.** Other providers are
 > not ready for use, even though provider data is stored in the database.
 
@@ -356,8 +352,6 @@ bun run --filter @baby-panda/db type-check
   local SQLite database, and a local terminal.
 - **Limited operational safeguards:** there is no production authentication,
   multi-user isolation, or deployment guide yet.
-- **Unstable behavior:** streaming, retries, MCP tools, permissions, and
-  compaction are actively being built and may fail or change.
 
 If you report a bug, include the command you ran, operating system, Bun
 version, whether `IN_DEV_MODE` was enabled, and a redacted error log. Never

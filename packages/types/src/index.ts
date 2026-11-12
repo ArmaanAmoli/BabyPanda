@@ -159,6 +159,7 @@ export enum ContentType {
   content = 'content',
   reasoning_content = 'reasoning_content',
   tool_call = 'tool_call',
+  tool_result = 'tool_result',
   unidentified = 'unidentified',
   permission = 'permission',
 }
@@ -225,9 +226,78 @@ export const UserPermissionSchema = z.object({
 
 export type UserPermission = z.infer<typeof UserPermissionSchema>;
 
-export const WsEventTypeSchema = z.enum(['permission', 'message', 'setting', 'tool', 'skill']);
+export const WsEventTypeSchema = z.enum([
+  'permission',
+  'message',
+  'setting',
+  'tool',
+  'tool_result',
+  'skill',
+]);
 
 export const WsEventTypes = WsEventTypeSchema.enum;
+
+/**
+ * Server -> CLI notification that the agent issued one batch of tool calls
+ * (a single assistant message). `arguments` is the parsed argument object,
+ * not the raw JSON string the provider sent.
+ */
+export const WsToolCallRequestSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  arguments: z.record(z.string(), z.unknown()),
+});
+export type WsToolCallRequest = z.infer<typeof WsToolCallRequestSchema>;
+
+export const WsToolCallStatsSchema = z.object({
+  lines: z.number().int().nonnegative().optional(),
+  added: z.number().int().nonnegative().optional(),
+  removed: z.number().int().nonnegative().optional(),
+  matches: z.number().int().nonnegative().optional(),
+  results: z.number().int().nonnegative().optional(),
+});
+export type WsToolCallStats = z.infer<typeof WsToolCallStatsSchema>;
+
+export const WsToolPageResultSchema = z.object({
+  url: z.string(),
+  success: z.boolean(),
+  error: z.string().optional(),
+});
+export type WsToolPageResult = z.infer<typeof WsToolPageResultSchema>;
+
+/**
+ * Server -> CLI notification that a single tool call finished. `before` is
+ * only present for write/edit: the file content immediately before that
+ * mutation (null = the file did not exist). `pages` is only present for
+ * get_web_page and carries one outcome per requested URL.
+ */
+export const WsToolResultEventSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  success: z.boolean(),
+  error: z.string().optional(),
+  before: z.string().nullish(),
+  stats: WsToolCallStatsSchema.optional(),
+  pages: z.array(WsToolPageResultSchema).optional(),
+});
+export type WsToolResultEvent = z.infer<typeof WsToolResultEventSchema>;
+
+/**
+ * Persisted shape of a tool DB row's JSON content: the raw result plus the
+ * outcome metadata the CLI needs to render history (status, before-snapshot,
+ * stats). `content` stays a string so ToolMessageSchema remains valid.
+ */
+export const ToolResultRecordSchema = z.object({
+  role: z.literal(Role.tool),
+  tool_call_id: z.string(),
+  content: z.string(),
+  success: z.boolean().optional(),
+  error: z.string().optional(),
+  before: z.string().nullish(),
+  stats: WsToolCallStatsSchema.optional(),
+  pages: z.array(WsToolPageResultSchema).optional(),
+});
+export type ToolResultRecord = z.infer<typeof ToolResultRecordSchema>;
 
 export const PermissionsEnumsSchema = z.enum(['allowOnce', 'allowAlways']);
 export const PermissionsEnums = PermissionsEnumsSchema.enum;
