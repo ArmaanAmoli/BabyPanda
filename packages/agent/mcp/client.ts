@@ -1,8 +1,7 @@
 import { Client } from '@modelcontextprotocol/client';
 import { StdioClientTransport } from '@modelcontextprotocol/client/stdio';
 import type { Tool, ToolResult } from '@agent/types';
-import { getProjectName, writeLogs } from '@baby-panda/utils';
-import { LogType, Role, type ToolMessage } from '@baby-panda/types';
+import { Role, type ToolMessage } from '@baby-panda/types';
 
 export class MCPClient {
   private mcp: Client;
@@ -54,7 +53,6 @@ export class MCPClient {
   async callToolRaw(tool: Tool): Promise<ToolResult> {
     try {
       const result = await this.mcp.callTool(tool);
-      await writeLogs(LogType.mcp, getProjectName(), this.sessionId, `[TOOL RESULT]: ${result}`);
       return {
         id: tool.id,
         name: tool.name,

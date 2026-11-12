@@ -2,8 +2,6 @@ import axios, { type AxiosResponse } from 'axios';
 import { setTimeout } from 'node:timers/promises';
 // import type { Message } from '@baby-panda/types';
 import type { MessagesArray, ReasoningEffort } from '@baby-panda/types';
-import { LogType } from '@baby-panda/types';
-import { getProjectName, writeLogs } from '@baby-panda/utils';
 import type { UrlApi } from './types'; // verbatimModuleSyntax
 import { tools } from './config/tools';
 
@@ -40,7 +38,6 @@ class BabyPandaClient {
     isRetrying: boolean,
     retrysDone: number,
   ): Promise<ChatCompletionArgs> {
-    const startedAt = Date.now();
     const attempt = retrysDone + 1;
     const options = {
       method: 'POST' as const,
@@ -71,44 +68,11 @@ class BabyPandaClient {
       },
     };
     try {
-      await logClientEvent(this.sessionId, 'request started', {
-        attempt,
-        model,
-        reasoningEffort,
-        url: this.url,
-        messageCount: messages.length,
-        messageRoles: messages.map((message) => message.role),
-        requestBytes: Buffer.byteLength(JSON.stringify(options.data)),
-        tools: tools.map((tool) => tool.function.name),
-        messages: messages.map((message) => ({
-          role: message.role,
-          chars: message.content.length,
-          preview:
-            message.content.length > 300
-              ? `${message.content.slice(0, 300)}…(+${message.content.length - 300} chars)`
-              : message.content,
-        })),
-      });
       if (isRetrying) retrysDone += 1;
       const response = await axios(options);
-      await logClientEvent(this.sessionId, 'response stream opened', {
-        attempt,
-        status: response.status,
-        durationMs: Date.now() - startedAt,
-      });
       return { response, systemError: false };
     } catch (error: unknown) {
       const details = await getErrorDetails(error);
-      await logClientEvent(this.sessionId, 'request failed', {
-        attempt,
-        durationMs: Date.now() - startedAt,
-        model,
-        reasoningEffort,
-        messageCount: messages.length,
-        messageRoles: messages.map((message) => message.role),
-        requestBytes: Buffer.byteLength(JSON.stringify(options.data)),
-        ...details,
-      });
       if (axios.isAxiosError(error)) {
         if (error.code === 'ERR_NETWORK') {
           return { systemError: true, error: 'No internet' };
@@ -130,31 +94,13 @@ class BabyPandaClient {
         // backs off linearly with the attempt number (5s, 10s, 15s, capped at
         // 30s) so retries do not hammer a queue that is already congested.
         const delayMs = status === 429 ? 5_000 : Math.min(30_000, 5_000 * attempt);
-        await logClientEvent(this.sessionId, 'backoff before retry', {
-          attempt,
-          delayMs,
-          status: status ?? null,
-          code: error.code ?? null,
-        });
         await setTimeout(delayMs);
       }
       if (!isRetrying && retrysDone === 0) {
         isRetrying = true;
       }
       if (isRetrying && retrysDone < this.maxRetrys) {
-        await logClientEvent(this.sessionId, 'scheduling retry', {
-          failedAttempt: attempt,
-          nextAttempt: attempt + 1,
-          maxRetrys: this.maxRetrys,
-        });
         return await this._attempt(messages, model, reasoningEffort, true, retrysDone);
-      } else {
-        if (retrysDone >= this.maxRetrys) {
-          await logClientEvent(this.sessionId, 'maximum retry attempts reached', {
-            model,
-            attempts: attempt,
-          });
-        }
       }
       return { systemError: true, error };
     }
@@ -184,15 +130,6 @@ const getErrorDetails = async (error: unknown) => {
     responseBody,
   };
 };
-
-async function logClientEvent(sessionId: string, event: string, details: Record<string, unknown>) {
-  await writeLogs(
-    LogType.agent,
-    getProjectName(),
-    sessionId,
-    `[BabyPandaClient] ${event} ${JSON.stringify(details)}`,
-  );
-}
 
 const getResponseBody = async (error: import('axios').AxiosError): Promise<string> => {
   const response = error.response;
