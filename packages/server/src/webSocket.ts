@@ -1,7 +1,7 @@
 import { upgradeWebSocket } from '@hono/bun';
 import { agentStore, wsCollection } from './index';
 import type { Context, Next } from 'hono';
-import { writeLogs } from '@baby-panda/utils';
+import { logError } from '@baby-panda/utils';
 import { LogType, PermissionsEnums, WsEventMessageSchema, WsEventTypes } from '@baby-panda/types';
 import { BabyPandaAgent } from '@baby-panda/agent';
 import { getProviders } from '@baby-panda/db';
@@ -37,7 +37,7 @@ const websocketHandler = (c: Context, next: Next) => {
           const agent = new BabyPandaAgent({ url, apikey }, sessionId);
           const initAgent = async () => await agent.init();
           initAgent().catch((err) => {
-            void writeLogs(LogType.agent, cwd, sessionId, `${err}`);
+            void logError(LogType.agent, cwd, sessionId, 'agent initialization failed', err);
           });
           agentStore.set(sessionId, agent);
         }
@@ -88,7 +88,7 @@ const websocketHandler = (c: Context, next: Next) => {
 
         const onError = async (err: Error) => {
           console.error('[AGENT:STREAM ERROR] ', err);
-          await writeLogs(LogType.server, cwd, sessionId, `[/message]: Stream error ${err}`);
+          await logError(LogType.server, cwd, sessionId, 'agent stream error', err);
         };
 
         const onLoopEnd = () => {
@@ -107,8 +107,6 @@ const websocketHandler = (c: Context, next: Next) => {
         };
 
         cleanup = async () => {
-          await writeLogs(LogType.server, cwd, sessionId, 'Cleanup started');
-
           Object.entries(handlers).forEach(([eventName, handler]) => {
             babyPanda.off(eventName, handler);
           });
@@ -120,7 +118,6 @@ const websocketHandler = (c: Context, next: Next) => {
           babyPanda.off('end', onLoopEnd);
           babyPanda.off('error', onError);
           babyPanda.off('context-update', onContextUpdate);
-          await writeLogs(LogType.server, cwd, sessionId, '[/message]: Aborting stream...');
         };
 
         [ContentType.content, ContentType.reasoning_content].forEach((eventName) => {
@@ -137,24 +134,11 @@ const websocketHandler = (c: Context, next: Next) => {
         babyPanda.on('end', onLoopEnd);
         babyPanda.on('error', onError);
         babyPanda.on('context-update', onContextUpdate);
-
-        await writeLogs(
-          LogType.server,
-          process.cwd().replaceAll('/', '-').replace('-', ''),
-          sessionId,
-          '[WS]: CONNECTED',
-        );
       },
 
       async onMessage(event) {
         const agent = agentStore.get(sessionId);
         const payload = JSON.parse(event.data.toString());
-        await writeLogs(
-          LogType.server,
-          process.cwd().replaceAll('/', '-').replace('-', ''),
-          sessionId,
-          `[WS]: ${JSON.stringify(payload)}`,
-        );
         const parse = WsEventMessageSchema.parse(payload);
         switch (parse.eventType) {
           case WsEventTypes.permission: {
