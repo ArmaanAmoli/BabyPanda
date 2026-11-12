@@ -1,5 +1,9 @@
 import {describe, expect, test} from 'bun:test';
-import {buildToolCallLayout, rowSpanAtLine} from './toolCallLayout';
+import {
+	buildToolCallLayout,
+	resolveRowClick,
+	rowSpanAtLine,
+} from './toolCallLayout';
 import type {ToolCallBatch, ToolCallEntry} from '../types';
 
 const LAYOUT_OPTIONS = {
@@ -179,6 +183,129 @@ describe('clicking diff viewers', () => {
 			expect(rowSpanAtLine(layout.rowSpans, index)?.index).toBe(index);
 		}
 		expect(rowSpanAtLine(layout.rowSpans, layout.rows.length)).toBeUndefined();
+	});
+});
+
+describe('resolveRowClick', () => {
+	const threeEdits: ToolCallEntry[] = ['a', 'b', 'c'].map((suffix, index) => ({
+		id: `call-${suffix}`,
+		name: 'edit',
+		arguments: {path: `src/f${suffix}.ts`, old_str: 'two', new_str: 'TWO'},
+		status: 'done',
+		before: `one${index}\ntwo\nthree\n`,
+		stats: {added: 1, removed: 1},
+	}));
+
+	function spanOf(
+		layout: ReturnType<typeof layoutFor>,
+		predicate: (row: (typeof layout.rows)[number]) => boolean,
+	) {
+		const index = layout.rows.findIndex(predicate);
+		return layout.rowSpans[index];
+	}
+
+	/** Click every content line and collect the resulting actions. */
+	function clickEveryLine(layout: ReturnType<typeof layoutFor>) {
+		return layout.rowSpans.flatMap(span =>
+			Array.from({length: span.lines}, (_, offset) => ({
+				line: span.start + offset,
+				action: resolveRowClick(span, span.start + offset),
+			})),
+		);
+	}
+
+	test('only a diff viewer header line toggles it', () => {
+		const layout = layoutFor(threeEdits, {
+			expanded: true,
+			diffExpanded: id => id === 'call-a',
+		});
+		const span = spanOf(
+			layout,
+			row => row.type === 'diff' && row.call.id === 'call-a',
+		)!;
+		expect(span.lines).toBeGreaterThan(1);
+
+		const clicks = clickEveryLine(layout).filter(
+			click => click.line >= span.start && click.line < span.start + span.lines,
+		);
+		expect(clicks[0]!.action).toEqual({type: 'toggleDiff', callId: 'call-a'});
+		// every other line of the viewer is inert
+		for (const click of clicks.slice(1)) {
+			expect(click.action).toEqual({type: 'ignore'});
+		}
+	});
+
+	test('a collapsed viewer is a single header line that toggles', () => {
+		const layout = layoutFor(threeEdits, {
+			expanded: true,
+			diffExpanded: false,
+		});
+		const span = spanOf(
+			layout,
+			row => row.type === 'diff' && row.call.id === 'call-b',
+		)!;
+		expect(span.lines).toBe(1);
+		expect(resolveRowClick(span, span.start)).toEqual({
+			type: 'toggleDiff',
+			callId: 'call-b',
+		});
+	});
+
+	test('the bullet still toggles its diff', () => {
+		const layout = layoutFor(threeEdits, {
+			expanded: true,
+			diffExpanded: false,
+		});
+		const span = spanOf(layout, row => row.type === 'bullet')!;
+		expect(resolveRowClick(span, span.start)).toEqual({
+			type: 'toggleDiff',
+			callId: 'call-a',
+		});
+	});
+
+	test('the header and overflow hint still toggle the group', () => {
+		const many: ToolCallEntry[] = Array.from({length: 5}, (_, index) => ({
+			...threeEdits[0]!,
+			id: `call-${index}`,
+			arguments: {path: `src/f${index}.ts`, old_str: 'two', new_str: 'TWO'},
+		}));
+		const expanded = layoutFor(many, {expanded: true, diffExpanded: false});
+		const header = spanOf(expanded, row => row.type === 'header')!;
+		expect(resolveRowClick(header, header.start)).toEqual({
+			type: 'toggleGroup',
+		});
+
+		const collapsed = layoutFor(many, {expanded: false, diffExpanded: false});
+		const hint = spanOf(collapsed, row => row.type === 'overflowHint')!;
+		expect(resolveRowClick(hint, hint.start)).toEqual({type: 'toggleGroup'});
+	});
+
+	test('a shell bullet toggles its command', () => {
+		const shell: ToolCallEntry[] = [
+			{
+				id: 'sh1',
+				name: 'shell',
+				arguments: {command: 'echo hello'},
+				status: 'done',
+			},
+		];
+		const layout = layoutFor(shell, {expanded: true, diffExpanded: false});
+		const span = spanOf(layout, row => row.type === 'bullet')!;
+		expect(resolveRowClick(span, span.start)).toEqual({
+			type: 'toggleCommand',
+			key: 'sh1',
+		});
+	});
+
+	test('a click past the last row is ignored', () => {
+		const layout = layoutFor(threeEdits, {
+			expanded: true,
+			diffExpanded: false,
+		});
+		expect(resolveRowClick(undefined, 0)).toEqual({type: 'ignore'});
+		expect(resolveRowClick(undefined, layout.expandedFullHeight + 10)).toEqual({
+			type: 'ignore',
+		});
 	});
 });
 
