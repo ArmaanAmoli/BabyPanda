@@ -56,6 +56,47 @@ export function rowSpanAtLine(
 	return undefined;
 }
 
+/** What a left-click on a tool-call row should do. */
+export type RowClickAction =
+	| {type: 'toggleGroup'}
+	| {type: 'toggleDiff'; callId: string}
+	| {type: 'toggleCommand'; key: string}
+	| {type: 'ignore'};
+
+/**
+ * Resolves a left-click on content line `line` of a tool-call block.
+ *
+ * Only a row's own interactive line acts on it. A diff viewer toggles from its
+ * header line alone, so clicking the diff text — which is most of the viewer —
+ * never collapses it; the user has to click the bullet or the `± path` header
+ * again.
+ */
+export function resolveRowClick(
+	span: LayoutRowSpan | undefined,
+	line: number,
+): RowClickAction {
+	if (!span) return {type: 'ignore'};
+	const row = span.row;
+	if (row.type === 'bullet') {
+		if (row.bullet.hasDiff) {
+			return {type: 'toggleDiff', callId: row.bullet.diffCallIds[0]!};
+		}
+		if (row.bullet.expandable) {
+			return {type: 'toggleCommand', key: row.bullet.key};
+		}
+		return {type: 'toggleGroup'};
+	}
+	if (row.type === 'diff') {
+		return line === span.start
+			? {type: 'toggleDiff', callId: row.call.id}
+			: {type: 'ignore'};
+	}
+	if (row.type === 'command') {
+		return {type: 'toggleCommand', key: row.bullet.key};
+	}
+	return {type: 'toggleGroup'};
+}
+
 export const COLLAPSED_MAX_ROWS = 5;
 export const COLLAPSED_MAX_BULLETS = 3;
 
