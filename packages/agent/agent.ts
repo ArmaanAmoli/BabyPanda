@@ -271,7 +271,6 @@ export class BabyPandaAgent extends EventEmitter {
 
   public async init() {
     await this.connectToMCP();
-    this.messagesHistory = await this.getMessageHistory();
     console.log('agent:init');
   }
   private async connectToMCP() {
@@ -343,6 +342,7 @@ export class BabyPandaAgent extends EventEmitter {
     const messageHistory: MessagesArray = [];
     if (summary) {
       // fetch 10 messages before the compaction summary.
+      messageHistory.push(JSON.parse(summary.content));
       messageHistory.push(...(await this.getMessageHistory(summary.sequence + 1)));
     } else {
       messageHistory.push(...(await this.getMessageHistory()));
@@ -700,6 +700,88 @@ export class BabyPandaAgent extends EventEmitter {
                 );
               };
 
+              // Executes one shell call: validates the arguments, asks the
+              // user for permission (unless always-allow is on), runs the
+              // command (sandboxed when enabled) and reports the outcome.
+              const executeShellCall = async (call: Tool) => {
+                const parsed = ShellCallSchema.safeParse(call.arguments);
+                if (!parsed.success) {
+                  const errorMessage = `Tool Call Syntax Error : received bad arguments for bash tool here is what you send ${JSON.stringify(call.arguments)} and here is the parsing error ${parsed.error}`;
+                  const toolErrorMessage: ToolMessage = {
+                    role: Role.tool,
+                    tool_call_id: call.id,
+                    content: errorMessage,
+                  };
+                  await createMessage(this.sessionId, JSON.stringify(toolErrorMessage), Role.tool);
+                  throw new ToolError(errorMessage);
+                }
+                const permissionObject: UserPermission = {
+                  toolCallId: call.id,
+                  permission: false,
+                  content: parsed.data.command,
+                };
+                let granted: boolean = this.alwaysAllowBash === true;
+                if (!granted) {
+                  this.emit(ContentType.permission, permissionObject);
+                  granted = await this.waitForPermission(permissionObject.toolCallId);
+                }
+
+                if (granted) {
+                  let rawResult: ShellResult | SandboxResult;
+
+                  await writeLogs(
+                    LogType.agent,
+                    this.projectDirectoryName,
+                    this.sessionId,
+                    `[TOOL CALL EXECUTING] shell sandbox=${this.sandbox} command=${JSON.stringify(parsed.data.command)} timeout=${parsed.data.timeout ?? 'default'}ms`,
+                  );
+                  const shellStartedAt = Date.now();
+                  if (this.sandbox) {
+                    rawResult = await runSandboxed({
+                      workspace: process.cwd(),
+                      command: parsed.data.command,
+                      timeoutMs: parsed.data.timeout,
+                    });
+                    await writeLogs(
+                      LogType.agent,
+                      this.projectDirectoryName,
+                      this.sessionId,
+                      `[TOOL RESULT] shell (sandboxed, ${Date.now() - shellStartedAt}ms) ${JSON.stringify(rawResult)}`,
+                    );
+                  } else {
+                    rawResult = await shell(parsed.data.command, parsed.data.timeout!);
+                    await writeLogs(
+                      LogType.agent,
+                      this.projectDirectoryName,
+                      this.sessionId,
+                      `[TOOL RESULT] shell (${Date.now() - shellStartedAt}ms) ${JSON.stringify(rawResult)}`,
+                    );
+                  }
+
+                  await persistAndEmitResult(
+                    call,
+                    JSON.stringify(rawResult),
+                    true,
+                    undefined,
+                    undefined,
+                    undefined,
+                    undefined,
+                  );
+                } else {
+                  const deniedMessage =
+                    '[PERMISSION DENIED] Command execution denied by user. Ask the user for clarification or alternative instructions.';
+                  await persistAndEmitResult(
+                    call,
+                    deniedMessage,
+                    false,
+                    deniedMessage,
+                    undefined,
+                    undefined,
+                    undefined,
+                  );
+                }
+              };
+
               const executeToolCall = async () => {
                 const MCPTools: Tool[] = [];
                 const flushBatch = async () => {
@@ -721,7 +803,10 @@ export class BabyPandaAgent extends EventEmitter {
                     `[TOOL CALL] id=${call.id} name=${call.name} arguments=${JSON.stringify(call.arguments)}`,
                   );
                   if (call.name === 'shell') {
-                    //execute nonShellToolCalls
+                    // run pending non-shell tools first so execution order is
+                    // preserved, then handle the shell call itself — it must
+                    // never be skipped, otherwise no permission prompt is sent
+                    // and the CLI stays stuck on "running"
                     if (MCPTools.length !== 0) {
                       await writeLogs(
                         LogType.agent,
@@ -736,92 +821,8 @@ export class BabyPandaAgent extends EventEmitter {
                         )}`,
                       );
                       await flushBatch();
-                    } else {
-                      const parsed = ShellCallSchema.safeParse(call.arguments);
-                      if (!parsed.success) {
-                        const errorMessage = `Tool Call Syntax Error : received bad arguments for bash tool here is what you send ${JSON.stringify(call.arguments)} and here is the parsing error ${parsed.error}`;
-                        const toolErrorMessage: ToolMessage = {
-                          role: Role.tool,
-                          tool_call_id: call.id,
-                          content: errorMessage,
-                        };
-                        await createMessage(
-                          this.sessionId,
-                          JSON.stringify(toolErrorMessage),
-                          Role.tool,
-                        );
-                        throw new ToolError(errorMessage);
-                      } else {
-                        const permissionObject: UserPermission = {
-                          toolCallId: call.id,
-                          permission: false,
-                          content: parsed.data.command,
-                        };
-                        // eslint-disable-next-line no-useless-assignment
-                        let granted: boolean = false;
-                        if (this.alwaysAllowBash === true) granted = true;
-                        else {
-                          this.emit(ContentType.permission, permissionObject);
-                          granted = await this.waitForPermission(permissionObject.toolCallId);
-                        }
-
-                        if (granted) {
-                          // eslint-disable-next-line no-useless-assignment
-                          let rawResult: ShellResult | null | SandboxResult = null;
-
-                          await writeLogs(
-                            LogType.agent,
-                            this.projectDirectoryName,
-                            this.sessionId,
-                            `[TOOL CALL EXECUTING] shell sandbox=${this.sandbox} command=${JSON.stringify(parsed.data.command)} timeout=${parsed.data.timeout ?? 'default'}ms`,
-                          );
-                          const shellStartedAt = Date.now();
-                          if (this.sandbox) {
-                            rawResult = await runSandboxed({
-                              workspace: process.cwd(),
-                              command: parsed.data.command,
-                              timeoutMs: parsed.data.timeout,
-                            });
-                            await writeLogs(
-                              LogType.agent,
-                              this.projectDirectoryName,
-                              this.sessionId,
-                              `[TOOL RESULT] shell (sandboxed, ${Date.now() - shellStartedAt}ms) ${JSON.stringify(rawResult)}`,
-                            );
-                          } else {
-                            rawResult = await shell(parsed.data.command, parsed.data.timeout!);
-                            await writeLogs(
-                              LogType.agent,
-                              this.projectDirectoryName,
-                              this.sessionId,
-                              `[TOOL RESULT] shell (${Date.now() - shellStartedAt}ms) ${JSON.stringify(rawResult)}`,
-                            );
-                          }
-
-                          await persistAndEmitResult(
-                            call,
-                            JSON.stringify(rawResult),
-                            true,
-                            undefined,
-                            undefined,
-                            undefined,
-                            undefined,
-                          );
-                        } else {
-                          const deniedMessage =
-                            '[PERMISSION DENIED] Command execution denied by user. Ask the user for clarification or alternative instructions.';
-                          await persistAndEmitResult(
-                            call,
-                            deniedMessage,
-                            false,
-                            deniedMessage,
-                            undefined,
-                            undefined,
-                            undefined,
-                          );
-                        }
-                      }
                     }
+                    await executeShellCall(call);
                   } else if (call.name === 'write' || call.name === 'edit') {
                     // file mutations run individually (after flushing pending
                     // tools) so the before-snapshot is taken right before the
