@@ -7,6 +7,7 @@ import {
 import {
 	buildSideBySide,
 	computeAfterContent,
+	countDiffChanges,
 	type SideBySideDiff,
 } from './diffRows';
 import {splitTruncated, wrapText} from './formatLink';
@@ -59,20 +60,36 @@ function diffHeight(
 	return Math.min(diff.rows.length + 1, maxDiffHeight(chatHeight));
 }
 
+function beforeAfterContent(call: ToolCallEntry): {
+	before: string;
+	after: string;
+} {
+	return {
+		before: call.before ?? '',
+		after: computeAfterContent(call.name, call.before ?? null, call.arguments),
+	};
+}
+
 function buildDiff(call: ToolCallEntry): SideBySideDiff {
-	const before = call.before ?? '';
-	const after = computeAfterContent(
-		call.name,
-		call.before ?? null,
-		call.arguments,
-	);
+	const {before, after} = beforeAfterContent(call);
 	return buildSideBySide(before, after);
+}
+
+/**
+ * Header-only diff for a collapsed viewer: the real added/removed counts
+ * without building the side-by-side rows, which are not rendered yet.
+ */
+function buildDiffSummary(call: ToolCallEntry): SideBySideDiff {
+	const {before, after} = beforeAfterContent(call);
+	const {added, removed} = countDiffChanges(before, after);
+	return {rows: [], firstChangeIndex: 0, added, removed};
 }
 
 /**
  * Computes the row layout of a ToolCallMessage. The same layout drives both
  * the rendered component and the ChatBox item height, so they can never
- * disagree. Diff row counts are only computed for expanded diffs; expanded
+ * disagree. Side-by-side rows are only built for expanded diffs (a collapsed
+ * one still carries its real added/removed counts for the header); expanded
  * shell commands add one row per wrapped continuation line of the command
  * that was cut off by the bullet's '…'.
  */
@@ -109,7 +126,7 @@ export function buildToolCallLayout(
 				rows.push({
 					type: 'diff',
 					call,
-					diff: diffExpanded ? buildDiff(call) : EMPTY_DIFF,
+					diff: diffExpanded ? buildDiff(call) : buildDiffSummary(call),
 				});
 			}
 		}
@@ -143,10 +160,3 @@ export function buildToolCallLayout(
 		bullets,
 	};
 }
-
-const EMPTY_DIFF: SideBySideDiff = {
-	rows: [],
-	firstChangeIndex: 0,
-	added: 0,
-	removed: 0,
-};
