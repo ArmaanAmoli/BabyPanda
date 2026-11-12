@@ -1,5 +1,5 @@
 import {describe, expect, test} from 'bun:test';
-import {buildToolCallLayout} from './toolCallLayout';
+import {buildToolCallLayout, rowSpanAtLine} from './toolCallLayout';
 import type {ToolCallBatch, ToolCallEntry} from '../types';
 
 const LAYOUT_OPTIONS = {
@@ -10,13 +10,20 @@ const LAYOUT_OPTIONS = {
 
 function layoutFor(
 	calls: ToolCallEntry[],
-	{expanded, diffExpanded}: {expanded: boolean; diffExpanded: boolean},
+	{
+		expanded,
+		diffExpanded,
+	}: {
+		expanded: boolean;
+		diffExpanded: boolean | ((callId: string) => boolean);
+	},
 ) {
 	const batch: ToolCallBatch = {id: 'batch-1', createdAt: 0, calls};
 	return buildToolCallLayout(batch, {
 		...LAYOUT_OPTIONS,
 		expanded,
-		isDiffExpanded: () => diffExpanded,
+		isDiffExpanded:
+			typeof diffExpanded === 'function' ? diffExpanded : () => diffExpanded,
 	});
 }
 
@@ -72,6 +79,106 @@ describe('collapsed diff viewers', () => {
 		});
 		expect(diffRows(layout)).toHaveLength(0);
 		expect(layout.rows.map(row => row.type)).toEqual(['header', 'bullet']);
+	});
+});
+
+/**
+ * Reproduces the reported click bug: a terminal row is a *content line*, but
+ * an expanded diff row spans many lines, so the line cannot index `rows`
+ * directly. Clicking the top diff first used to shift every row below it and
+ * make their clicks land on the wrong row (or none at all).
+ */
+describe('clicking diff viewers', () => {
+	const threeEdits: ToolCallEntry[] = ['a', 'b', 'c'].map((suffix, index) => ({
+		id: `call-${suffix}`,
+		name: 'edit',
+		arguments: {path: `src/f${suffix}.ts`, old_str: 'two', new_str: 'TWO'},
+		status: 'done',
+		before: `one${index}\ntwo\nthree\n`,
+		stats: {added: 1, removed: 1},
+	}));
+
+	/** Row index of the diff viewer for a call id. */
+	function diffRowIndex(layout: ReturnType<typeof layoutFor>, callId: string) {
+		return layout.rows.findIndex(
+			row => row.type === 'diff' && row.call.id === callId,
+		);
+	}
+
+	test('every diff header still maps to its own row once one is expanded', () => {
+		const layout = layoutFor(threeEdits, {
+			expanded: true,
+			diffExpanded: id => id === 'call-a',
+		});
+		// the expanded viewer really does push the rows below it down
+		expect(layout.expandedFullHeight).toBeGreaterThan(layout.rows.length);
+
+		for (const callId of ['call-a', 'call-b', 'call-c']) {
+			const index = diffRowIndex(layout, callId);
+			const span = layout.rowSpans[index]!;
+			expect(rowSpanAtLine(layout.rowSpans, span.start)?.index).toBe(index);
+			// the last line of the viewer belongs to it too
+			expect(
+				rowSpanAtLine(layout.rowSpans, span.start + span.lines - 1)?.index,
+			).toBe(index);
+		}
+	});
+
+	test('the naive line-as-index mapping is what broke', () => {
+		const layout = layoutFor(threeEdits, {
+			expanded: true,
+			diffExpanded: id => id === 'call-a',
+		});
+		const indexB = diffRowIndex(layout, 'call-b');
+		const startB = layout.rowSpans[indexB]!.start;
+		// what the component used to do: index `rows` with a content line
+		expect(layout.rows[startB]).toBeUndefined();
+		expect(rowSpanAtLine(layout.rowSpans, startB)?.index).toBe(indexB);
+	});
+
+	test('expanding the last viewer leaves the rows above it untouched', () => {
+		const layout = layoutFor(threeEdits, {
+			expanded: true,
+			diffExpanded: id => id === 'call-c',
+		});
+		// rows above the expanded viewer keep their original line offsets,
+		// which is why clicking upwards from the bottom used to work
+		for (const callId of ['call-a', 'call-b', 'call-c']) {
+			const index = diffRowIndex(layout, callId);
+			expect(layout.rowSpans[index]!.start).toBe(index);
+		}
+		const indexC = diffRowIndex(layout, 'call-c');
+		expect(layout.rowSpans[indexC]!.lines).toBeGreaterThan(1);
+	});
+
+	test('spans stay consistent with the reported heights', () => {
+		const layout = layoutFor(threeEdits, {
+			expanded: true,
+			diffExpanded: id => id === 'call-a',
+		});
+		const total = layout.rowSpans.reduce((sum, span) => sum + span.lines, 0);
+		expect(total).toBe(layout.expandedFullHeight);
+		// spans are contiguous and start at the first content line
+		expect(layout.rowSpans[0]!.start).toBe(0);
+		for (const [index, span] of layout.rowSpans.entries()) {
+			expect(span.index).toBe(index);
+			if (index > 0) {
+				expect(span.start).toBe(
+					layout.rowSpans[index - 1]!.start + layout.rowSpans[index - 1]!.lines,
+				);
+			}
+		}
+	});
+
+	test('a collapsed group maps every line to its own single-line row', () => {
+		const layout = layoutFor(threeEdits, {
+			expanded: false,
+			diffExpanded: false,
+		});
+		for (const [index] of layout.rows.entries()) {
+			expect(rowSpanAtLine(layout.rowSpans, index)?.index).toBe(index);
+		}
+		expect(rowSpanAtLine(layout.rowSpans, layout.rows.length)).toBeUndefined();
 	});
 });
 
