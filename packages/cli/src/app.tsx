@@ -522,6 +522,7 @@ export default function App() {
 								<Box height={1} flexDirection="row" width="100%">
 									<LodingIndicator
 										isResponding={settings.responding.responding}
+										isCompacting={settings.compaction.compacting}
 									/>
 								</Box>
 							</Box>
