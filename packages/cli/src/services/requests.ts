@@ -165,8 +165,8 @@ function parseToolCallArguments(raw: unknown): Record<string, unknown> {
  * Turns the raw history rows returned by the server into display messages.
  * The server only JSON-parses each stored entry, so the shapes vary per role:
  * user messages are `{role, content}`, assistant messages are full
- * `AssistantMessage` records, tool rows are persisted result records and
- * compaction summaries are plain strings.
+ * `AssistantMessage` records, tool rows are persisted result records.
+ * Compaction rows are filtered out server-side and never arrive here.
  *
  * Assistant rows with `tool_calls` additionally produce one
  * `ContentType.tool_call` entry (a JSON-encoded ToolCallBatch) right after
@@ -180,12 +180,8 @@ function buildChatMessages(messagesList: unknown[]): ChatMessage[] {
 	const batchSlots: BatchSlot[] = [];
 
 	for (const entry of messagesList) {
+		// non-object entries are malformed rows; nothing to render
 		if (typeof entry !== 'object' || entry === null) {
-			entries.push({
-				role: Role.compaction,
-				content: String(entry),
-				createdAt: null,
-			});
 			continue;
 		}
 		const record = entry as Record<string, unknown>;

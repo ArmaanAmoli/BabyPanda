@@ -13,6 +13,7 @@ import type { WSContext } from 'hono/ws';
 import { websocket } from '@hono/bun';
 import { Models } from '@agent/config/models';
 import { dbToAgentMessages } from '@baby-panda/utils';
+import { Role } from '@baby-panda/types';
 
 const defaultPort = 3500;
 const configuredPort = Number(process.env['BABY_PANDA_PORT'] ?? defaultPort);
@@ -53,7 +54,9 @@ app.post('/get-messages', async (c) => {
   }
   try {
     const messages = await getMessages(body.sessionId);
-    const result = dbToAgentMessages(messages);
+    // compaction summaries are internal agent context; never sent to the CLI
+    const chatMessages = messages.filter((message) => message.role !== Role.compaction);
+    const result = dbToAgentMessages(chatMessages);
     const response = JSON.stringify(result);
     return new Response(response, { status: 200, statusText: 'OK' });
   } catch (err) {
