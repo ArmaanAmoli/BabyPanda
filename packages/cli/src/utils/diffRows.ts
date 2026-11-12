@@ -9,17 +9,30 @@ export interface SideCell {
 }
 
 export interface SideBySideRow {
+	kind: 'line';
 	left: SideCell;
 	right: SideCell;
 }
 
+/** A collapsed run of unchanged lines between two visible hunks. */
+export interface GapRow {
+	kind: 'gap';
+	/** How many unchanged file lines this row stands for. */
+	hidden: number;
+}
+
+export type DiffRow = SideBySideRow | GapRow;
+
 export interface SideBySideDiff {
-	rows: SideBySideRow[];
-	/** Index of the first row that contains a change (for initial scroll). */
+	rows: DiffRow[];
+	/** Index in `rows` of the first row that contains a change (for initial scroll). */
 	firstChangeIndex: number;
 	added: number;
 	removed: number;
 }
+
+/** Unchanged lines kept around each change, like `git diff -U3`. */
+export const DIFF_CONTEXT_LINES = 3;
 
 interface Part {
 	value: string;
@@ -36,30 +49,63 @@ function splitLines(value: string): string[] {
 	return lines;
 }
 
+interface BuiltRow {
+	row: SideBySideRow;
+	changed: boolean;
+}
+
+/**
+ * Keeps only the rows within DIFF_CONTEXT_LINES of a change and replaces
+ * every skipped run of unchanged lines with a single gap row, so the viewer
+ * shows just the changed regions (plus nearby context) instead of the whole
+ * file.
+ */
+function collapseToHunks(built: BuiltRow[]): DiffRow[] {
+	const keep = new Array<boolean>(built.length).fill(false);
+	for (let i = 0; i < built.length; i++) {
+		if (!built[i]!.changed) continue;
+		const from = Math.max(0, i - DIFF_CONTEXT_LINES);
+		const to = Math.min(built.length - 1, i + DIFF_CONTEXT_LINES);
+		for (let j = from; j <= to; j++) keep[j] = true;
+	}
+	const rows: DiffRow[] = [];
+	let index = 0;
+	while (index < built.length) {
+		if (keep[index]) {
+			rows.push(built[index]!.row);
+			index++;
+			continue;
+		}
+		let end = index;
+		while (end < built.length && !keep[end]) end++;
+		rows.push({kind: 'gap', hidden: end - index});
+		index = end;
+	}
+	return rows;
+}
+
 /**
  * Builds side-by-side rows from a before/after pair using jsdiff's line diff.
  * Unchanged parts appear on both sides (dim); a removed part followed by an
  * added part is paired row-by-row, with the longer side's extra lines getting
  * an empty opposite cell; removed-only rows get an empty right cell and
- * added-only rows an empty left cell.
+ * added-only rows an empty left cell. The result is then collapsed to hunks:
+ * only changed rows and the DIFF_CONTEXT_LINES unchanged rows around them
+ * stay visible, everything else becomes a single gap row.
  */
 export function buildSideBySide(before: string, after: string): SideBySideDiff {
 	const parts = diffLines(before, after) as Part[];
-	const rows: SideBySideRow[] = [];
+	const built: BuiltRow[] = [];
 	let leftNo = 1;
 	let rightNo = 1;
-	let firstChangeIndex = -1;
 	let added = 0;
 	let removed = 0;
 
 	const pushRow = (left: SideCell, right: SideCell) => {
-		if (
-			firstChangeIndex === -1 &&
-			(left.type === 'removed' || right.type === 'added')
-		) {
-			firstChangeIndex = rows.length;
-		}
-		rows.push({left, right});
+		built.push({
+			row: {kind: 'line', left, right},
+			changed: left.type === 'removed' || right.type === 'added',
+		});
 	};
 
 	let index = 0;
@@ -120,9 +166,17 @@ export function buildSideBySide(before: string, after: string): SideBySideDiff {
 		index++;
 	}
 
+	const rows = collapseToHunks(built);
+	let firstChangeIndex = rows.findIndex(
+		row =>
+			row.kind === 'line' &&
+			(row.left.type === 'removed' || row.right.type === 'added'),
+	);
+	if (firstChangeIndex === -1) firstChangeIndex = 0;
+
 	return {
 		rows,
-		firstChangeIndex: firstChangeIndex === -1 ? 0 : firstChangeIndex,
+		firstChangeIndex,
 		added,
 		removed,
 	};
