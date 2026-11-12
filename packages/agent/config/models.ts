@@ -28,12 +28,16 @@ export const Models: ModelsType = {
     url: 'https://integrate.api.nvidia.com/v1/chat/completions',
     models: {
       'z-ai/glm-5.3-flash': {
-        contextLength: 1000000,
+        contextLength: 1_000_000,
+        reasoningEfforts: Object.values(ReasoningEffort),
+      },
+      'stepfun-ai/step-5-preview': {
+        contextLength: 1_000_000,
         reasoningEfforts: Object.values(ReasoningEffort),
       },
 
       'nvidia/nemotron-3-ultra-550b-a55b': {
-        contextLength: 1000000,
+        contextLength: 1_000_000,
         reasoningEfforts: Object.values(ReasoningEffort),
       },
 
