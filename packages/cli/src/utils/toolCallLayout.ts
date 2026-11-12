@@ -4,12 +4,8 @@ import {
 	bulletTargetMax,
 	type BulletView,
 } from './toolCallBullets';
-import {
-	buildSideBySide,
-	computeAfterContent,
-	countDiffChanges,
-	type SideBySideDiff,
-} from './diffRows';
+import type {SideBySideDiff} from './diffRows';
+import {buildCallDiff, buildDiffSummary} from './toolCallDiff';
 import {splitTruncated, wrapText} from './formatLink';
 
 export type LayoutRow =
@@ -60,31 +56,6 @@ function diffHeight(
 	return Math.min(diff.rows.length + 1, maxDiffHeight(chatHeight));
 }
 
-function beforeAfterContent(call: ToolCallEntry): {
-	before: string;
-	after: string;
-} {
-	return {
-		before: call.before ?? '',
-		after: computeAfterContent(call.name, call.before ?? null, call.arguments),
-	};
-}
-
-function buildDiff(call: ToolCallEntry): SideBySideDiff {
-	const {before, after} = beforeAfterContent(call);
-	return buildSideBySide(before, after);
-}
-
-/**
- * Header-only diff for a collapsed viewer: the real added/removed counts
- * without building the side-by-side rows, which are not rendered yet.
- */
-function buildDiffSummary(call: ToolCallEntry): SideBySideDiff {
-	const {before, after} = beforeAfterContent(call);
-	const {added, removed} = countDiffChanges(before, after);
-	return {rows: [], firstChangeIndex: 0, added, removed};
-}
-
 /**
  * Computes the row layout of a ToolCallMessage. The same layout drives both
  * the rendered component and the ChatBox item height, so they can never
@@ -126,7 +97,7 @@ export function buildToolCallLayout(
 				rows.push({
 					type: 'diff',
 					call,
-					diff: diffExpanded ? buildDiff(call) : buildDiffSummary(call),
+					diff: diffExpanded ? buildCallDiff(call) : buildDiffSummary(call),
 				});
 			}
 		}
