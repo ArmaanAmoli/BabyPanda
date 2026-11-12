@@ -3,7 +3,14 @@ import {Box, Text} from 'ink';
 import BigText from 'ink-big-text';
 import {useState, useEffect, useRef} from 'react';
 import PromptBox from './components/promptBox';
-import {getWrappedLineCount} from './utils/promptLayout';
+import {GAP_CHAT_BOX_PROMPT_BOX, PADDING_APP} from './layout';
+import {getPromptLineCount, getPromptWrapWidth} from './utils/promptLayout';
+import {
+	isEmptyPrompt,
+	promptText,
+	textValue,
+	type PromptValue,
+} from './utils/promptValue';
 import {CommandMenu, ProviderSetupBox} from './components/commandMenu';
 import {ChatBox} from './components/ChatBox';
 import {
@@ -39,9 +46,6 @@ import {useToolCalls} from './hooks/useToolCalls';
 import {getMessageGroups} from './utils/messageGroups';
 import {APP_BACKGROUND_COLOR} from './theme';
 
-export const PADDING_APP = 2;
-export const GAP_CHAT_BOX_PROMPT_BOX = 1;
-
 const SLASH_COMMANDS: {name: string; description: string}[] = [
 	{name: 'provider', description: 'switch provider'},
 	{name: 'model', description: 'switch model'},
@@ -56,7 +60,7 @@ export default function App() {
 	const sessionId = sessionState.sessionId;
 	const {messageHistory, setMessageHistory, lastRole} = useMessageHistory();
 	const messageGroups = getMessageGroups(messageHistory);
-	const [prompt, setPrompt] = useState('');
+	const [prompt, setPrompt] = useState<PromptValue>(() => textValue(''));
 	const [isCommand, setIsCommand] = useState(false);
 	const [skills, setSkills] = useState<SkillFile[]>([]);
 	const [slashMenuOpen, setSlashMenuOpen] = useState(false);
@@ -78,15 +82,16 @@ export default function App() {
 				showClipboardStatus(`Skill loading failed: ${String(error)}`),
 			);
 	};
-	const onChange = (value: string) => {
-		if (value.startsWith('/') && !prompt.startsWith('/')) {
+	const onChange = (value: PromptValue) => {
+		const text = promptText(value);
+		if (text.startsWith('/') && !promptText(prompt).startsWith('/')) {
 			// entering slash mode: pick up skills added since startup and open the menu
 			refreshSkills();
 			setSlashMenuOpen(true);
-		} else if (!value.startsWith('/')) {
+		} else if (!text.startsWith('/')) {
 			setSlashMenuOpen(false);
 		}
-		setIsCommand(value.startsWith('/'));
+		setIsCommand(text.startsWith('/'));
 		setPrompt(value);
 	};
 	const activeProvider =
@@ -98,7 +103,7 @@ export default function App() {
 	const setupProvider = settings.providers.providers.find(
 		provider => provider.provider === setupProviderName,
 	);
-	const command = prompt.trim().split(/\s+/)[0];
+	const command = promptText(prompt).trim().split(/\s+/)[0];
 	const showProviderMenu = isCommand && command === '/provider';
 	const showModelMenu =
 		isCommand && command === '/model' && activeProvider != null;
@@ -134,9 +139,21 @@ export default function App() {
 		slashItems.length > 0;
 	const statusHeight = 1;
 	const promptMaxHeight = Math.min(8, Math.max(3, Math.floor(rows * 0.25)));
-	const promptWidth = Math.max(10, columns - 2 * PADDING_APP - 1);
-	const promptLineCount = getWrappedLineCount(prompt, promptWidth);
-	const promptHeight = Math.min(promptMaxHeight, promptLineCount + 2);
+	// While a paste chip is expanded the box grows so the pasted text is actually
+	// readable, still leaving the chat area and status bar at least four rows.
+	const expandedPromptMaxHeight = Math.max(
+		promptMaxHeight,
+		Math.min(Math.floor(rows * 0.6), Math.max(4, rows - 4)),
+	);
+	const hasExpandedPaste = prompt.segments.some(
+		segment => segment.kind === 'paste' && !segment.collapsed,
+	);
+	const promptCeiling = hasExpandedPaste
+		? expandedPromptMaxHeight
+		: promptMaxHeight;
+	const promptWidth = getPromptWrapWidth(columns, PADDING_APP);
+	const promptLineCount = getPromptLineCount(prompt, promptWidth);
+	const promptHeight = Math.min(promptCeiling, promptLineCount + 2);
 	// the permission box grows with the command length so every option
 	// stays visible; it is capped so the prompt and status bar keep room
 	const permissionContent = pendingPermissionMessages.at(-1)?.content;
@@ -234,7 +251,7 @@ export default function App() {
 				}),
 			);
 		}
-		setPrompt('');
+		setPrompt(textValue(''));
 		setIsCommand(false);
 	};
 
@@ -259,8 +276,7 @@ export default function App() {
 				},
 			}),
 		);
-		setPrompt('');
-		setPrompt('/efforts');
+		setPrompt(textValue('/efforts'));
 		setIsCommand(true);
 	};
 
@@ -273,7 +289,7 @@ export default function App() {
 				setting: {reasoningEffort: selectedEffort},
 			}),
 		);
-		setPrompt('');
+		setPrompt(textValue(''));
 		setIsCommand(false);
 	};
 
@@ -281,21 +297,21 @@ export default function App() {
 		setSlashMenuOpen(false);
 		if (value.startsWith('skill:')) {
 			// complete the input, do not submit; the user presses enter to send
-			setPrompt(`/${value.slice('skill:'.length)} `);
+			setPrompt(textValue(`/${value.slice('skill:'.length)} `));
 			setIsCommand(true);
 		} else {
-			setPrompt(`/${value.slice('command:'.length)}`);
+			setPrompt(textValue(`/${value.slice('command:'.length)}`));
 			setIsCommand(true);
 		}
 	};
 
 	const onSubmit = async () => {
-		if (prompt.trim().length === 0) {
+		if (isEmptyPrompt(prompt)) {
 			return;
 		}
 		if (isCommand) {
 			if (showProviderMenu || showModelMenu || showEffortMenu) return;
-			const parts = prompt.trim().split(/\s+/);
+			const parts = promptText(prompt).trim().split(/\s+/);
 			const token = (parts[0] ?? '').substring(1);
 			const rest = parts.slice(1).join(' ');
 			// commands win collisions; otherwise a matching skill name activates the skill
@@ -308,7 +324,7 @@ export default function App() {
 					...(rest ? {args: rest} : {}),
 				};
 				socket?.send(JSON.stringify(skillMessage));
-				setPrompt('');
+				setPrompt(textValue(''));
 				setIsCommand(false);
 				if (rest) {
 					// leftover text after the skill arguments is a normal user message
@@ -330,7 +346,7 @@ export default function App() {
 			}
 			// execute command
 			try {
-				const setting = executeCommand(prompt);
+				const setting = executeCommand(promptText(prompt));
 				const wsMessage: WsEventMessage = {
 					eventType: WsEventTypes.setting,
 					setting,
@@ -349,24 +365,24 @@ export default function App() {
 				// unknown slash input: local error only, nothing is sent
 				showClipboardStatus(`Unknown command or skill: ${String(error)}`);
 			}
-			setPrompt('');
+			setPrompt(textValue(''));
 			setIsCommand(false);
 			setSlashMenuOpen(false);
 			return;
 		}
 		setMessageHistory(prev => [
 			...prev,
-			{role: Role.user, content: prompt, createdAt: Date.now()},
+			{role: Role.user, content: promptText(prompt), createdAt: Date.now()},
 		]);
 		lastRole.current = Role.user;
-		setPrompt('');
+		setPrompt(textValue(''));
 		settings.responding.setResponding(true);
 		clearToolCalls();
 
 		const wsMessage: WsEventMessage = {
 			eventType: WsEventTypes.message,
 			role: Role.user,
-			content: prompt,
+			content: promptText(prompt),
 		};
 		socket?.send(JSON.stringify(wsMessage));
 	};
@@ -660,8 +676,6 @@ export default function App() {
 								onChange={onChange}
 								onSubmit={onSubmit}
 								active={focus === 'PromptBox'}
-								start={rows - statusHeight - promptHeight + 1}
-								end={rows - statusHeight}
 								maxHeight={promptHeight}
 								menuOpen={showSlashMenu}
 							/>

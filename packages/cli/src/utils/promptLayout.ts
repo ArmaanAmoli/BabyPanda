@@ -35,13 +35,56 @@ function characterWidth(character: string): number {
 	return Math.max(1, wcwidth(character));
 }
 
-function measureWidth(text: string): number {
+/** Terminal columns `text` occupies. */
+export function getDisplayWidth(text: string): number {
 	let width = 0;
 	for (const character of text) {
 		width += characterWidth(character);
 	}
 
 	return width;
+}
+
+/** Display column of the UTF-16 `offset` within `text`. */
+export function getColumnAtOffset(text: string, offset: number): number {
+	let width = 0;
+	let position = 0;
+
+	for (const character of text) {
+		if (position >= offset) break;
+		width += characterWidth(character);
+		position += character.length;
+	}
+
+	return width;
+}
+
+/** UTF-16 offset within `text` at display `column`. */
+export function getOffsetAtColumn(text: string, column: number): number {
+	let width = 0;
+	let offset = 0;
+
+	for (const character of text) {
+		if (width >= column) break;
+		width += characterWidth(character);
+		offset += character.length;
+	}
+
+	return offset;
+}
+
+/**
+ * Columns of text the prompt box wraps at.
+ *
+ * One column is permanently reserved for the scrollbar so the wrap width never
+ * changes as content crosses the overflow threshold — otherwise the box height
+ * and the cursor's visual column would jitter while typing.
+ */
+export function getPromptWrapWidth(columns: number, paddingX: number): number {
+	return Math.max(
+		1,
+		Math.max(10, columns - 2 * paddingX - 1) - SCROLLBAR_WIDTH,
+	);
 }
 
 function readCharacters(
@@ -98,7 +141,7 @@ function wrapHardLine(
 			text,
 			start: lineStart,
 			end: lineEnd,
-			displayWidth: measureWidth(text),
+			displayWidth: getDisplayWidth(text),
 		});
 	};
 
@@ -228,13 +271,13 @@ export function formatPasteChip(
 	const size = formatBytes(byteLength(text));
 
 	const full = `[Pasted text #${index} · ${lines} lines · ${size}]`;
-	if (measureWidth(full) <= width) return full;
+	if (getDisplayWidth(full) <= width) return full;
 
 	const withoutSize = `[Pasted text #${index} · ${lines} lines]`;
-	if (measureWidth(withoutSize) <= width) return withoutSize;
+	if (getDisplayWidth(withoutSize) <= width) return withoutSize;
 
 	const minimal = `[Pasted #${index}]`;
-	if (measureWidth(minimal) <= width) return minimal;
+	if (getDisplayWidth(minimal) <= width) return minimal;
 
 	return minimal.slice(0, Math.max(1, width));
 }
@@ -264,7 +307,7 @@ export function wrapPromptValue(
 				text: label,
 				start: segmentStart,
 				end: segmentStart + segment.text.length,
-				displayWidth: measureWidth(label),
+				displayWidth: getDisplayWidth(label),
 				segmentIndex,
 				isChip: true,
 			});

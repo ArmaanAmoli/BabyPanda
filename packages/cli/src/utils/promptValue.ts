@@ -146,11 +146,12 @@ export function replaceRange(
 }
 
 /**
- * Range of the paste segment ending exactly at `offset`, if any.
+ * Range of the collapsed paste segment ending exactly at `offset`, if any.
  *
- * Paste segments are atomic: the cursor can only sit immediately before or
- * after one, never inside. This lets Backspace remove a whole chip in one press
- * without ever being able to partially edit its contents.
+ * A collapsed chip is atomic: the cursor can only sit immediately before or
+ * after one, never inside, so one Backspace removes the whole block and its
+ * contents can never be partially edited. An expanded paste is ordinary text
+ * and edits character by character like anything else.
  */
 export function getPasteRangeBefore(
 	value: PromptValue,
@@ -161,7 +162,11 @@ export function getPasteRangeBefore(
 	for (const segment of value.segments) {
 		const segmentEnd = position + segment.text.length;
 
-		if (segment.kind === 'paste' && segmentEnd === offset) {
+		if (
+			segment.kind === 'paste' &&
+			segment.collapsed &&
+			segmentEnd === offset
+		) {
 			return {start: position, end: segmentEnd};
 		}
 
@@ -171,7 +176,7 @@ export function getPasteRangeBefore(
 	return null;
 }
 
-/** Range of the paste segment starting exactly at `offset`, if any. */
+/** Range of the collapsed paste segment starting exactly at `offset`, if any. */
 export function getPasteRangeAfter(
 	value: PromptValue,
 	offset: number,
@@ -179,7 +184,7 @@ export function getPasteRangeAfter(
 	let position = 0;
 
 	for (const segment of value.segments) {
-		if (segment.kind === 'paste' && position === offset) {
+		if (segment.kind === 'paste' && segment.collapsed && position === offset) {
 			return {start: position, end: position + segment.text.length};
 		}
 
