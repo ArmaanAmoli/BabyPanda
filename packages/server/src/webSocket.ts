@@ -14,6 +14,7 @@ import type {
   WsToolResultEvent,
   ServerStreamChunkSchemaType,
   SkillEventPayload,
+  CompactionEventPayload,
 } from '@baby-panda/types';
 
 const cwd = process.cwd().replaceAll('/', '-').replace('-', '');
@@ -97,6 +98,10 @@ const websocketHandler = (c: Context, next: Next) => {
           const msg: WsCommonMessage = { eventType: WsEventTypes.skill, payload };
           wsCollection.get(sessionId)?.send(JSON.stringify(msg));
         };
+        const onCompactionEvent = (payload: CompactionEventPayload) => {
+          const msg: WsCommonMessage = { eventType: WsEventTypes.compaction, payload };
+          wsCollection.get(sessionId)?.send(JSON.stringify(msg));
+        };
         const onContextUpdate = (state: ReturnType<BabyPandaAgent['getModelState']>) => {
           ws.send(JSON.stringify({ eventType: WsEventTypes.setting, payload: state }));
         };
@@ -111,6 +116,7 @@ const websocketHandler = (c: Context, next: Next) => {
           babyPanda.off(ContentType.tool_call, onToolData);
           babyPanda.off(ContentType.tool_result, onToolResult);
           babyPanda.off('skill', onSkillEvent);
+          babyPanda.off('compaction', onCompactionEvent);
           babyPanda.off('end', onLoopEnd);
           babyPanda.off('error', onError);
           babyPanda.off('context-update', onContextUpdate);
@@ -127,6 +133,7 @@ const websocketHandler = (c: Context, next: Next) => {
         babyPanda.on(ContentType.tool_result, onToolResult);
         babyPanda.on(ContentType.permission, onAskForPermission);
         babyPanda.on('skill', onSkillEvent);
+        babyPanda.on('compaction', onCompactionEvent);
         babyPanda.on('end', onLoopEnd);
         babyPanda.on('error', onError);
         babyPanda.on('context-update', onContextUpdate);
