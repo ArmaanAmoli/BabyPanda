@@ -85,6 +85,27 @@ function collapseToHunks(built: BuiltRow[]): DiffRow[] {
 }
 
 /**
+ * Added/removed line counts for a before/after pair, without building the
+ * side-by-side rows. Counts match `buildSideBySide` exactly, so a collapsed
+ * viewer can show the same numbers the expanded one will.
+ */
+export function countDiffChanges(
+	before: string,
+	after: string,
+): {added: number; removed: number} {
+	let added = 0;
+	let removed = 0;
+	for (const part of diffLines(before, after) as Part[]) {
+		if (part.added) {
+			added += splitLines(part.value).length;
+		} else if (part.removed) {
+			removed += splitLines(part.value).length;
+		}
+	}
+	return {added, removed};
+}
+
+/**
  * Builds side-by-side rows from a before/after pair using jsdiff's line diff.
  * Unchanged parts appear on both sides (dim); a removed part followed by an
  * added part is paired row-by-row, with the longer side's extra lines getting
