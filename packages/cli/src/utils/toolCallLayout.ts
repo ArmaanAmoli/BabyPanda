@@ -25,6 +25,35 @@ export interface ToolCallLayout {
 	/** Height actually used: expanded ? min(full, chatHeight) : collapsed. */
 	height: number;
 	bullets: BulletView[];
+	/**
+	 * Content-line span of every entry in `rows`. A diff row occupies as many
+	 * lines as its viewer renders, so a terminal row cannot be used directly
+	 * as an index into `rows`.
+	 */
+	rowSpans: LayoutRowSpan[];
+}
+
+/** Content-line span of one layout row. */
+export interface LayoutRowSpan {
+	/** Index into `ToolCallLayout.rows`. */
+	index: number;
+	/** The row this span belongs to. */
+	row: LayoutRow;
+	/** First content line (0-based) the row occupies. */
+	start: number;
+	/** Number of content lines the row occupies. */
+	lines: number;
+}
+
+/** Maps a content line back to the row that occupies it. */
+export function rowSpanAtLine(
+	spans: LayoutRowSpan[],
+	line: number,
+): LayoutRowSpan | undefined {
+	for (const span of spans) {
+		if (line >= span.start && line < span.start + span.lines) return span;
+	}
+	return undefined;
 }
 
 export const COLLAPSED_MAX_ROWS = 5;
@@ -54,6 +83,18 @@ function diffHeight(
 ): number {
 	if (!expanded) return 1;
 	return Math.min(diff.rows.length + 1, maxDiffHeight(chatHeight));
+}
+
+/** Content lines one layout row occupies (only diff rows are ever taller). */
+function rowLineCount(
+	row: LayoutRow,
+	isDiffExpanded: (callId: string) => boolean,
+	chatHeight: number,
+): number {
+	if (row.type === 'diff') {
+		return diffHeight(row.diff, isDiffExpanded(row.call.id), chatHeight);
+	}
+	return 1;
 }
 
 /**
@@ -107,17 +148,14 @@ export function buildToolCallLayout(
 	}
 
 	const collapsedHeight = rows.length;
-	let expandedFullHeight = 0;
-	if (expanded) {
-		expandedFullHeight = rows.reduce((total, row) => {
-			if (row.type === 'diff') {
-				return (
-					total + diffHeight(row.diff, isDiffExpanded(row.call.id), chatHeight)
-				);
-			}
-			return total + 1;
-		}, 0);
+	const rowSpans: LayoutRowSpan[] = [];
+	let contentLines = 0;
+	for (const [index, row] of rows.entries()) {
+		const lines = rowLineCount(row, isDiffExpanded, chatHeight);
+		rowSpans.push({index, row, start: contentLines, lines});
+		contentLines += lines;
 	}
+	const expandedFullHeight = expanded ? contentLines : 0;
 
 	const height = expanded
 		? Math.min(expandedFullHeight, Math.max(1, chatHeight))
@@ -129,5 +167,6 @@ export function buildToolCallLayout(
 		expandedFullHeight,
 		height,
 		bullets,
+		rowSpans,
 	};
 }
