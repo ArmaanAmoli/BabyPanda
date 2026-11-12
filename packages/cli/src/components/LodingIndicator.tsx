@@ -5,9 +5,13 @@ const spinnerFrames = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '
 
 interface LodingIndicatorProp {
 	isResponding: boolean;
+	isCompacting?: boolean;
 }
 
-export function LodingIndicator({isResponding}: LodingIndicatorProp) {
+export function LodingIndicator({
+	isResponding,
+	isCompacting = false,
+}: LodingIndicatorProp) {
 	const [frame, setFrame] = useState(0);
 
 	useEffect(() => {
@@ -31,7 +35,9 @@ export function LodingIndicator({isResponding}: LodingIndicatorProp) {
 
 	return (
 		<Box>
-			<Text color="white">{spinnerFrames[frame]} Thinking...</Text>
+			<Text color="white">
+				{spinnerFrames[frame]} {isCompacting ? 'Compacting...' : 'Thinking...'}
+			</Text>
 		</Box>
 	);
 }
