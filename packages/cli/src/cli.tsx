@@ -12,9 +12,11 @@ import {MessageHistoryProvider} from './context/MessageHistory';
 import {
 	activateAlternateScreenBuffer,
 	deactivateAlternateScreenBuffer,
+	disableBracketedPaste,
 	disableKittyKeyboardProtocol,
 	disableLineWrapping,
 	disableMouseEvents,
+	enableBracketedPaste,
 	enableKittyKeyboardProtocol,
 	enableLineWrapping,
 	enableMouseEvents,
@@ -78,9 +80,11 @@ if (typeof Bun !== 'undefined') {
 activateAlternateScreenBuffer();
 enableKittyKeyboardProtocol();
 enableLineWrapping();
+enableBracketedPaste();
 enableMouseEvents();
 const cleanupTerminal = () => {
 	disableMouseEvents();
+	disableBracketedPaste();
 	disableKittyKeyboardProtocol();
 	disableLineWrapping();
 	if (process.stdin.isTTY) {

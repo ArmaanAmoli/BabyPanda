@@ -46,3 +46,11 @@ export function enableLineWrapping() {
 export function disableLineWrapping() {
 	writeToStdOut('\x1b[?7l');
 }
+
+export function enableBracketedPaste() {
+	writeToStdOut('\x1b[?2004h');
+}
+
+export function disableBracketedPaste() {
+	writeToStdOut('\x1b[?2004l');
+}
