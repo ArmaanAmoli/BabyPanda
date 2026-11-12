@@ -21,8 +21,30 @@ export interface BulletView {
 	hasDiff: boolean;
 	/** Call ids rendered as diff viewers under this bullet. */
 	diffCallIds: string[];
+	/** True for shell bullets: clicking expands the full command below. */
+	expandable: boolean;
 	/** Combined error of failed underlying calls (shown when expanded). */
 	error?: string;
+}
+
+/** Left padding of a bullet row (must match BulletRow in ToolCallMessage). */
+export const BULLET_PADDING_LEFT = 1;
+
+/**
+ * Display columns available for a bullet's target text within `width`
+ * (padding + icon + space + indent + verb + stats are reserved).
+ */
+export function bulletTargetMax(bullet: BulletView, width: number): number {
+	const stats = bullet.stats ?? '';
+	const verbLength = bullet.verb.length + 1; // verb + trailing space
+	const reserved =
+		BULLET_PADDING_LEFT +
+		1 +
+		1 +
+		2 +
+		verbLength +
+		(stats.length > 0 ? stats.length + 1 : 0);
+	return Math.max(1, width - reserved);
 }
 
 const VERBS: Record<string, string> = {
@@ -146,6 +168,7 @@ export function buildBullets(calls: ToolCallEntry[]): BulletView[] {
 					link: url,
 					hasDiff: false,
 					diffCallIds: [],
+					expandable: false,
 					error: page?.error ?? (status === 'failed' ? call.error : undefined),
 				});
 			}
@@ -178,6 +201,7 @@ export function buildBullets(calls: ToolCallEntry[]): BulletView[] {
 				stats: formatStats(call.name, [call]),
 				hasDiff: true,
 				diffCallIds: [call.id],
+				expandable: false,
 				error: call.error,
 			};
 			fileBulletByPath.set(path, bullet);
@@ -197,6 +221,7 @@ export function buildBullets(calls: ToolCallEntry[]): BulletView[] {
 			stats: formatStats(call.name, [call]),
 			hasDiff: false,
 			diffCallIds: [],
+			expandable: call.name === 'shell',
 			error: call.error,
 		});
 	}

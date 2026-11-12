@@ -1,16 +1,22 @@
 import type {ToolCallBatch, ToolCallEntry} from '../types';
-import {buildBullets, type BulletView} from './toolCallBullets';
+import {
+	buildBullets,
+	bulletTargetMax,
+	type BulletView,
+} from './toolCallBullets';
 import {
 	buildSideBySide,
 	computeAfterContent,
 	type SideBySideDiff,
 } from './diffRows';
+import {splitTruncated, wrapText} from './formatLink';
 
 export type LayoutRow =
 	| {type: 'header'}
 	| {type: 'bullet'; bullet: BulletView}
 	| {type: 'error'; bullet: BulletView}
 	| {type: 'diff'; call: ToolCallEntry; diff: SideBySideDiff}
+	| {type: 'command'; bullet: BulletView; line: string}
 	| {type: 'overflowHint'};
 
 export interface ToolCallLayout {
@@ -26,6 +32,18 @@ export interface ToolCallLayout {
 
 export const COLLAPSED_MAX_ROWS = 5;
 export const COLLAPSED_MAX_BULLETS = 3;
+
+/** Left indent of expanded command continuation lines (must match the renderer). */
+export const COMMAND_INDENT = 5;
+
+export interface ToolCallLayoutOptions {
+	expanded: boolean;
+	isDiffExpanded: (callId: string) => boolean;
+	isCommandExpanded: (bulletKey: string) => boolean;
+	chatHeight: number;
+	/** Content width available to the message (marker column excluded). */
+	width: number;
+}
 
 /** Cap for one expanded diff viewer (header + body), per design. */
 export function maxDiffHeight(chatHeight: number): number {
@@ -54,14 +72,16 @@ function buildDiff(call: ToolCallEntry): SideBySideDiff {
 /**
  * Computes the row layout of a ToolCallMessage. The same layout drives both
  * the rendered component and the ChatBox item height, so they can never
- * disagree. Diff row counts are only computed for expanded diffs.
+ * disagree. Diff row counts are only computed for expanded diffs; expanded
+ * shell commands add one row per wrapped continuation line of the command
+ * that was cut off by the bullet's '…'.
  */
 export function buildToolCallLayout(
 	batch: ToolCallBatch,
-	expanded: boolean,
-	isDiffExpanded: (callId: string) => boolean,
-	chatHeight: number,
+	options: ToolCallLayoutOptions,
 ): ToolCallLayout {
+	const {expanded, isDiffExpanded, isCommandExpanded, chatHeight, width} =
+		options;
 	const bullets = buildBullets(batch.calls);
 	const rows: LayoutRow[] = [{type: 'header'}];
 	const visibleBullets = expanded
@@ -72,6 +92,14 @@ export function buildToolCallLayout(
 		rows.push({type: 'bullet', bullet});
 		if (expanded && bullet.error) {
 			rows.push({type: 'error', bullet});
+		}
+		if (expanded && bullet.expandable && isCommandExpanded(bullet.key)) {
+			const targetMax = bulletTargetMax(bullet, width);
+			const {rest} = splitTruncated(bullet.target, targetMax);
+			const wrapWidth = Math.max(1, width - COMMAND_INDENT);
+			for (const line of wrapText(rest, wrapWidth)) {
+				rows.push({type: 'command', bullet, line});
+			}
 		}
 		if (expanded) {
 			for (const callId of bullet.diffCallIds) {

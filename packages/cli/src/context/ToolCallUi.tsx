@@ -9,11 +9,14 @@ import React, {createContext, useCallback, useMemo, useState} from 'react';
 interface ToolCallUiContextValue {
 	expandedGroups: Record<string, boolean>;
 	expandedDiffs: Record<string, boolean>;
+	expandedCommands: Record<string, boolean>;
 	isGroupExpanded: (batchId: string) => boolean;
 	toggleGroup: (batchId: string) => void;
 	isDiffExpanded: (callId: string) => boolean;
 	toggleDiff: (callId: string) => void;
 	expandGroup: (batchId: string) => void;
+	isCommandExpanded: (bulletKey: string) => boolean;
+	toggleCommand: (bulletKey: string) => void;
 }
 
 export const ToolCallUiContext = createContext<ToolCallUiContextValue | null>(
@@ -27,6 +30,9 @@ export function ToolCallUiProvider({children}: {children: React.ReactNode}) {
 	const [expandedDiffs, setExpandedDiffs] = useState<Record<string, boolean>>(
 		{},
 	);
+	const [expandedCommands, setExpandedCommands] = useState<
+		Record<string, boolean>
+	>({});
 
 	const isGroupExpanded = useCallback(
 		(batchId: string) => expandedGroups[batchId] === true,
@@ -53,25 +59,41 @@ export function ToolCallUiProvider({children}: {children: React.ReactNode}) {
 			[callId]: previous[callId] !== true,
 		}));
 	}, []);
+	const isCommandExpanded = useCallback(
+		(bulletKey: string) => expandedCommands[bulletKey] === true,
+		[expandedCommands],
+	);
+	const toggleCommand = useCallback((bulletKey: string) => {
+		setExpandedCommands(previous => ({
+			...previous,
+			[bulletKey]: previous[bulletKey] !== true,
+		}));
+	}, []);
 
 	const value = useMemo(
 		() => ({
 			expandedGroups,
 			expandedDiffs,
+			expandedCommands,
 			isGroupExpanded,
 			toggleGroup,
 			isDiffExpanded,
 			toggleDiff,
 			expandGroup,
+			isCommandExpanded,
+			toggleCommand,
 		}),
 		[
 			expandedGroups,
 			expandedDiffs,
+			expandedCommands,
 			isGroupExpanded,
 			toggleGroup,
 			isDiffExpanded,
 			toggleDiff,
 			expandGroup,
+			isCommandExpanded,
+			toggleCommand,
 		],
 	);
 

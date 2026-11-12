@@ -30,19 +30,54 @@ function displayWidth(text: string): number {
 	return width;
 }
 
+/**
+ * Splits text into a head that fits maxWidth display columns (ending with
+ * '…' when cut) and the remaining rest, so a truncated row can reveal the
+ * part that was cut off.
+ */
+export function splitTruncated(
+	text: string,
+	maxWidth: number,
+): {head: string; rest: string} {
+	if (maxWidth <= 1) return {head: '…', rest: text};
+	if (displayWidth(text) <= maxWidth) return {head: text, rest: ''};
+	const chars = [...text];
+	let head = '';
+	let width = 0;
+	let index = 0;
+	for (; index < chars.length; index++) {
+		const charWidth = Math.max(1, wcwidth(chars[index]!));
+		if (width + charWidth + 1 > maxWidth) break; // +1 reserves room for '…'
+		head += chars[index];
+		width += charWidth;
+	}
+	return {head: head + '…', rest: chars.slice(index).join('')};
+}
+
 /** Truncates the end of text with '…' so its display width fits maxWidth. */
 export function truncateEnd(text: string, maxWidth: number): string {
-	if (maxWidth <= 1) return '…';
-	if (displayWidth(text) <= maxWidth) return text;
-	let result = '';
+	return splitTruncated(text, maxWidth).head;
+}
+
+/** Hard-wraps text to maxWidth display columns (wide chars are never split). */
+export function wrapText(text: string, maxWidth: number): string[] {
+	if (maxWidth <= 0) return [''];
+	const lines: string[] = [];
+	let line = '';
 	let width = 0;
 	for (const char of text) {
 		const charWidth = Math.max(1, wcwidth(char));
-		if (width + charWidth + 1 > maxWidth) break; // +1 reserves room for '…'
-		result += char;
-		width += charWidth;
+		if (width + charWidth > maxWidth && line.length > 0) {
+			lines.push(line);
+			line = char;
+			width = charWidth;
+		} else {
+			line += char;
+			width += charWidth;
+		}
 	}
-	return result + '…';
+	if (line.length > 0 || lines.length === 0) lines.push(line);
+	return lines;
 }
 
 /**
