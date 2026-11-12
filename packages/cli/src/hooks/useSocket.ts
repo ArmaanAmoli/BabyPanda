@@ -1,7 +1,7 @@
 import {useContext} from 'react';
 import {SocketContext} from '../context/WebSocket';
 import {useSession} from '../hooks/useSession';
-import {writeLogs} from '@baby-panda/utils';
+import {logError, getProjectName} from '@baby-panda/utils';
 import {LogType} from '@baby-panda/types';
 
 export default function useSocket() {
@@ -9,21 +9,13 @@ export default function useSocket() {
 	const socket = useContext<WebSocket | null>(SocketContext);
 	if (!socket) {
 		void (async () => {
-			await writeLogs(
+			await logError(
 				LogType.cli,
-				process.cwd().replaceAll('/', '-').replace('-', ''),
+				getProjectName(),
 				session ? session.sessionId : 'global',
-				`[ERROR]: useSocket Hook not provided with SocketContext`,
+				'useSocket hook was not provided a SocketContext',
 			);
 		})();
 	}
-	void (async () => {
-		await writeLogs(
-			LogType.cli,
-			process.cwd().replaceAll('/', '-').replace('-', ''),
-			session ? session.sessionId : 'global',
-			`RETURNING SOCKET`,
-		);
-	})();
 	return socket;
 }

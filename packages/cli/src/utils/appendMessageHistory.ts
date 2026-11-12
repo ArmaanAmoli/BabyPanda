@@ -1,18 +1,11 @@
-import {LogType, type ServerStreamChunkSchemaType} from '@baby-panda/types';
+import {type ServerStreamChunkSchemaType} from '@baby-panda/types';
 import type {MessagesContext} from '../types';
-import {writeLogs, getProjectName} from '@baby-panda/utils';
 
 export async function appendMessageHistory(
 	chunk: ServerStreamChunkSchemaType,
 	messageContext: MessagesContext,
 ) {
 	const {setMessageHistory, lastRole} = messageContext;
-	await writeLogs(
-		LogType.cli,
-		getProjectName(),
-		'test',
-		lastRole.current as string,
-	);
 	if (lastRole.current == null || lastRole.current != chunk.role) {
 		lastRole.current = chunk.role;
 		setMessageHistory(prev => [
