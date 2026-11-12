@@ -8,6 +8,7 @@ import {
 	buildToolCallLayout,
 	type LayoutRow,
 	type LayoutRowSpan,
+	resolveRowClick,
 	rowSpanAtLine,
 	COLLAPSED_MAX_BULLETS,
 	COMMAND_INDENT,
@@ -176,28 +177,24 @@ export function ToolCallMessage({
 		// scrolled) content, then to the row that occupies that line
 		const logicalRow = clipTop + (event.row - startRow) + groupScrollTop;
 		if (event.name === 'left-press') {
-			const row = spanAt(logicalRow)?.row;
-			if (!row) return;
-			if (row.type === 'bullet') {
-				if (row.bullet.hasDiff) {
-					onToggleDiff(row.bullet.diffCallIds[0]!);
-					// a collapsed group renders no diff rows, so reveal them
-					if (!expanded) onToggleGroup();
-				} else if (row.bullet.expandable) {
-					// shell command: reveal the part cut off by the '…' below
-					// the bullet (expanding the group too if it is collapsed)
-					onToggleCommand(row.bullet.key);
-					if (!expanded) onToggleGroup();
-				} else {
+			const span = spanAt(logicalRow);
+			const action = resolveRowClick(span, logicalRow);
+			switch (action.type) {
+				case 'toggleGroup':
 					onToggleGroup();
-				}
-			} else if (row.type === 'diff') {
-				onToggleDiff(row.call.id);
-			} else if (row.type === 'command') {
-				onToggleCommand(row.bullet.key);
-			} else {
-				onToggleGroup();
+					return;
+				case 'toggleDiff':
+					onToggleDiff(action.callId);
+					break;
+				case 'toggleCommand':
+					onToggleCommand(action.key);
+					break;
+				case 'ignore':
+					return;
 			}
+			// A collapsed group renders no diff or command rows, so a click
+			// that asks for one has to reveal them first.
+			if (!expanded) onToggleGroup();
 		} else if (event.name === 'move') {
 			const span = spanAt(logicalRow);
 			setHoveredRow(span?.row.type === 'bullet' ? span.index : null);
