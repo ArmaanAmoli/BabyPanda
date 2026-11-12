@@ -129,6 +129,12 @@ export const SkillEventPayloadSchema = z.object({
 });
 export type SkillEventPayload = z.infer<typeof SkillEventPayloadSchema>;
 
+/** Server -> CLI notification that context compaction started or finished. */
+export const CompactionEventPayloadSchema = z.object({
+  compacting: z.boolean(),
+});
+export type CompactionEventPayload = z.infer<typeof CompactionEventPayloadSchema>;
+
 export type MessagesArray = (AssistantMessage | UserMessage | ToolMessage | SystemMessage)[];
 
 export type DBMessage = {
@@ -233,6 +239,7 @@ export const WsEventTypeSchema = z.enum([
   'tool',
   'tool_result',
   'skill',
+  'compaction',
 ]);
 
 export const WsEventTypes = WsEventTypeSchema.enum;
