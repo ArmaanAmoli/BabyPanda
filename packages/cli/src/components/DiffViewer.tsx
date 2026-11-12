@@ -1,7 +1,11 @@
 import React, {useEffect, useRef, useState} from 'react';
 import {Box, Text, type DOMElement} from 'ink';
 import type {ToolCallEntry} from '../types';
-import type {SideBySideDiff} from '../utils/diffRows';
+import {
+	DIFF_CONTEXT_LINES,
+	type SideBySideDiff,
+	type SideCell,
+} from '../utils/diffRows';
 import {maxDiffHeight} from '../utils/toolCallLayout';
 import {useScroll} from '../hooks/useScroll';
 
@@ -20,13 +24,7 @@ function cellBackground(type: string): string | undefined {
 	return undefined;
 }
 
-function SideCellView({
-	cell,
-	width,
-}: {
-	cell: SideBySideDiff['rows'][number]['left'];
-	width: number;
-}) {
+function SideCellView({cell, width}: {cell: SideCell; width: number}) {
 	const lineNo =
 		cell.lineNo == null
 			? ' '.repeat(LINE_NO_WIDTH)
@@ -60,9 +58,11 @@ export interface DiffViewerProps {
 
 /**
  * Side-by-side diff for one write/edit call: left = file before, right =
- * file after. Collapsed to a one-line header; expanded shows the paired rows
- * capped at maxDiffHeight(chatHeight) with internal wheel scrolling on hover,
- * initially scrolled to the first changed line.
+ * file after. `diff.rows` already contains only the changed hunks plus a few
+ * context lines (unchanged runs are collapsed into gap rows), so the whole
+ * file is never shown. Collapsed to a one-line header; expanded shows the
+ * rows capped at maxDiffHeight(chatHeight) with internal wheel scrolling on
+ * hover, initially scrolled to the first changed hunk.
  */
 export function DiffViewer({
 	call,
@@ -99,10 +99,15 @@ export function DiffViewer({
 		expanded,
 	);
 
-	// start at the first changed line whenever the viewer is expanded
+	// start at the first changed hunk whenever the viewer is expanded
 	useEffect(() => {
 		if (expanded) {
-			setScrollTop(Math.max(0, Math.min(maxScrollTop, diff.firstChangeIndex)));
+			setScrollTop(
+				Math.max(
+					0,
+					Math.min(maxScrollTop, diff.firstChangeIndex - DIFF_CONTEXT_LINES),
+				),
+			);
 		}
 	}, [expanded, diff.firstChangeIndex, maxScrollTop]);
 
@@ -129,13 +134,22 @@ export function DiffViewer({
 					flexDirection="column"
 				>
 					<Box marginTop={-scrollTop} flexShrink={0} flexDirection="column">
-						{diff.rows.map((row, index) => (
-							<Box key={index} height={1} flexShrink={0} flexDirection="row">
-								<SideCellView cell={row.left} width={halfWidth} />
-								<Text color="#3a3232">│</Text>
-								<SideCellView cell={row.right} width={halfWidth} />
-							</Box>
-						))}
+						{diff.rows.map((row, index) =>
+							row.kind === 'gap' ? (
+								<Box key={index} height={1} flexShrink={0} flexDirection="row">
+									<Text color="#6b6060" wrap="truncate">
+										{'  '}⋮ {row.hidden} unchanged line
+										{row.hidden === 1 ? '' : 's'}
+									</Text>
+								</Box>
+							) : (
+								<Box key={index} height={1} flexShrink={0} flexDirection="row">
+									<SideCellView cell={row.left} width={halfWidth} />
+									<Text color="#3a3232">│</Text>
+									<SideCellView cell={row.right} width={halfWidth} />
+								</Box>
+							),
+						)}
 					</Box>
 				</Box>
 			)}
