@@ -11,7 +11,7 @@ import {
 } from '@baby-panda/types';
 import {writeLogs, getProjectName} from '@baby-panda/utils';
 import {useSession} from '../hooks/useSession';
-import {getWrappedLineCount} from './promptBox';
+import {getWrappedLineCount} from '../utils/promptLayout';
 
 interface PermissionItem {
 	label: string;

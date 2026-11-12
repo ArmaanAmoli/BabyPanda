@@ -2,7 +2,8 @@ import React from 'react';
 import {Box, Text} from 'ink';
 import BigText from 'ink-big-text';
 import {useState, useEffect, useRef} from 'react';
-import PromptBox, {getWrappedLineCount} from './components/promptBox';
+import PromptBox from './components/promptBox';
+import {getWrappedLineCount} from './utils/promptLayout';
 import {CommandMenu, ProviderSetupBox} from './components/commandMenu';
 import {ChatBox} from './components/ChatBox';
 import {

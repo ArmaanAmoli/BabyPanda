@@ -1,10 +1,10 @@
 import React from 'react';
 import {Box, Text, useInput} from 'ink';
-import wcwidth from 'ts-wcwidth';
 import {useTerminal} from '../hooks/useTerminal';
 import {APP_BACKGROUND_COLOR} from '../theme';
 import {useMouse} from '../hooks/useMouse';
 import type {MouseEvent} from '../utils/terminal/mouse';
+import {wrapText, type VisualLine} from '../utils/promptLayout';
 
 export interface PromptBoxArgs {
 	placeholder: string;
@@ -17,54 +17,6 @@ export interface PromptBoxArgs {
 	maxHeight?: number;
 	/** When a slash menu is open it owns up/down/enter; the input only filters. */
 	menuOpen?: boolean;
-}
-
-interface VisualLine {
-	text: string;
-	start: number;
-	end: number;
-	displayWidth: number;
-}
-
-function wrapInput(value: string, width: number): VisualLine[] {
-	const lines: VisualLine[] = [];
-	let text = '';
-	let start = 0;
-	let displayWidth = 0;
-	let offset = 0;
-
-	const pushLine = (end: number) => {
-		lines.push({text, start, end, displayWidth});
-		text = '';
-		start = end;
-		displayWidth = 0;
-	};
-
-	for (const character of Array.from(value)) {
-		const nextOffset = offset + character.length;
-		if (character === '\n') {
-			pushLine(offset);
-			start = nextOffset;
-		} else {
-			const characterWidth = Math.max(1, wcwidth(character));
-			if (text && displayWidth + characterWidth > width) {
-				pushLine(offset);
-				start = offset;
-			}
-			text += character;
-			displayWidth += characterWidth;
-		}
-		offset = nextOffset;
-	}
-
-	lines.push({text, start, end: offset, displayWidth});
-	return lines;
-}
-
-export function getWrappedLineCount(value: string, width: number) {
-	const lines = wrapInput(value, width);
-	const lastLine = lines.at(-1);
-	return lines.length + (lastLine?.displayWidth === width ? 1 : 0);
 }
 
 function getCursorLine(lines: VisualLine[], cursor: number) {
@@ -109,19 +61,7 @@ function PromptInput({
 }) {
 	const [cursor, setCursor] = React.useState(value.length);
 	const [scrollTop, setScrollTop] = React.useState(0);
-	const lines = React.useMemo(() => {
-		const wrappedLines = wrapInput(value, width);
-		const lastLine = wrappedLines.at(-1);
-		if (lastLine?.displayWidth === width && cursor === value.length) {
-			wrappedLines.push({
-				text: '',
-				start: value.length,
-				end: value.length,
-				displayWidth: 0,
-			});
-		}
-		return wrappedLines;
-	}, [cursor, value, width]);
+	const lines = React.useMemo(() => wrapText(value, width), [value, width]);
 	const cursorLine = getCursorLine(lines, cursor);
 	const maxScrollTop = Math.max(0, lines.length - maxLines);
 	const visibleStart = Math.min(
