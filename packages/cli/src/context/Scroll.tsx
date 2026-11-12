@@ -4,6 +4,7 @@ import {measureElement} from 'ink';
 import type {ScrollableEntry} from '../types';
 import {useMouse} from '../hooks/useMouse';
 import {SCROLL_ROWS, type MouseEvent} from '../utils/terminal/mouse';
+import {chainScroll} from '../utils/scrollChain';
 
 export interface ScrollContextValue {
 	register: (entry: ScrollableEntry) => void;
@@ -22,7 +23,7 @@ export function ScrollProvider({children}: {children: React.ReactNode}) {
 		scrollablesRef.current.delete(id);
 	}, []);
 
-	const findScrollable = useCallback((event: MouseEvent) => {
+	const findScrollables = useCallback((event: MouseEvent) => {
 		const candidates = [...scrollablesRef.current.values()]
 			.map(entry => {
 				if (entry.ref.current == null) return null;
@@ -38,18 +39,20 @@ export function ScrollProvider({children}: {children: React.ReactNode}) {
 				(candidate): candidate is {entry: ScrollableEntry; area: number} =>
 					Boolean(candidate),
 			)
+			// innermost first, so a wheel event starts at the smallest region
+			// under the cursor and chains outwards once that one is exhausted
 			.sort((left, right) => left.area - right.area);
 
-		return candidates[0]?.entry;
+		return candidates.map(candidate => candidate.entry);
 	}, []);
 
 	useMouse(event => {
 		if (event.name !== 'scroll-down' && event.name !== 'scroll-up') return;
 
-		const entry = findScrollable(event);
-		if (entry == null || entry.hasFocus?.() === false) return;
-
-		entry.scrollBy(event.name === 'scroll-up' ? -SCROLL_ROWS : SCROLL_ROWS);
+		chainScroll(
+			findScrollables(event),
+			event.name === 'scroll-up' ? -SCROLL_ROWS : SCROLL_ROWS,
+		);
 	});
 
 	const value = useMemo(() => ({register, unregister}), [register, unregister]);
