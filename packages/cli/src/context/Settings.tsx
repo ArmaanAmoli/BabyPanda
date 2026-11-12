@@ -13,6 +13,10 @@ export interface SettingsContextValue {
 		responding: boolean;
 		setResponding: React.Dispatch<SetStateAction<boolean>>;
 	};
+	compaction: {
+		compacting: boolean;
+		setCompacting: React.Dispatch<SetStateAction<boolean>>;
+	};
 	providers: {
 		providers: ProviderInfo[];
 		setProviders: React.Dispatch<SetStateAction<ProviderInfo[]>>;
@@ -33,6 +37,7 @@ export const SettingsContext = createContext<SettingsContextValue | null>(null);
 export function SettingsProvider({children}: {children: React.ReactNode}) {
 	const [sandbox, setSandBox] = useState(false);
 	const [responding, setResponding] = useState(false);
+	const [compacting, setCompacting] = useState(false);
 	const [providers, setProviders] = useState<ProviderInfo[]>([]);
 	const [model, setModel] = useState({
 		provider: 'Nvidia',
@@ -45,6 +50,7 @@ export function SettingsProvider({children}: {children: React.ReactNode}) {
 	const value: SettingsContextValue = {
 		sandbox: {sandbox, setSandBox},
 		responding: {responding, setResponding},
+		compaction: {compacting, setCompacting},
 		providers: {providers, setProviders},
 		model: {
 			...model,

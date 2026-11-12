@@ -13,6 +13,7 @@ import {
 	UserPermissionSchema,
 	ServerStreamChunkSchema,
 	SkillEventPayloadSchema,
+	CompactionEventPayloadSchema,
 	WsToolCallRequestSchema,
 	WsToolResultEventSchema,
 } from '@baby-panda/types';
@@ -141,6 +142,12 @@ export function SocketProvider({children}: ReactChildPropInterface) {
 								...prev,
 								{role: Role.skill, content, createdAt: Date.now()},
 							]);
+							break;
+						}
+						case WsEventTypes.compaction: {
+							const compactionEvent =
+								CompactionEventPayloadSchema.parse(payload);
+							setting.compaction.setCompacting(compactionEvent.compacting);
 							break;
 						}
 						case WsEventTypes.tool: {

@@ -11,6 +11,7 @@ import type {
   WsToolCallStats,
   WsToolPageResult,
   ToolResultRecord,
+  CompactionEventPayload,
 } from '@baby-panda/types';
 import {
   ContentType,
@@ -421,6 +422,10 @@ export class BabyPandaAgent extends EventEmitter {
       this.messageQueue.splice(0, 1);
 
       if (this.contextWindowUsed >= this.contextWindow * 0.75) {
+        // notify the CLI that compaction started; the finally below always
+        // clears the indicator again, even when compaction fails
+        const compactionEvent: CompactionEventPayload = { compacting: true };
+        this.emit('compaction', compactionEvent);
         try {
           await writeLogs(
             LogType.agent,
@@ -457,6 +462,9 @@ export class BabyPandaAgent extends EventEmitter {
           );
           this.isRunning = false;
           break;
+        } finally {
+          const compactionDoneEvent: CompactionEventPayload = { compacting: false };
+          this.emit('compaction', compactionDoneEvent);
         }
       }
 
