@@ -385,9 +385,17 @@ function PromptInput({
 	};
 
 	const insertText = (inserted: string) => {
+		// A carriage return reaching this point is a terminal oddity rather than
+		// something the user typed. Left alone it would be rendered mid-line and
+		// carriage-return the terminal, which is what originally mangled the
+		// display, so it is normalised to a newline here as a last line of
+		// defence (pastes are already normalised by the stdin filter).
+		const text = inserted.replaceAll('\r\n', '\n').replaceAll('\r', '\n');
+		if (text.length === 0) return;
+
 		commit(
-			replaceRange(value, cursor, cursor, {kind: 'text', text: inserted}),
-			cursor + inserted.length,
+			replaceRange(value, cursor, cursor, {kind: 'text', text}),
+			cursor + text.length,
 		);
 	};
 
@@ -399,16 +407,20 @@ function PromptInput({
 	};
 
 	const paste = (pasted: string) => {
+		// Terminals send CR or CRLF for newlines inside a pasted block. The stdin
+		// filter normalises them when bracketed paste is active, but a terminal
+		// without it delivers the raw bytes here, and a carriage return left in
+		// the value is what originally mangled the display.
+		const text = pasted.replaceAll('\r\n', '\n').replaceAll('\r', '\n');
+
 		// A short paste is not worth a chip: it would cost a row to save none.
-		if (
-			getWrappedLineCount(pasted, wrapWidth) <= PASTE_COLLAPSE_ROW_THRESHOLD
-		) {
-			insertText(pasted);
+		if (getWrappedLineCount(text, wrapWidth) <= PASTE_COLLAPSE_ROW_THRESHOLD) {
+			insertText(text);
 			return;
 		}
 
-		const result = applyPaste(value, cursor, pasted, lastPasteIdRef.current);
-		commit(result.value, cursor + pasted.length, result.pasteId ?? undefined);
+		const result = applyPaste(value, cursor, text, lastPasteIdRef.current);
+		commit(result.value, cursor + text.length, result.pasteId ?? undefined);
 	};
 
 	useInput(
@@ -419,13 +431,22 @@ function PromptInput({
 			// While the slash menu is open it owns submit and vertical navigation.
 			if (menuOpen && (key.return || key.upArrow || key.downArrow)) return;
 
-			// Ctrl+J is the reliable newline key. Terminals without the Kitty
-			// keyboard protocol send Shift+Enter as a bare carriage return, so it
-			// is indistinguishable from Enter, and many terminals swallow
-			// Alt+Enter as a window shortcut before it ever reaches us. Ctrl+J
-			// arrives as a line feed everywhere. It must be handled before the
-			// paste check below, which would otherwise read the newline as a
-			// one-character paste.
+			// Enter arrives as a carriage return on every terminal, but some
+			// send CRLF. A CRLF must submit rather than be inserted as literal
+			// text: a stray carriage return in the value is what originally
+			// mangled the prompt box's display.
+			if (input === '\r\n') {
+				onSubmit();
+				return;
+			}
+
+			// A lone line feed is Ctrl+J, the newline key that works without the
+			// Kitty keyboard protocol. Terminals lacking that protocol send
+			// Shift+Enter as a bare carriage return, making it indistinguishable
+			// from Enter, and many terminals swallow Alt+Enter as a window
+			// shortcut before it ever reaches us. This must be handled before the
+			// paste check below, which would otherwise read it as a one-character
+			// paste.
 			if (input === '\n') {
 				insertNewline();
 				return;
