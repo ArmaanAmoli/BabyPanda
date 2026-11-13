@@ -1,4 +1,5 @@
 import type {ToolCallEntry, ToolCallStatus} from '../types';
+import {diffCountsFor} from './toolCallDiff';
 
 /**
  * View model for one bullet row in a ToolCallMessage. Raw tool names are
@@ -106,15 +107,21 @@ function formatStats(name: string, calls: ToolCallEntry[]): string | undefined {
 			: undefined;
 	}
 	if (name === 'edit') {
+		// Real added/removed from the before/after diff, so the bullet always
+		// agrees with the diff viewer's header. `call.stats` counts the lines
+		// of the raw old_str/new_str instead, which over-counts whenever the
+		// model includes context lines to pin the match.
 		let added = 0;
 		let removed = 0;
 		let known = false;
 		for (const call of calls) {
-			if (call.stats?.added !== undefined) {
-				added += call.stats.added;
-				removed += call.stats.removed ?? 0;
-				known = true;
-			}
+			// `before` only arrives with the result, and a failed edit may not
+			// have changed the file at all, so only settled calls are counted.
+			if (call.status !== 'done' || call.before === undefined) continue;
+			const counts = diffCountsFor(call);
+			added += counts.added;
+			removed += counts.removed;
+			known = true;
 		}
 		return known ? `· +${added} −${removed}` : undefined;
 	}

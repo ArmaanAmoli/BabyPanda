@@ -7,6 +7,9 @@ import type {MouseEvent} from '../utils/terminal/mouse';
 import {
 	buildToolCallLayout,
 	type LayoutRow,
+	type LayoutRowSpan,
+	resolveRowClick,
+	rowSpanAtLine,
 	COLLAPSED_MAX_BULLETS,
 	COMMAND_INDENT,
 } from '../utils/toolCallLayout';
@@ -165,38 +168,36 @@ export function ToolCallMessage({
 		expanded && maxGroupScroll > 0,
 	);
 
-	const rowAt = (logicalRow: number): LayoutRow | undefined =>
-		layout.rows[logicalRow];
+	const spanAt = (line: number): LayoutRowSpan | undefined =>
+		rowSpanAtLine(layout.rowSpans, line);
 
 	useMouse((event: MouseEvent) => {
 		if (event.row < startRow || event.row >= startRow + visibleRows) return;
-		// map the terminal row to a logical row of the (possibly internally
-		// scrolled) content
+		// map the terminal row to a content line of the (possibly internally
+		// scrolled) content, then to the row that occupies that line
 		const logicalRow = clipTop + (event.row - startRow) + groupScrollTop;
 		if (event.name === 'left-press') {
-			const row = rowAt(logicalRow);
-			if (!row) return;
-			if (row.type === 'bullet') {
-				if (row.bullet.hasDiff) {
-					onToggleDiff(row.bullet.diffCallIds[0]!);
-				} else if (row.bullet.expandable) {
-					// shell command: reveal the part cut off by the '…' below
-					// the bullet (expanding the group too if it is collapsed)
-					onToggleCommand(row.bullet.key);
-					if (!expanded) onToggleGroup();
-				} else {
+			const span = spanAt(logicalRow);
+			const action = resolveRowClick(span, logicalRow);
+			switch (action.type) {
+				case 'toggleGroup':
 					onToggleGroup();
-				}
-			} else if (row.type === 'diff') {
-				onToggleDiff(row.call.id);
-			} else if (row.type === 'command') {
-				onToggleCommand(row.bullet.key);
-			} else {
-				onToggleGroup();
+					return;
+				case 'toggleDiff':
+					onToggleDiff(action.callId);
+					break;
+				case 'toggleCommand':
+					onToggleCommand(action.key);
+					break;
+				case 'ignore':
+					return;
 			}
+			// A collapsed group renders no diff or command rows, so a click
+			// that asks for one has to reveal them first.
+			if (!expanded) onToggleGroup();
 		} else if (event.name === 'move') {
-			const row = rowAt(logicalRow);
-			setHoveredRow(row?.type === 'bullet' ? logicalRow : null);
+			const span = spanAt(logicalRow);
+			setHoveredRow(span?.row.type === 'bullet' ? span.index : null);
 		}
 	});
 

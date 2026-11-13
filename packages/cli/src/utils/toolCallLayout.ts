@@ -4,11 +4,8 @@ import {
 	bulletTargetMax,
 	type BulletView,
 } from './toolCallBullets';
-import {
-	buildSideBySide,
-	computeAfterContent,
-	type SideBySideDiff,
-} from './diffRows';
+import type {SideBySideDiff} from './diffRows';
+import {buildCallDiff, buildDiffSummary} from './toolCallDiff';
 import {splitTruncated, wrapText} from './formatLink';
 
 export type LayoutRow =
@@ -28,6 +25,76 @@ export interface ToolCallLayout {
 	/** Height actually used: expanded ? min(full, chatHeight) : collapsed. */
 	height: number;
 	bullets: BulletView[];
+	/**
+	 * Content-line span of every entry in `rows`. A diff row occupies as many
+	 * lines as its viewer renders, so a terminal row cannot be used directly
+	 * as an index into `rows`.
+	 */
+	rowSpans: LayoutRowSpan[];
+}
+
+/** Content-line span of one layout row. */
+export interface LayoutRowSpan {
+	/** Index into `ToolCallLayout.rows`. */
+	index: number;
+	/** The row this span belongs to. */
+	row: LayoutRow;
+	/** First content line (0-based) the row occupies. */
+	start: number;
+	/** Number of content lines the row occupies. */
+	lines: number;
+}
+
+/** Maps a content line back to the row that occupies it. */
+export function rowSpanAtLine(
+	spans: LayoutRowSpan[],
+	line: number,
+): LayoutRowSpan | undefined {
+	for (const span of spans) {
+		if (line >= span.start && line < span.start + span.lines) return span;
+	}
+	return undefined;
+}
+
+/** What a left-click on a tool-call row should do. */
+export type RowClickAction =
+	| {type: 'toggleGroup'}
+	| {type: 'toggleDiff'; callId: string}
+	| {type: 'toggleCommand'; key: string}
+	| {type: 'ignore'};
+
+/**
+ * Resolves a left-click on content line `line` of a tool-call block.
+ *
+ * Only a row's own interactive line acts on it. A diff viewer toggles from its
+ * header line alone, so clicking the diff text — which is most of the viewer —
+ * never collapses it; the user has to click the bullet or the `± path` header
+ * again.
+ */
+export function resolveRowClick(
+	span: LayoutRowSpan | undefined,
+	line: number,
+): RowClickAction {
+	if (!span) return {type: 'ignore'};
+	const row = span.row;
+	if (row.type === 'bullet') {
+		if (row.bullet.hasDiff) {
+			return {type: 'toggleDiff', callId: row.bullet.diffCallIds[0]!};
+		}
+		if (row.bullet.expandable) {
+			return {type: 'toggleCommand', key: row.bullet.key};
+		}
+		return {type: 'toggleGroup'};
+	}
+	if (row.type === 'diff') {
+		return line === span.start
+			? {type: 'toggleDiff', callId: row.call.id}
+			: {type: 'ignore'};
+	}
+	if (row.type === 'command') {
+		return {type: 'toggleCommand', key: row.bullet.key};
+	}
+	return {type: 'toggleGroup'};
 }
 
 export const COLLAPSED_MAX_ROWS = 5;
@@ -59,20 +126,23 @@ function diffHeight(
 	return Math.min(diff.rows.length + 1, maxDiffHeight(chatHeight));
 }
 
-function buildDiff(call: ToolCallEntry): SideBySideDiff {
-	const before = call.before ?? '';
-	const after = computeAfterContent(
-		call.name,
-		call.before ?? null,
-		call.arguments,
-	);
-	return buildSideBySide(before, after);
+/** Content lines one layout row occupies (only diff rows are ever taller). */
+function rowLineCount(
+	row: LayoutRow,
+	isDiffExpanded: (callId: string) => boolean,
+	chatHeight: number,
+): number {
+	if (row.type === 'diff') {
+		return diffHeight(row.diff, isDiffExpanded(row.call.id), chatHeight);
+	}
+	return 1;
 }
 
 /**
  * Computes the row layout of a ToolCallMessage. The same layout drives both
  * the rendered component and the ChatBox item height, so they can never
- * disagree. Diff row counts are only computed for expanded diffs; expanded
+ * disagree. Side-by-side rows are only built for expanded diffs (a collapsed
+ * one still carries its real added/removed counts for the header); expanded
  * shell commands add one row per wrapped continuation line of the command
  * that was cut off by the bullet's '…'.
  */
@@ -109,7 +179,7 @@ export function buildToolCallLayout(
 				rows.push({
 					type: 'diff',
 					call,
-					diff: diffExpanded ? buildDiff(call) : EMPTY_DIFF,
+					diff: diffExpanded ? buildCallDiff(call) : buildDiffSummary(call),
 				});
 			}
 		}
@@ -119,17 +189,14 @@ export function buildToolCallLayout(
 	}
 
 	const collapsedHeight = rows.length;
-	let expandedFullHeight = 0;
-	if (expanded) {
-		expandedFullHeight = rows.reduce((total, row) => {
-			if (row.type === 'diff') {
-				return (
-					total + diffHeight(row.diff, isDiffExpanded(row.call.id), chatHeight)
-				);
-			}
-			return total + 1;
-		}, 0);
+	const rowSpans: LayoutRowSpan[] = [];
+	let contentLines = 0;
+	for (const [index, row] of rows.entries()) {
+		const lines = rowLineCount(row, isDiffExpanded, chatHeight);
+		rowSpans.push({index, row, start: contentLines, lines});
+		contentLines += lines;
 	}
+	const expandedFullHeight = expanded ? contentLines : 0;
 
 	const height = expanded
 		? Math.min(expandedFullHeight, Math.max(1, chatHeight))
@@ -141,12 +208,6 @@ export function buildToolCallLayout(
 		expandedFullHeight,
 		height,
 		bullets,
+		rowSpans,
 	};
 }
-
-const EMPTY_DIFF: SideBySideDiff = {
-	rows: [],
-	firstChangeIndex: 0,
-	added: 0,
-	removed: 0,
-};
