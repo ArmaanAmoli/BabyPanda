@@ -51,7 +51,8 @@ server.registerTool(
 server.registerTool(
   'grep',
   {
-    description: 'Search content across files',
+    description:
+      'Search content across files. Recursively searches directories (skipping node_modules, .git, dist, build, coverage, .next, .cache) and returns path:line:match lines.',
     inputSchema: GrepToolSchema,
   },
   async (args) => {
@@ -63,6 +64,9 @@ server.registerTool(
           text: JSON.stringify(searchResult),
         },
       ],
+      // Exit code 1 only means "no matches"; 2 means grep itself failed (bad
+      // pattern, missing path), which is worth surfacing as a tool error.
+      ...(searchResult.exitCode !== null && searchResult.exitCode > 1 ? { isError: true } : {}),
     };
   },
 );

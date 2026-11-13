@@ -2,6 +2,8 @@ import * as fs from 'fs';
 import { spawn } from 'child_process';
 import * as readline from 'readline';
 import * as gl from 'glob';
+import path from 'path';
+import { GREP_FLAGS } from '@baby-panda/types';
 
 interface ReadArgs {
   path: string;
@@ -103,44 +105,139 @@ export async function mkdir(path: string) {
 }
 
 interface GrepOutput {
-  stdout: string | null;
-  stderr: string | null;
+  stdout: string;
+  stderr: string;
   exitCode: number | null;
+  /** Matched lines in `stdout`; also what the CLI reports as the result count. */
+  matches: number;
+  /** True when the search stopped early because of the caps below. */
+  truncated: boolean;
 }
 
-export function grep(path: string, pattern: string, flag?: string): Promise<GrepOutput> {
+/** Directories a recursive search skips, unless the search target is inside one. */
+const EXCLUDED_DIRS = ['node_modules', '.git', 'dist', 'build', 'coverage', '.next', '.cache'];
+
+/** Caps so a single search can never flood the model's context window. */
+const MAX_MATCHES = 200;
+const MAX_OUTPUT_BYTES = 64 * 1024;
+const GREP_TIMEOUT_MS = 60_000;
+
+/**
+ * Accepts `i` or `-i` and rejects anything outside GREP_FLAGS, so a model can
+ * never smuggle an arbitrary option into the spawned process.
+ */
+function normalizeGrepFlag(flag?: string): string[] {
+  if (flag === undefined || flag.length === 0) return [];
+  const name = flag.replace(/^-+/, '');
+  if (!(GREP_FLAGS as readonly string[]).includes(name)) {
+    throw new Error(`unsupported grep flag "${flag}". supported flags: ${GREP_FLAGS.join(', ')}`);
+  }
+  return [`-${name}`];
+}
+
+/** `--exclude-dir` args for every excluded directory the target is not inside. */
+function excludedDirArgs(searchPath: string): string[] {
+  const segments = path.resolve(searchPath).split(path.sep);
+  return EXCLUDED_DIRS.filter((dir) => !segments.includes(dir)).map(
+    (dir) => `--exclude-dir=${dir}`,
+  );
+}
+
+function countMatches(stdout: string): number {
+  return stdout.split('\n').filter((line) => line.length > 0).length;
+}
+
+/** Keeps only the whole lines that fit inside the caps. */
+function truncateToCaps(stdout: string): string {
+  const body = stdout.endsWith('\n') ? stdout.slice(0, -1) : stdout;
+  const kept: string[] = [];
+  let bytes = 0;
+  for (const line of body.split('\n')) {
+    const cost = line.length + 1;
+    if (kept.length >= MAX_MATCHES || bytes + cost > MAX_OUTPUT_BYTES) break;
+    kept.push(line);
+    bytes += cost;
+  }
+  return kept.length > 0 ? `${kept.join('\n')}\n` : '';
+}
+
+export function grep(searchPath: string, pattern: string, flag?: string): Promise<GrepOutput> {
   return new Promise((resolve, reject) => {
     const output: GrepOutput = {
       stdout: '',
       stderr: '',
       exitCode: null,
+      matches: 0,
+      truncated: false,
     };
 
-    // 1. Cleanly build arguments without passing empty strings
-    const args: string[] = [];
-    if (flag) args.push(flag);
-    args.push(pattern, path);
+    // `-e` and `--` keep a pattern or path that starts with `-` from being read
+    // as an option. `-r -n -H -I` make directory searches work, always name the
+    // file (even for a single-file target), and skip binary noise.
+    const args = [
+      '-r',
+      '-n',
+      '-H',
+      '-I',
+      ...normalizeGrepFlag(flag),
+      ...excludedDirArgs(searchPath),
+      '-e',
+      pattern,
+      '--',
+      searchPath,
+    ];
+
+    let settled = false;
+    let bytes = 0;
+    let lines = 0;
 
     const grepProcess = spawn('grep', args);
 
-    // 2. Accumulate binary Data Buffers as text strings
+    const stopEarly = (reason: string) => {
+      output.truncated = true;
+      output.stderr += `${reason}\n`;
+      grepProcess.kill('SIGTERM');
+    };
+
+    const timer = setTimeout(
+      () => stopEarly(`grep stopped: exceeded the ${GREP_TIMEOUT_MS}ms timeout`),
+      GREP_TIMEOUT_MS,
+    );
+
     grepProcess.stdout.on('data', (data) => {
-      output.stdout += data.toString();
+      // Once a cap is hit the rest of the stream is dropped, so a huge match
+      // set can never be buffered in full before it is trimmed.
+      if (output.truncated) return;
+      const chunk = data.toString();
+      output.stdout += chunk;
+      bytes += chunk.length;
+      lines += (chunk.match(/\n/g) ?? []).length;
+      if (bytes >= MAX_OUTPUT_BYTES || lines >= MAX_MATCHES) {
+        output.stdout = truncateToCaps(output.stdout);
+        stopEarly(
+          `grep stopped: output exceeded ${MAX_MATCHES} matches or ${MAX_OUTPUT_BYTES} bytes`,
+        );
+      }
     });
 
     grepProcess.stderr.on('data', (data) => {
       output.stderr += data.toString();
     });
 
-    // 3. Resolve the promise ONLY when the process has closed
-    grepProcess.on('close', (code) => {
-      output.exitCode = code;
-      console.log(output);
-      resolve(output);
+    grepProcess.on('error', (error) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      reject(new Error(`failed to run grep: ${error.message}`));
     });
 
-    grepProcess.on('error', (error) => {
-      reject(error);
+    grepProcess.on('close', (code) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      output.exitCode = code;
+      output.matches = countMatches(output.stdout);
+      resolve(output);
     });
   });
 }

@@ -375,12 +375,23 @@ export const ReadToolSchema = z.object({
   limit: z.number().optional().describe('Number of lines coming after offset (including offset)'),
 });
 
+/**
+ * Search flags the model may pass to the `grep` tool. `-r` (recursive) and
+ * `-n` (line numbers) are always applied by the tool itself, so they are not
+ * part of this list. Keep in sync with the allow-list enforced in
+ * packages/agent/mcp/tools/FileSystem/filesystem.ts.
+ */
+export const GREP_FLAGS = ['i', 'w', 'v', 'F'] as const;
+export type GrepFlag = (typeof GREP_FLAGS)[number];
+
 export const GrepToolSchema = z.object({
-  path: z.string().describe('Location of file'),
+  path: z.string().describe('Directory or file to search'),
   pattern: z.string().describe('Regular expression for searching'),
   flag: z
-    .string()
-    .describe('flags to use (spawn process of nodeJs) [flag , pattern , path]')
+    .enum(GREP_FLAGS)
+    .describe(
+      'Optional search flags: i = ignore case, w = whole words only, v = select non-matching lines, F = literal string instead of a regex',
+    )
     .optional(),
 });
 
