@@ -54,7 +54,7 @@ import { compaction } from '@agent/memory/services/compaction';
 import { projectDir, memoryFile } from '@agent/memory/constants';
 import { readFromMemory } from '@agent/memory/utils/memory';
 import {
-  writeLogs,
+  logError,
   getSkillsFiles,
   getSkillsInstructions,
   getSkillByName,
@@ -337,7 +337,13 @@ export class BabyPandaAgent extends EventEmitter {
     try {
       summary = await getMostRecentCompactionSummary(this.sessionId);
     } catch (err) {
-      writeLogs(LogType.agent, this.projectDirectoryName, this.sessionId, `${err}`);
+      logError(
+        LogType.agent,
+        this.projectDirectoryName,
+        this.sessionId,
+        'failed to load compaction summary',
+        err,
+      );
     }
 
     const messageHistory: MessagesArray = [];
@@ -389,15 +395,6 @@ export class BabyPandaAgent extends EventEmitter {
       console.log('in the loop');
       this.isRunning = true;
 
-      if (!this.messageQueue.at(0) && !this.userMessageQueue.at(0)) {
-        writeLogs(
-          LogType.agent,
-          this.projectDirectoryName,
-          this.sessionId,
-          '[Message queue empty]',
-        );
-      }
-
       const userInput = this.messageQueue.at(0);
 
       if (
@@ -408,12 +405,6 @@ export class BabyPandaAgent extends EventEmitter {
         if (this.userMessageQueue.length >= 1) {
           for (const msg of this.userMessageQueue) {
             await createMessage(this.sessionId, JSON.stringify(msg) ?? '', Role.user);
-            await writeLogs(
-              LogType.agent,
-              this.projectDirectoryName,
-              this.sessionId,
-              `[USER]: ${msg.content}`,
-            );
           }
           this.userMessageQueue.length = 0;
           // this.messageQueue.push(MessageQueueEvents.answerMessageBreakPreventer);
@@ -427,12 +418,6 @@ export class BabyPandaAgent extends EventEmitter {
         const compactionEvent: CompactionEventPayload = { compacting: true };
         this.emit('compaction', compactionEvent);
         try {
-          await writeLogs(
-            LogType.agent,
-            this.projectDirectoryName,
-            this.sessionId,
-            '\n [COMPACTION] start \n',
-          );
           const summary = await compaction(this);
           if (summary) {
             /* Storing compaction result as tool because provider only support native roles user , tool , assistant , system */
@@ -446,19 +431,14 @@ export class BabyPandaAgent extends EventEmitter {
             await createMessage(this.sessionId, JSON.stringify(compactionMessage), Role.compaction);
             this.contextWindowUsed = 0;
           }
-          await writeLogs(
-            LogType.agent,
-            this.projectDirectoryName,
-            this.sessionId,
-            '\n [COMPACTION] done \n',
-          );
           continue;
         } catch (err) {
-          await writeLogs(
+          await logError(
             LogType.agent,
             this.projectDirectoryName,
             this.sessionId,
-            `\n [COMPACTION] error while compacting ${err}\n`,
+            'compaction failed',
+            err,
           );
           this.isRunning = false;
           break;
@@ -475,25 +455,14 @@ export class BabyPandaAgent extends EventEmitter {
         injectContinuePrompt = false;
       }
 
-      await writeLogs(
-        LogType.agent,
-        this.projectDirectoryName,
-        this.sessionId,
-        'message sended waiting for response...',
-      );
       const response = await this.client.chatCompletion(messages, this.model, this.reasoningEffort);
-      await writeLogs(
-        LogType.agent,
-        this.projectDirectoryName,
-        this.sessionId,
-        'response headers received, waiting for stream data...',
-      );
       if (response.systemError) {
-        await writeLogs(
+        await logError(
           LogType.agent,
           this.projectDirectoryName,
           this.sessionId,
-          `Request failed: ${this.client.url} ${response.error} restarting loop...`,
+          `chat completion request failed: ${this.client.url}`,
+          response.error,
         );
         this.messageQueue.push(MessageQueueEvents.errorInLastIteration);
         continue;
@@ -512,8 +481,6 @@ export class BabyPandaAgent extends EventEmitter {
         let buffer: string = '';
         let finalized = false;
         let firstChunkAt: number | null = null;
-        let lastChunkAt: number | null = null;
-        const streamStartedAt = Date.now();
         const regex = /^data:\s/;
 
         const processLine = (rawLine: string) => {
@@ -526,11 +493,12 @@ export class BabyPandaAgent extends EventEmitter {
             content = getContent(line, this);
           } catch (err) {
             // A malformed chunk must never kill the whole turn; log it and continue.
-            void writeLogs(
+            void logError(
               LogType.agent,
               this.projectDirectoryName,
               this.sessionId,
-              `[STREAM] skipping unparseable chunk: ${err instanceof Error ? err.message : String(err)}`,
+              'skipping unparseable stream chunk',
+              err,
             );
             return;
           }
@@ -548,21 +516,7 @@ export class BabyPandaAgent extends EventEmitter {
           const now = Date.now();
           if (firstChunkAt == null) {
             firstChunkAt = now;
-            void writeLogs(
-              LogType.agent,
-              this.projectDirectoryName,
-              this.sessionId,
-              `[STREAM] first byte received ${now - streamStartedAt}ms after headers`,
-            );
-          } else if (lastChunkAt != null && now - lastChunkAt > 30_000) {
-            void writeLogs(
-              LogType.agent,
-              this.projectDirectoryName,
-              this.sessionId,
-              `[STREAM] stalled: ${Math.round((now - lastChunkAt) / 1000)}s between chunks`,
-            );
           }
-          lastChunkAt = now;
           const encodedChunk = typeof chunk === 'string' ? chunk : chunk.toString('utf-8');
           buffer += encodedChunk;
           const lines = buffer.split('\n');
@@ -570,42 +524,23 @@ export class BabyPandaAgent extends EventEmitter {
 
           for (const line of lines) processLine(line);
         });
-        const finalizeStream = async (reason: string): Promise<void> => {
+        const finalizeStream = async (): Promise<void> => {
           if (finalized) {
-            void writeLogs(
-              LogType.agent,
-              this.projectDirectoryName,
-              this.sessionId,
-              `[STREAM] ${reason}: stream was already finalized, ignoring duplicate finalize`,
-            );
             return;
           }
           finalized = true;
           // Release the socket so aborted connections do not linger.
           response.response?.data.destroy?.();
-          await writeLogs(
-            LogType.agent,
-            this.projectDirectoryName,
-            this.sessionId,
-            `[STREAM] finalized by ${reason} after ${Date.now() - streamStartedAt}ms | finish_reason=${fullReply.finish_reason} | content=${fullReply.content.length} chars | reasoning=${fullReply.reasoning_content.length} chars | tool_calls=${fullReply.tool_calls.length}`,
-          );
           processLine(buffer);
           buffer = '';
           if (fullReply.tool_calls.length > 0) toolCall = true;
 
-          await writeLogs(
-            LogType.agent,
-            this.projectDirectoryName,
-            this.sessionId,
-            `[Context Window Used]: ${this.contextWindowUsed}`,
-          );
-
           if (this.llmRawReplyIsEmpty(fullReply)) {
-            await writeLogs(
+            await logError(
               LogType.agent,
               this.projectDirectoryName,
               this.sessionId,
-              'Reply received was empty retrying...',
+              'LLM reply was empty, retrying',
             );
             this.messageQueue.push(MessageQueueEvents.lastReplyFromLLMWasEmpty);
             resolve('empty reply');
@@ -737,33 +672,14 @@ export class BabyPandaAgent extends EventEmitter {
                 if (granted) {
                   let rawResult: ShellResult | SandboxResult;
 
-                  await writeLogs(
-                    LogType.agent,
-                    this.projectDirectoryName,
-                    this.sessionId,
-                    `[TOOL CALL EXECUTING] shell sandbox=${this.sandbox} command=${JSON.stringify(parsed.data.command)} timeout=${parsed.data.timeout ?? 'default'}ms`,
-                  );
-                  const shellStartedAt = Date.now();
                   if (this.sandbox) {
                     rawResult = await runSandboxed({
                       workspace: process.cwd(),
                       command: parsed.data.command,
                       timeoutMs: parsed.data.timeout,
                     });
-                    await writeLogs(
-                      LogType.agent,
-                      this.projectDirectoryName,
-                      this.sessionId,
-                      `[TOOL RESULT] shell (sandboxed, ${Date.now() - shellStartedAt}ms) ${JSON.stringify(rawResult)}`,
-                    );
                   } else {
                     rawResult = await shell(parsed.data.command, parsed.data.timeout!);
-                    await writeLogs(
-                      LogType.agent,
-                      this.projectDirectoryName,
-                      this.sessionId,
-                      `[TOOL RESULT] shell (${Date.now() - shellStartedAt}ms) ${JSON.stringify(rawResult)}`,
-                    );
                   }
 
                   await persistAndEmitResult(
@@ -804,30 +720,12 @@ export class BabyPandaAgent extends EventEmitter {
                     name: rawcall.function.name,
                     arguments: JSON.parse(rawcall.function.arguments),
                   };
-                  await writeLogs(
-                    LogType.agent,
-                    this.projectDirectoryName,
-                    this.sessionId,
-                    `[TOOL CALL] id=${call.id} name=${call.name} arguments=${JSON.stringify(call.arguments)}`,
-                  );
                   if (call.name === 'shell') {
                     // run pending non-shell tools first so execution order is
                     // preserved, then handle the shell call itself — it must
                     // never be skipped, otherwise no permission prompt is sent
                     // and the CLI stays stuck on "running"
                     if (MCPTools.length !== 0) {
-                      await writeLogs(
-                        LogType.agent,
-                        this.projectDirectoryName,
-                        this.sessionId,
-                        `[TOOL CALL BATCH] executing ${MCPTools.length} non-shell tool(s) before shell: ${JSON.stringify(
-                          MCPTools.map((tool) => ({
-                            id: tool.id,
-                            name: tool.name,
-                            arguments: tool.arguments,
-                          })),
-                        )}`,
-                      );
                       await flushBatch();
                     }
                     await executeShellCall(call);
@@ -843,28 +741,10 @@ export class BabyPandaAgent extends EventEmitter {
                 }
                 // If their is no shell tool call then just execute all
                 if (MCPTools.length !== 0) {
-                  await writeLogs(
-                    LogType.agent,
-                    this.projectDirectoryName,
-                    this.sessionId,
-                    `[TOOL CALL BATCH] executing ${MCPTools.length} non-shell tool(s): ${JSON.stringify(
-                      MCPTools.map((tool) => ({
-                        id: tool.id,
-                        name: tool.name,
-                        arguments: tool.arguments,
-                      })),
-                    )}`,
-                  );
                   await flushBatch();
                 }
               };
               await executeToolCall();
-              await writeLogs(
-                LogType.agent,
-                this.projectDirectoryName,
-                this.sessionId,
-                `[TOOL RESULT] all tool calls finished`,
-              );
 
               this.messageQueue.push(MessageQueueEvents.toolCallDone);
               // to-do save messages code below this
@@ -872,15 +752,22 @@ export class BabyPandaAgent extends EventEmitter {
               if (err! instanceof ToolError) {
                 // tool specific errors were already added.
                 const fullErrMessage = `An error occured while resolving tool call: ${err instanceof Error ? `${err.message} ${err.cause}` : err}`;
-                void writeLogs(
+                void logError(
                   LogType.mcp,
                   this.projectDirectoryName,
                   this.sessionId,
-                  fullErrMessage,
+                  'error while resolving tool call',
+                  err,
                 );
                 reject(fullErrMessage);
               } else {
-                void writeLogs(LogType.mcp, this.projectDirectoryName, this.sessionId, `${err}`);
+                void logError(
+                  LogType.mcp,
+                  this.projectDirectoryName,
+                  this.sessionId,
+                  'tool call failed',
+                  err,
+                );
                 reject(`${err}`);
               }
             }
@@ -908,21 +795,22 @@ export class BabyPandaAgent extends EventEmitter {
           resolve('single iteration of loop done.');
         };
         response.response?.data.on('end', async () => {
-          await finalizeStream('stream end reached');
+          await finalizeStream();
         });
         response.response?.data.on('error', async (err: Error) => {
-          void writeLogs(
+          void logError(
             LogType.agent,
             this.projectDirectoryName,
             this.sessionId,
-            `Stream error: ${err}`,
+            'LLM stream error',
+            err,
           );
           if (this.llmRawReplyIsEmpty(fullReply)) {
-            void writeLogs(
+            void logError(
               LogType.agent,
               this.projectDirectoryName,
               this.sessionId,
-              `[STREAM] no usable data was received before the stream error, failing this attempt | firstByte=${firstChunkAt != null ? `${firstChunkAt - streamStartedAt}ms after headers` : 'n/a'}`,
+              'no usable data received before the stream error; failing this attempt',
             );
             reject(err);
             return;
@@ -931,20 +819,21 @@ export class BabyPandaAgent extends EventEmitter {
           // surfaces as `Error: aborted`. If deltas were already received the
           // reply must be salvaged, persisted and its tool calls executed,
           // instead of discarding everything and re-sending the request.
-          void writeLogs(
+          void logError(
             LogType.agent,
             this.projectDirectoryName,
             this.sessionId,
-            `[STREAM] salvaging the already received reply despite the stream error: ${err}`,
+            'salvaging already-received reply despite the stream error',
           );
-          await finalizeStream(`stream error salvaged [${err}]`);
+          await finalizeStream();
         });
       }).catch(async (err) => {
-        await writeLogs(
+        await logError(
           LogType.agent,
           this.projectDirectoryName,
           this.sessionId,
-          `[PROMISE ERROR]: ${err}`,
+          'unhandled rejection while processing the reply',
+          err,
         );
         this.messageQueue.push(MessageQueueEvents.errorInLastIteration);
       });
@@ -953,7 +842,6 @@ export class BabyPandaAgent extends EventEmitter {
       if (this.userMessageQueue.length === 0 && toBreak) {
         this.isRunning = false;
         // this.emit('abort');
-        await writeLogs(LogType.agent, this.projectDirectoryName, this.sessionId, `Loop has ended`);
         // finalBreak = true;
         this.emit('end');
         break;
@@ -966,7 +854,6 @@ export class BabyPandaAgent extends EventEmitter {
     if (this.isRunning) {
       return;
     } else {
-      await writeLogs(LogType.agent, this.projectDirectoryName, this.sessionId, `Called loop`);
       await this.loop();
     }
   }
@@ -991,12 +878,6 @@ export class BabyPandaAgent extends EventEmitter {
       const wrapped = wrapSkillContent(skill.name, content);
       const stored: SkillMessage = { role: Role.user, name: skill.name, content: wrapped };
       await createMessage(this.sessionId, JSON.stringify(stored), Role.skill);
-      await writeLogs(
-        LogType.agent,
-        this.projectDirectoryName,
-        this.sessionId,
-        `[SKILL] loaded ${skill.name} (${skill.source}) args=${JSON.stringify(args ?? '')}`,
-      );
       const payload: SkillEventPayload = { name: skill.name, ok: true };
       this.emit('skill', payload);
       if (leftover.trim().length > 0) {
@@ -1004,11 +885,12 @@ export class BabyPandaAgent extends EventEmitter {
         void this.message({ role: Role.user, content: leftover });
       }
     } catch (err) {
-      await writeLogs(
+      await logError(
         LogType.agent,
         this.projectDirectoryName,
         this.sessionId,
-        `[SKILL] failed to load ${name}: ${err}`,
+        `failed to load skill: ${name}`,
+        err,
       );
       const payload: SkillEventPayload = {
         name,

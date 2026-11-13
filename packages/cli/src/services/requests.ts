@@ -4,7 +4,7 @@ import {ContentType, LogType, Role} from '@baby-panda/types';
 import type {ReasoningEffort} from '@baby-panda/types';
 import type {ChatMessage, ToolCallBatch, ToolCallEntry} from '../types';
 import {encodeToolCallBatch} from '../types';
-import {writeLogs} from '@baby-panda/utils';
+import {logError} from '@baby-panda/utils';
 const cwd = process.cwd().replaceAll('/', '-').replace('-', '');
 const getServerBaseUrl = () => `http://localhost:${getServerPort()}`;
 
@@ -317,18 +317,17 @@ function buildChatMessages(messagesList: unknown[]): ChatMessage[] {
 }
 
 export async function getMessages(sessionId: string): Promise<ChatMessage[]> {
-	await writeLogs(LogType.cli, cwd, sessionId, 'Fetching Message History...');
 	const req = new Request(`${getServerBaseUrl()}/get-messages`, {
 		method: 'POST',
 		body: JSON.stringify({sessionId}),
 	});
 	const res = await app.fetch(req);
 	if (!res.ok) {
-		await writeLogs(
+		await logError(
 			LogType.cli,
 			cwd,
 			sessionId,
-			`[ERROR: ${res.status}]: Failed to fetch message history : ${res.statusText}`,
+			`failed to fetch message history (HTTP ${res.status} ${res.statusText})`,
 		);
 		return [];
 	}
@@ -349,11 +348,11 @@ export async function getMessages(sessionId: string): Promise<ChatMessage[]> {
 	const messages = decoder.decode(messagesUint);
 	const messagesList = JSON.parse(messages) as unknown;
 	if (!Array.isArray(messagesList)) {
-		await writeLogs(
+		await logError(
 			LogType.cli,
 			cwd,
 			sessionId,
-			`[PARSE ERROR]: Failed to parse message history, expected an array`,
+			'failed to parse message history, expected an array',
 		);
 		return [];
 	}

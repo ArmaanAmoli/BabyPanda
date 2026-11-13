@@ -1,7 +1,7 @@
 import React, {useEffect, createContext, useRef, useState} from 'react';
 import {ReactChildPropInterface} from '../types';
 import {useSession} from '../hooks/useSession';
-import {writeLogs} from '@baby-panda/utils';
+import {logError, getProjectName} from '@baby-panda/utils';
 import {
 	ReasoningEffort,
 	LogType,
@@ -19,7 +19,6 @@ import {
 } from '@baby-panda/types';
 import usePendingPermissionMessages from '../hooks/usePendingPermissionMessages';
 import {setTimeout} from 'node:timers';
-import {getProjectName} from '@baby-panda/utils';
 import {useMessageHistory} from '../hooks/useMessageHistroy';
 import {appendMessageHistory} from '../utils/appendMessageHistory';
 import {
@@ -52,15 +51,6 @@ export function SocketProvider({children}: ReactChildPropInterface) {
 			url.searchParams.set('sessionId', sessionId);
 			const socketInstance: WebSocket = new WebSocket(url.toString());
 			setSocket(socketInstance);
-
-			socketInstance.onopen = async () => {
-				await writeLogs(
-					LogType.cli,
-					projectName,
-					sessionId,
-					`[SOCKET]: opened`,
-				);
-			};
 
 			socketInstance.onmessage = async event => {
 				const data = event.data;
@@ -158,11 +148,12 @@ export function SocketProvider({children}: ReactChildPropInterface) {
 								setting.responding.setResponding(true);
 								appendToolCallBatch(messageContext, parsedToolCalls.data);
 							} else {
-								await writeLogs(
+								await logError(
 									LogType.cli,
 									projectName,
 									sessionId,
-									`[WS]: Invalid tool payload ${JSON.stringify(payload)}`,
+									`invalid tool payload: ${JSON.stringify(payload)}`,
+									parsedToolCalls.error,
 								);
 							}
 							break;
@@ -172,32 +163,34 @@ export function SocketProvider({children}: ReactChildPropInterface) {
 							if (parsedResult.success) {
 								applyToolResult(messageContext, parsedResult.data);
 							} else {
-								await writeLogs(
+								await logError(
 									LogType.cli,
 									projectName,
 									sessionId,
-									`[WS]: Invalid tool_result payload ${JSON.stringify(payload)}`,
+									`invalid tool_result payload: ${JSON.stringify(payload)}`,
+									parsedResult.error,
 								);
 							}
 							break;
 						}
 					}
 				} catch (error) {
-					await writeLogs(
+					await logError(
 						LogType.cli,
 						projectName,
 						sessionId,
-						`[WS]: failed to handle incoming message: ${String(error)}`,
+						'failed to handle incoming message',
+						error,
 					);
 				}
 			};
 
 			socketInstance.onerror = async event => {
-				await writeLogs(
+				await logError(
 					LogType.cli,
 					projectName,
 					sessionId,
-					`[SOCKET]: error ${event.type}`,
+					`socket error: ${event.type}`,
 				);
 				socketInstance.close();
 			};
@@ -205,12 +198,6 @@ export function SocketProvider({children}: ReactChildPropInterface) {
 			socketInstance.onclose = async () => {
 				if (isMounted) {
 					socketInstance.close();
-					await writeLogs(
-						LogType.cli,
-						projectName,
-						sessionId,
-						`[SOCKET]: closed`,
-					);
 					reconnectTimeoutRef.current = setTimeout(() => {
 						connect();
 					}, reconnectDelayRef.current);

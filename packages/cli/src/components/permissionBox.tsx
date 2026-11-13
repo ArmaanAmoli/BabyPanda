@@ -4,13 +4,10 @@ import {Box, Text} from 'ink';
 import useSocket from '../hooks/useSocket';
 import SelectInput from 'ink-select-input';
 import {
-	LogType,
 	PermissionsEnums,
 	WsEventMessage,
 	WsEventTypes,
 } from '@baby-panda/types';
-import {writeLogs, getProjectName} from '@baby-panda/utils';
-import {useSession} from '../hooks/useSession';
 import {getWrappedLineCount} from '../utils/promptLayout';
 
 interface PermissionItem {
@@ -42,7 +39,6 @@ export function getPermissionBoxHeight(content: string, width: number): number {
 }
 
 export function PermissionBox() {
-	const session = useSession();
 	const {pendingPermissionMessages, setPendingPermissionMessages} =
 		usePendingPermissionMessages();
 	const socket = useSocket();
@@ -67,12 +63,6 @@ export function PermissionBox() {
 							toolCallId: permissionObject.toolCallId,
 						};
 
-			await writeLogs(
-				LogType.cli,
-				getProjectName(),
-				session.sessionId,
-				`[USER REPLY FOR PERMISSION]: ${JSON.stringify(message)}`,
-			);
 			socket?.send(JSON.stringify(message));
 			setPendingPermissionMessages(prev => prev.slice(0, -1));
 		}

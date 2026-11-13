@@ -1,18 +1,17 @@
 import {useContext} from 'react';
 import {SessionContext} from '../context/SessionDetails';
-import {writeLogs} from '@baby-panda/utils';
-import {getProjectName} from '@baby-panda/utils';
+import {logError, getProjectName} from '@baby-panda/utils';
 import {LogType} from '@baby-panda/types';
 
 export function useSession() {
 	const sessionContext = useContext(SessionContext);
 	if (!sessionContext) {
 		void (async () => {
-			await writeLogs(
+			await logError(
 				LogType.cli,
 				getProjectName(),
 				'global',
-				'[session hook]: session context not provided',
+				'useSession hook used outside SessionProvider',
 			);
 		})();
 		throw new Error(`useSession must be used inside SessionProvider`);

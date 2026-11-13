@@ -12,7 +12,7 @@ import { websocketHandler } from './webSocket';
 import type { WSContext } from 'hono/ws';
 import { websocket } from '@hono/bun';
 import { Models } from '@agent/config/models';
-import { dbToAgentMessages } from '@baby-panda/utils';
+import { dbToAgentMessages, cleanOldLogs, resolveLogTtlDays } from '@baby-panda/utils';
 import { Role } from '@baby-panda/types';
 
 const defaultPort = 3500;
@@ -40,6 +40,10 @@ const app = new Hono();
 export const wsCollection = new Map<string, WSContext>(); // sessionID - ws object
 export const agentStore = new Map<string, BabyPandaAgent>(); // sessionID - agent
 const cwd = process.cwd().replaceAll('/', '-').replace('-', '');
+
+// Keep the logs tree temporary: on every startup, delete logs older than the
+// retention window. Fire-and-forget so cleanup never delays server boot.
+void cleanOldLogs(resolveLogTtlDays());
 
 app.get('/ws', async (c, next) => websocketHandler(c, next));
 
