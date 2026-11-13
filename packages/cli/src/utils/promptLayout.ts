@@ -1,5 +1,5 @@
 import wcwidth from 'ts-wcwidth';
-import type {PromptValue} from './promptValue';
+import type {PromptSegment, PromptValue} from './promptValue';
 
 /**
  * Columns permanently reserved on the right edge of the prompt box for the
@@ -296,11 +296,16 @@ export function wrapPromptValue(
 	const lines: PromptVisualLine[] = [];
 	let chipIndex = 0;
 	let offset = 0;
+	let index = 0;
 
-	value.segments.forEach((segment, segmentIndex) => {
+	const isCollapsedChip = (segment: PromptSegment) =>
+		segment.kind === 'paste' && segment.collapsed;
+
+	while (index < value.segments.length) {
+		const segment = value.segments[index]!;
 		const segmentStart = offset;
 
-		if (segment.kind === 'paste' && segment.collapsed) {
+		if (isCollapsedChip(segment)) {
 			chipIndex += 1;
 			const label = formatPasteChip(chipIndex, segment.text, width);
 			lines.push({
@@ -308,24 +313,45 @@ export function wrapPromptValue(
 				start: segmentStart,
 				end: segmentStart + segment.text.length,
 				displayWidth: getDisplayWidth(label),
-				segmentIndex,
+				segmentIndex: index,
 				isChip: true,
 			});
-		} else {
-			for (const line of wrapText(segment.text, width)) {
-				lines.push({
-					text: line.text,
-					start: segmentStart + line.start,
-					end: segmentStart + line.end,
-					displayWidth: line.displayWidth,
-					segmentIndex,
-					isChip: false,
-				});
-			}
+			offset = segmentStart + segment.text.length;
+			index += 1;
+			continue;
 		}
 
+		// Coalesce this text-like segment with the text-like ones that follow.
+		// Editing an expanded chip splits it into several segments, and wrapping
+		// each on its own would start the remainder on a fresh row instead of
+		// carrying on from the cursor. A collapsed chip breaks the run because it
+		// always occupies exactly one row.
+		let text = segment.text;
+		let lastIndex = index;
 		offset = segmentStart + segment.text.length;
-	});
+
+		while (lastIndex + 1 < value.segments.length) {
+			const next = value.segments[lastIndex + 1]!;
+			if (isCollapsedChip(next)) break;
+
+			text += next.text;
+			offset += next.text.length;
+			lastIndex += 1;
+		}
+
+		for (const line of wrapText(text, width)) {
+			lines.push({
+				text: line.text,
+				start: segmentStart + line.start,
+				end: segmentStart + line.end,
+				displayWidth: line.displayWidth,
+				segmentIndex: index,
+				isChip: false,
+			});
+		}
+
+		index = lastIndex + 1;
+	}
 
 	return lines;
 }
