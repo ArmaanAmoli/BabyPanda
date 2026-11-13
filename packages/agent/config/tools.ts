@@ -98,13 +98,19 @@ export const tools: ModelTool[] = [
     type: 'function',
     function: {
       name: 'grep',
-      description: 'Search content across files.',
+      description:
+        'Search content across files. Recursively searches directories (skipping node_modules, .git, dist, build, coverage, .next, .cache) and returns path:line:match lines.',
       parameters: {
         type: 'object',
         properties: {
           path: { type: 'string', description: 'Directory or file to search.' },
           pattern: { type: 'string', description: 'Regular expression to search for.' },
-          flag: { type: 'string', description: 'Optional search flags.' },
+          flag: {
+            type: 'string',
+            enum: ['i', 'w', 'v', 'F'],
+            description:
+              'Optional search flags: i=ignore case, w=whole words only, v=select non-matching lines, F=literal string. Recursive search and line numbers are always on.',
+          },
         },
         required: ['path', 'pattern'],
         additionalProperties: false,
