@@ -9,11 +9,14 @@ export function CommandMenu({
 	items,
 	onSelect,
 	limit,
+	isFocused = true,
 }: {
 	title: string;
 	items: Array<{label: string; value: string}>;
 	onSelect: (value: string) => void;
 	limit?: number;
+	/** When false the menu stops listening, so another component can own input. */
+	isFocused?: boolean;
 }) {
 	return (
 		<Box flexDirection="column" paddingX={1} paddingTop={1}>
@@ -21,6 +24,7 @@ export function CommandMenu({
 			<SelectInput
 				items={items}
 				limit={limit}
+				isFocused={isFocused}
 				onSelect={item => onSelect(item.value)}
 			/>
 		</Box>

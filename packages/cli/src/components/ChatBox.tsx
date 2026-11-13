@@ -3,7 +3,7 @@ import {Box, Text} from 'ink';
 import {VirtualizedList} from './VirtualizedList';
 import {useViewPortMessage} from '../hooks/useViewPortMessage';
 import {useTerminal} from '../hooks/useTerminal';
-import {PADDING_APP} from '../app';
+import {PADDING_APP} from '../layout';
 import {useVisibleMessages} from '../hooks/useVisibleMessages';
 import {useMessageHistory} from '../hooks/useMessageHistroy';
 import {useSettings} from '../hooks/useSettings';
