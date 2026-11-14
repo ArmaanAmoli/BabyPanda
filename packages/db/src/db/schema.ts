@@ -3,7 +3,9 @@ import { Role } from '@baby-panda/types';
 
 export const Session = sqliteTable('session', {
   id: text('session_id').primaryKey(),
-  createdAt: integer('created_at').default(Date.now()).notNull(),
+  createdAt: integer('created_at')
+    .$defaultFn(() => Date.now())
+    .notNull(),
   parentSessionId: text('parent_session_id'),
   messagesCount: integer('messages_count').default(0).notNull(),
   tokensInContextWindow: integer('tokens_in_context_window').default(0).notNull(),
