@@ -13,7 +13,6 @@ import {
 	COMMAND_GAP,
 } from '../utils/toolCallLayout';
 import {
-	BULLET_INDENT,
 	bulletTargetMax,
 	statusColor,
 	type BulletView,
@@ -260,12 +259,12 @@ export function ToolCallMessage({
 				);
 			case 'diff':
 				return (
-					<Box key={index} flexShrink={0} paddingLeft={BULLET_INDENT}>
+					<Box key={index} flexShrink={0} paddingLeft={row.indent}>
 						<DiffViewer
 							call={row.call}
 							diff={row.diff}
 							expanded={isDiffExpanded(row.call.id)}
-							width={width - BULLET_INDENT}
+							width={width - row.indent}
 							chatHeight={chatHeight}
 						/>
 					</Box>

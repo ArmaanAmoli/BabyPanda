@@ -375,12 +375,12 @@ describe('resolveRowClick', () => {
 });
 
 describe('countDiffChanges', () => {
-	test('agrees with buildSideBySide for a multi-line replacement', async () => {
-		const {buildSideBySide, countDiffChanges} = await import('./diffRows');
+	test('agrees with buildUnifiedDiff for a multi-line replacement', async () => {
+		const {buildUnifiedDiff, countDiffChanges} = await import('./diffRows');
 		const before = 'a\nb\nc\nd\n';
 		const after = 'a\nb\nB\nC\nc\nd\n';
 		const counts = countDiffChanges(before, after);
-		const full = buildSideBySide(before, after);
+		const full = buildUnifiedDiff(before, after);
 		expect(counts).toEqual({added: full.added, removed: full.removed});
 		expect(counts).toEqual({added: 2, removed: 0});
 	});

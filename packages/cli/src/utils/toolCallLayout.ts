@@ -5,7 +5,7 @@ import {
 	combineStatus,
 	type BulletView,
 } from './toolCallBullets';
-import type {SideBySideDiff} from './diffRows';
+import type {UnifiedDiff} from './diffRows';
 import {buildCallDiff, buildDiffSummary} from './toolCallDiff';
 import {splitTruncated, wrapText} from './formatLink';
 
@@ -13,7 +13,7 @@ export type LayoutRow =
 	| {type: 'root'; status: ToolCallStatus; callCount: number}
 	| {type: 'bullet'; bullet: BulletView}
 	| {type: 'error'; bullet: BulletView}
-	| {type: 'diff'; call: ToolCallEntry; diff: SideBySideDiff}
+	| {type: 'diff'; call: ToolCallEntry; diff: UnifiedDiff; indent: number}
 	| {type: 'command'; bullet: BulletView; line: string};
 
 export interface ToolCallLayout {
@@ -131,7 +131,7 @@ export function maxDiffHeight(chatHeight: number): number {
 }
 
 function diffHeight(
-	diff: SideBySideDiff,
+	diff: UnifiedDiff,
 	expanded: boolean,
 	chatHeight: number,
 ): number {
@@ -198,6 +198,7 @@ export function buildToolCallLayout(
 				rows.push({
 					type: 'diff',
 					call,
+					indent: bullet.indent,
 					diff: diffExpanded ? buildCallDiff(call) : buildDiffSummary(call),
 				});
 			}

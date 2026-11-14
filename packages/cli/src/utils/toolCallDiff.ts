@@ -1,9 +1,9 @@
 import type {ToolCallEntry} from '../types';
 import {
-	buildSideBySide,
+	buildUnifiedDiff,
 	computeAfterContent,
 	countDiffChanges,
-	type SideBySideDiff,
+	type UnifiedDiff,
 } from './diffRows';
 
 /** Before/after content a write/edit call produces (mirrors the edit tool). */
@@ -17,17 +17,17 @@ function beforeAfterContent(call: ToolCallEntry): {
 	};
 }
 
-/** Full side-by-side diff for one write/edit call. */
-export function buildCallDiff(call: ToolCallEntry): SideBySideDiff {
+/** Full vertical diff for one write/edit call. */
+export function buildCallDiff(call: ToolCallEntry): UnifiedDiff {
 	const {before, after} = beforeAfterContent(call);
-	return buildSideBySide(before, after);
+	return buildUnifiedDiff(before, after);
 }
 
 /**
  * Header-only diff: the real added/removed counts without the rows, which a
  * collapsed viewer does not render.
  */
-export function buildDiffSummary(call: ToolCallEntry): SideBySideDiff {
+export function buildDiffSummary(call: ToolCallEntry): UnifiedDiff {
 	const {added, removed} = diffCountsFor(call);
 	return {rows: [], firstChangeIndex: 0, added, removed};
 }
