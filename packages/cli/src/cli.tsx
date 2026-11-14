@@ -30,6 +30,7 @@ import {FilteredStdin} from './utils/terminal/filterStdin';
 import {ToolCallsProvider} from './context/ToolCalls';
 import {ToolCallUiProvider} from './context/ToolCallUi';
 import {ScrollProvider} from './context/Scroll';
+import {ReasoningUiProvider} from './context/ReasoningUi';
 import {pandaBannerRows} from './utils/pandaBanner';
 
 const filteredStdin = new FilteredStdin(process.stdin);
@@ -165,7 +166,9 @@ const {waitUntilExit, unmount} = render(
 											<ToolCallsProvider>
 												<SocketProvider>
 													<ToolCallUiProvider>
-														<App />
+														<ReasoningUiProvider>
+															<App />
+														</ReasoningUiProvider>
 													</ToolCallUiProvider>
 												</SocketProvider>
 											</ToolCallsProvider>
