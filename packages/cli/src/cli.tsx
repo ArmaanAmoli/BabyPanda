@@ -32,6 +32,7 @@ import {ToolCallUiProvider} from './context/ToolCallUi';
 import {ScrollProvider} from './context/Scroll';
 import {ReasoningUiProvider} from './context/ReasoningUi';
 import {pandaBannerRows} from './utils/pandaBanner';
+import {closeDatabase} from '@baby-panda/db';
 
 const filteredStdin = new FilteredStdin(process.stdin);
 
@@ -99,6 +100,7 @@ let terminalCleanedUp = false;
 const cleanup = () => {
 	if (terminalCleanedUp) return;
 	terminalCleanedUp = true;
+	closeDatabase();
 	cleanupTerminal();
 };
 process.on('exit', cleanup);

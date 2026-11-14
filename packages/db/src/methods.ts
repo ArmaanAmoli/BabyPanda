@@ -26,17 +26,6 @@ function findSqliteError(error: unknown): SqliteError | undefined {
   return undefined;
 }
 
-// function isSqliteError(error: unknown): error is SqliteError {
-//   if (!(error instanceof Error)) {
-//     return false;
-//   }
-
-//   if ('code' in error || 'rawCode' in error) {
-//     return true;
-//   }
-
-//   return error.cause !== undefined && isSqliteError(error.cause);
-// }
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 export async function SQLSafeExecutor<TArgs extends readonly unknown[], TResult>(
@@ -225,4 +214,9 @@ export async function getMessagesForSummary(sessionId: string, index: number = 0
       ),
     )
     .orderBy(Message.sequence);
+}
+
+export function closeDatabase() {
+  db.run('PRAGMA wal_checkpoint(TRUNCATE);');
+  db.$client.close();
 }
