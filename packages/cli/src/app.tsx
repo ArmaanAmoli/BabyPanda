@@ -40,12 +40,12 @@ import {executeCommand} from './utils/commands/executeCommands';
 import {getSkillsFiles} from '@baby-panda/utils';
 import type {SkillFile} from '@baby-panda/utils';
 import {useSettings} from './hooks/useSettings';
-import {LodingIndicator} from './components/LodingIndicator';
-import {ToolCallStatus} from './components/ToolCallStatus';
+import {SPINNER_FRAMES, useSpinnerFrame} from './components/spinner';
+import {activityLabel} from './utils/activityLabel';
 import {useToolCalls} from './hooks/useToolCalls';
 import {getMessageGroups} from './utils/messageGroups';
 import {buildTranscriptBoxes} from './utils/responseSlots';
-import {APP_BACKGROUND_COLOR} from './theme';
+import {APP_BACKGROUND_COLOR, STATUS_RUNNING} from './theme';
 
 const SLASH_COMMANDS: {name: string; description: string}[] = [
 	{name: 'provider', description: 'switch provider'},
@@ -77,6 +77,12 @@ export default function App() {
 	const {clearToolCalls} = useToolCalls();
 	const {toggleGroup} = useToolCallUi();
 	const {toggleReasoning} = useReasoningUi();
+	const responding = settings.responding.responding;
+	const spinnerFrame = useSpinnerFrame(responding);
+	const statusLabel = activityLabel(
+		settings.compaction.compacting,
+		pendingPermissionMessages.length > 0,
+	);
 	const transcriptBoxes = buildTranscriptBoxes(messageHistory);
 	const refreshSkills = () => {
 		getSkillsFiles()
@@ -172,15 +178,13 @@ export default function App() {
 		4,
 		rows - statusHeight - promptHeight - GAP_CHAT_BOX_PROMPT_BOX - 1,
 	);
-	// The bottom activity area is reserved for permission prompts and compaction.
-	// Thinking is signalled by the spinner on the reasoning block itself, so
-	// ordinary streaming hands these rows back to the chat.
+	// The bottom activity area is reserved for permission prompts. Thinking
+	// and compaction are signalled by the status-bar indicator, so ordinary
+	// streaming hands these rows back to the chat.
 	const activityHeight =
 		pendingPermissionMessages.length > 0
 			? Math.min(permissionContentHeight, permissionMaxHeight)
-			: settings.compaction.compacting
-				? 4
-				: 0;
+			: 0;
 	const setupItemCount = needsProviderKey
 		? settings.providers.providers.length
 		: 0;
@@ -536,27 +540,6 @@ export default function App() {
 						</Box>
 					)}
 
-					{pendingPermissionMessages.length === 0 &&
-						settings.compaction.compacting && (
-							<Box
-								height={4}
-								flexDirection="column"
-								width="100%"
-								backgroundColor={APP_BACKGROUND_COLOR}
-								paddingBottom={1}
-							>
-								<Box height={1} width="100%" marginBottom={1}>
-									<ToolCallStatus />
-								</Box>
-								<Box height={1} flexDirection="row" width="100%">
-									<LodingIndicator
-										isResponding={settings.compaction.compacting}
-										isCompacting
-									/>
-								</Box>
-							</Box>
-						)}
-
 					{needsProviderKey && !setupProvider && (
 						<Box
 							height={setupHeight}
@@ -699,6 +682,14 @@ export default function App() {
 							paddingX={1}
 							backgroundColor={APP_BACKGROUND_COLOR}
 						>
+							{responding && (
+								<>
+									<Text color={STATUS_RUNNING}>
+										{SPINNER_FRAMES[spinnerFrame]}{' '}
+									</Text>
+									<Text dimColor>{statusLabel} · </Text>
+								</>
+							)}
 							<Text dimColor>
 								Session {sessionId} · {settings.model.provider} ·{' '}
 								{settings.model.model} · effort:{' '}
