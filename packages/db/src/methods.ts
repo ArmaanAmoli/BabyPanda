@@ -77,32 +77,35 @@ export async function createSession(parentSessionId?: string) {
 
 export async function createMessage(sessionId: string, content: string, role: Role) {
   const creationTime = Date.now();
-  await db.transaction(
-    async (tx) => {
-      const session = await tx
+  db.transaction(
+    (tx) => {
+      const session = tx
         .select({
           messageCount: Session.messagesCount,
         })
         .from(Session)
-        .where(eq(Session.id, sessionId));
+        .where(eq(Session.id, sessionId))
+        .all();
       // console.log(`session:`, session);
       if (!session[0] || session[0].messageCount === null) {
         tx.rollback();
         throw new Error(`Unable to find Session`);
       }
       const messageIndex = session[0].messageCount;
-      await tx.insert(Message).values({
-        id: ulid(),
-        sessionId: sessionId,
-        content: content,
-        role: role,
-        sequence: messageIndex,
-      } as typeof Message.$inferInsert);
+      tx.insert(Message)
+        .values({
+          id: ulid(),
+          sessionId: sessionId,
+          content: content,
+          role: role,
+          sequence: messageIndex,
+        } as typeof Message.$inferInsert)
+        .run();
 
-      await tx
-        .update(Session)
+      tx.update(Session)
         .set({ messagesCount: messageIndex + 1 })
-        .where(eq(Session.id, sessionId));
+        .where(eq(Session.id, sessionId))
+        .run();
     },
     { behavior: 'immediate' },
   );
