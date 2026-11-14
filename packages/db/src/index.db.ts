@@ -24,5 +24,5 @@ const sqliteFilePath = IN_DEV_MODE ? testDbFilePath : dbFilePath;
 const dbFile = 'file://' + sqliteFilePath;
 
 const db = drizzle({ client: new Database(sqliteFilePath) });
-db.run('PRAGMA journal_mode = WAL; PRAGMA synchronous = NORMAL; PRAGMA foreign_keys = ON;');
+db.run('PRAGMA journal_mode = WAL; PRAGMA synchronous = FULL; PRAGMA foreign_keys = ON;');
 export { db, dbFile };
