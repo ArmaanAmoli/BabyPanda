@@ -22,6 +22,7 @@
 	"dependencies": {
 		"@baby-panda/server": "workspace:*",
 		"@baby-panda/utils": "workspace:*",
+		"@baby-panda/db": "workspace:*",
 		"@hono/bun": "^1.0.0",
 		"diff": "^9.0.0",
 		"hono": "^4.13.12",
