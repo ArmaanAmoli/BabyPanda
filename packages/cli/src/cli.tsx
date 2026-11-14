@@ -30,6 +30,8 @@ import {FilteredStdin} from './utils/terminal/filterStdin';
 import {ToolCallsProvider} from './context/ToolCalls';
 import {ToolCallUiProvider} from './context/ToolCallUi';
 import {ScrollProvider} from './context/Scroll';
+import {ReasoningUiProvider} from './context/ReasoningUi';
+import {pandaBannerRows} from './utils/pandaBanner';
 
 const filteredStdin = new FilteredStdin(process.stdin);
 
@@ -108,6 +110,17 @@ const stopServer = () => {
 };
 let appUnmount: (() => void) | undefined = undefined;
 let shuttingDown = false;
+/**
+ * Prints the farewell banner to the primary screen. The alternate screen has
+ * to be left first, or the rows are discarded with it when the process exits.
+ */
+const printExitBanner = (sessionId: string) => {
+	const columns = process.stdout.columns ?? 80;
+	process.stdout.write('\n');
+	for (const row of pandaBannerRows(sessionId, columns)) {
+		process.stdout.write(`${row}\n`);
+	}
+};
 const shutdown = (exitCode: number, error?: unknown) => {
 	if (shuttingDown) return;
 	shuttingDown = true;
@@ -117,6 +130,10 @@ const shutdown = (exitCode: number, error?: unknown) => {
 	cleanup();
 	stopServer();
 	appUnmount?.();
+	// only a clean exit gets the farewell; a crash keeps its error visible
+	if (exitCode === 0) {
+		printExitBanner(initialSessionId ?? '');
+	}
 	process.exit(exitCode);
 };
 process.on('SIGTERM', () => shutdown(0));
@@ -149,7 +166,9 @@ const {waitUntilExit, unmount} = render(
 											<ToolCallsProvider>
 												<SocketProvider>
 													<ToolCallUiProvider>
-														<App />
+														<ReasoningUiProvider>
+															<App />
+														</ReasoningUiProvider>
 													</ToolCallUiProvider>
 												</SocketProvider>
 											</ToolCallsProvider>
@@ -172,8 +191,10 @@ const {waitUntilExit, unmount} = render(
 
 appUnmount = unmount;
 await waitUntilExit();
-console.log('stopping server');
 stopServer();
-console.log('Baby panda closed.', initialSessionId);
+// Ink has unmounted, so the alternate screen can be left and the farewell
+// banner written to the primary screen, where it survives the exit.
+cleanup();
+printExitBanner(initialSessionId ?? '');
 
 process.exit(0);

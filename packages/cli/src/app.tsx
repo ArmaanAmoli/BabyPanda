@@ -1,6 +1,5 @@
 import React from 'react';
 import {Box, Text} from 'ink';
-import BigText from 'ink-big-text';
 import {useState, useEffect, useRef} from 'react';
 import PromptBox from './components/promptBox';
 import {GAP_CHAT_BOX_PROMPT_BOX, PADDING_APP} from './layout';
@@ -33,6 +32,7 @@ import {useTerminal} from './hooks/useTerminal';
 import type {Focused} from './types';
 import {decodeToolCallBatch} from './types';
 import {useToolCallUi} from './hooks/useToolCallUi';
+import {useReasoningUi} from './hooks/useReasoningUi';
 import {useInput} from 'ink';
 import {useVisibleMessages} from './hooks/useVisibleMessages';
 import {copyToClipboard} from './utils/copyToClipboard';
@@ -40,11 +40,12 @@ import {executeCommand} from './utils/commands/executeCommands';
 import {getSkillsFiles} from '@baby-panda/utils';
 import type {SkillFile} from '@baby-panda/utils';
 import {useSettings} from './hooks/useSettings';
-import {LodingIndicator} from './components/LodingIndicator';
-import {ToolCallStatus} from './components/ToolCallStatus';
+import {SPINNER_FRAMES, useSpinnerFrame} from './components/spinner';
+import {activityLabel} from './utils/activityLabel';
 import {useToolCalls} from './hooks/useToolCalls';
 import {getMessageGroups} from './utils/messageGroups';
-import {APP_BACKGROUND_COLOR} from './theme';
+import {buildTranscriptBoxes} from './utils/responseSlots';
+import {APP_BACKGROUND_COLOR, STATUS_RUNNING} from './theme';
 
 const SLASH_COMMANDS: {name: string; description: string}[] = [
 	{name: 'provider', description: 'switch provider'},
@@ -75,6 +76,14 @@ export default function App() {
 	const settings = useSettings();
 	const {clearToolCalls} = useToolCalls();
 	const {toggleGroup} = useToolCallUi();
+	const {toggleReasoning} = useReasoningUi();
+	const responding = settings.responding.responding;
+	const spinnerFrame = useSpinnerFrame(responding);
+	const statusLabel = activityLabel(
+		settings.compaction.compacting,
+		pendingPermissionMessages.length > 0,
+	);
+	const transcriptBoxes = buildTranscriptBoxes(messageHistory);
 	const refreshSkills = () => {
 		getSkillsFiles()
 			.then(setSkills)
@@ -169,12 +178,13 @@ export default function App() {
 		4,
 		rows - statusHeight - promptHeight - GAP_CHAT_BOX_PROMPT_BOX - 1,
 	);
+	// The bottom activity area is reserved for permission prompts. Thinking
+	// and compaction are signalled by the status-bar indicator, so ordinary
+	// streaming hands these rows back to the chat.
 	const activityHeight =
 		pendingPermissionMessages.length > 0
 			? Math.min(permissionContentHeight, permissionMaxHeight)
-			: settings.responding.responding
-				? 4
-				: 0;
+			: 0;
 	const setupItemCount = needsProviderKey
 		? settings.providers.providers.length
 		: 0;
@@ -455,8 +465,21 @@ export default function App() {
 			}
 		}
 		if (_input === ' ' && focus === 'ChatBox' && focusedMessageIndex !== null) {
-			// expand/collapse the focused tool-call group
+			// expand/collapse the focused reasoning block or tool-call group
 			const focusedMessage = messageHistory[focusedMessageIndex];
+			if (focusedMessage?.role === ContentType.reasoning_content) {
+				// the reasoning key is the owning box's first message index,
+				// matching the key ChatBox renders the block with
+				const box = transcriptBoxes.find(
+					candidate =>
+						candidate.kind === 'reasoning' &&
+						candidate.indices.includes(focusedMessageIndex),
+				);
+				if (box?.kind === 'reasoning') {
+					toggleReasoning(`reasoning-${box.indices[0]}`);
+				}
+				return;
+			}
 			if (focusedMessage?.role === ContentType.tool_call) {
 				const batch = decodeToolCallBatch(focusedMessage.content);
 				if (batch) {
@@ -492,19 +515,12 @@ export default function App() {
 				gap={GAP_CHAT_BOX_PROMPT_BOX}
 			>
 				<Box height={chatHeight} flexDirection="column">
-					{messageHistory.length === 0 && (
-						<BigText
-							text="BABY PANDA"
-							align="center"
-							font="block"
-							colors={['white']}
-						/>
-					)}
-
 					{/* Mouse rows are 1-based, so the chat region starts at row 1.
 					    This also keeps the visible line count (end - start + 1)
-					    equal to the container height (rows - HEIGHT_OF_PROMPT_BOX). */}
-					<ChatBox height={chatHeight} />
+					    equal to the container height (rows - HEIGHT_OF_PROMPT_BOX).
+					    The banner is the first item inside ChatBox, so it scrolls
+					    up with the transcript rather than being erased on input. */}
+					<ChatBox height={chatHeight} sessionId={sessionId} />
 				</Box>
 
 				<Box
@@ -523,27 +539,6 @@ export default function App() {
 							<PermissionBox />
 						</Box>
 					)}
-
-					{pendingPermissionMessages.length === 0 &&
-						settings.responding.responding && (
-							<Box
-								height={4}
-								flexDirection="column"
-								width="100%"
-								backgroundColor={APP_BACKGROUND_COLOR}
-								paddingBottom={1}
-							>
-								<Box height={1} width="100%" marginBottom={1}>
-									<ToolCallStatus />
-								</Box>
-								<Box height={1} flexDirection="row" width="100%">
-									<LodingIndicator
-										isResponding={settings.responding.responding}
-										isCompacting={settings.compaction.compacting}
-									/>
-								</Box>
-							</Box>
-						)}
 
 					{needsProviderKey && !setupProvider && (
 						<Box
@@ -687,6 +682,14 @@ export default function App() {
 							paddingX={1}
 							backgroundColor={APP_BACKGROUND_COLOR}
 						>
+							{responding && (
+								<>
+									<Text color={STATUS_RUNNING}>
+										{SPINNER_FRAMES[spinnerFrame]}{' '}
+									</Text>
+									<Text dimColor>{statusLabel} · </Text>
+								</>
+							)}
 							<Text dimColor>
 								Session {sessionId} · {settings.model.provider} ·{' '}
 								{settings.model.model} · effort:{' '}

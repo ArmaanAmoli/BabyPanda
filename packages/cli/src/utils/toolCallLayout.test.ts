@@ -77,12 +77,67 @@ describe('collapsed diff viewers', () => {
 	});
 
 	test('a collapsed group renders no diff rows at all', () => {
-		const layout = layoutFor([editCall], {
+		const single = layoutFor([editCall], {
 			expanded: false,
 			diffExpanded: false,
 		});
-		expect(diffRows(layout)).toHaveLength(0);
-		expect(layout.rows.map(row => row.type)).toEqual(['header', 'bullet']);
+		expect(diffRows(single)).toHaveLength(0);
+		// a single call flattens to a lone bullet; there is no header row
+		expect(single.hasRoot).toBe(false);
+		expect(single.rows.map(row => row.type)).toEqual(['bullet']);
+
+		const second: ToolCallEntry = {
+			...editCall,
+			id: 'call-2',
+			arguments: {path: 'src/other.ts', old_str: 'two', new_str: 'TWO'},
+		};
+		const group = layoutFor([editCall, second], {
+			expanded: false,
+			diffExpanded: false,
+		});
+		expect(diffRows(group)).toHaveLength(0);
+		// a multi-call batch folds away to just its root line
+		expect(group.hasRoot).toBe(true);
+		expect(group.rows.map(row => row.type)).toEqual(['root']);
+	});
+});
+
+describe('batch root', () => {
+	test('a single call never renders a root, however many bullets it makes', () => {
+		const multiUrl: ToolCallEntry = {
+			id: 'web-1',
+			name: 'get_web_page',
+			arguments: {url: ['https://a.example', 'https://b.example']},
+			status: 'done',
+		};
+		const layout = layoutFor([multiUrl], {expanded: true, diffExpanded: false});
+		// one call, several bullets — and still no `■ 1 tool` root line
+		expect(layout.bullets.length).toBeGreaterThan(1);
+		expect(layout.hasRoot).toBe(false);
+		expect(layout.rows.map(row => row.type)).toEqual(['bullet', 'bullet']);
+	});
+
+	test('a multi-call batch renders its root above the bullets', () => {
+		const calls: ToolCallEntry[] = ['a', 'b', 'c'].map(suffix => ({
+			id: `call-${suffix}`,
+			name: 'edit',
+			arguments: {path: `src/f${suffix}.ts`, old_str: 'two', new_str: 'TWO'},
+			status: 'done',
+			before: 'one\ntwo\nthree\n',
+			stats: {added: 1, removed: 1},
+		}));
+		const layout = layoutFor(calls, {expanded: true, diffExpanded: false});
+		expect(layout.hasRoot).toBe(true);
+		expect(layout.rows[0]!.type).toBe('root');
+		// each edit bullet is followed by its (collapsed) diff summary row
+		expect(layout.rows.slice(1).map(row => row.type)).toEqual([
+			'bullet',
+			'diff',
+			'bullet',
+			'diff',
+			'bullet',
+			'diff',
+		]);
 	});
 });
 
@@ -209,7 +264,7 @@ describe('resolveRowClick', () => {
 		return layout.rowSpans.flatMap(span =>
 			Array.from({length: span.lines}, (_, offset) => ({
 				line: span.start + offset,
-				action: resolveRowClick(span, span.start + offset),
+				action: resolveRowClick(span, span.start + offset, layout.hasRoot),
 			})),
 		);
 	}
@@ -235,7 +290,7 @@ describe('resolveRowClick', () => {
 		}
 	});
 
-	test('a collapsed viewer is a single header line that toggles', () => {
+	test('a collapsed viewer is a single line that toggles', () => {
 		const layout = layoutFor(threeEdits, {
 			expanded: true,
 			diffExpanded: false,
@@ -245,7 +300,7 @@ describe('resolveRowClick', () => {
 			row => row.type === 'diff' && row.call.id === 'call-b',
 		)!;
 		expect(span.lines).toBe(1);
-		expect(resolveRowClick(span, span.start)).toEqual({
+		expect(resolveRowClick(span, span.start, layout.hasRoot)).toEqual({
 			type: 'toggleDiff',
 			callId: 'call-b',
 		});
@@ -257,27 +312,31 @@ describe('resolveRowClick', () => {
 			diffExpanded: false,
 		});
 		const span = spanOf(layout, row => row.type === 'bullet')!;
-		expect(resolveRowClick(span, span.start)).toEqual({
+		expect(resolveRowClick(span, span.start, layout.hasRoot)).toEqual({
 			type: 'toggleDiff',
 			callId: 'call-a',
 		});
 	});
 
-	test('the header and overflow hint still toggle the group', () => {
+	test('the root line toggles the group, collapsed or expanded', () => {
 		const many: ToolCallEntry[] = Array.from({length: 5}, (_, index) => ({
 			...threeEdits[0]!,
 			id: `call-${index}`,
 			arguments: {path: `src/f${index}.ts`, old_str: 'two', new_str: 'TWO'},
 		}));
 		const expanded = layoutFor(many, {expanded: true, diffExpanded: false});
-		const header = spanOf(expanded, row => row.type === 'header')!;
-		expect(resolveRowClick(header, header.start)).toEqual({
+		const root = spanOf(expanded, row => row.type === 'root')!;
+		expect(resolveRowClick(root, root.start, expanded.hasRoot)).toEqual({
 			type: 'toggleGroup',
 		});
 
+		// collapsed, the root is the only row and still folds/unfolds
 		const collapsed = layoutFor(many, {expanded: false, diffExpanded: false});
-		const hint = spanOf(collapsed, row => row.type === 'overflowHint')!;
-		expect(resolveRowClick(hint, hint.start)).toEqual({type: 'toggleGroup'});
+		expect(collapsed.rows.map(row => row.type)).toEqual(['root']);
+		const collapsedRoot = spanOf(collapsed, row => row.type === 'root')!;
+		expect(
+			resolveRowClick(collapsedRoot, collapsedRoot.start, collapsed.hasRoot),
+		).toEqual({type: 'toggleGroup'});
 	});
 
 	test('a shell bullet toggles its command', () => {
@@ -291,7 +350,7 @@ describe('resolveRowClick', () => {
 		];
 		const layout = layoutFor(shell, {expanded: true, diffExpanded: false});
 		const span = spanOf(layout, row => row.type === 'bullet')!;
-		expect(resolveRowClick(span, span.start)).toEqual({
+		expect(resolveRowClick(span, span.start, layout.hasRoot)).toEqual({
 			type: 'toggleCommand',
 			key: 'sh1',
 		});
@@ -302,20 +361,26 @@ describe('resolveRowClick', () => {
 			expanded: true,
 			diffExpanded: false,
 		});
-		expect(resolveRowClick(undefined, 0)).toEqual({type: 'ignore'});
-		expect(resolveRowClick(undefined, layout.expandedFullHeight + 10)).toEqual({
+		expect(resolveRowClick(undefined, 0, layout.hasRoot)).toEqual({
 			type: 'ignore',
 		});
+		expect(
+			resolveRowClick(
+				undefined,
+				layout.expandedFullHeight + 10,
+				layout.hasRoot,
+			),
+		).toEqual({type: 'ignore'});
 	});
 });
 
 describe('countDiffChanges', () => {
-	test('agrees with buildSideBySide for a multi-line replacement', async () => {
-		const {buildSideBySide, countDiffChanges} = await import('./diffRows');
+	test('agrees with buildUnifiedDiff for a multi-line replacement', async () => {
+		const {buildUnifiedDiff, countDiffChanges} = await import('./diffRows');
 		const before = 'a\nb\nc\nd\n';
 		const after = 'a\nb\nB\nC\nc\nd\n';
 		const counts = countDiffChanges(before, after);
-		const full = buildSideBySide(before, after);
+		const full = buildUnifiedDiff(before, after);
 		expect(counts).toEqual({added: full.added, removed: full.removed});
 		expect(counts).toEqual({added: 2, removed: 0});
 	});

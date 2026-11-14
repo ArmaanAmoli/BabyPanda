@@ -20,7 +20,7 @@ export function CommandMenu({
 }) {
 	return (
 		<Box flexDirection="column" paddingX={1} paddingTop={1}>
-			<Text color="#9fe3bd">{title}</Text>
+			<Text color="#ffffff">{title}</Text>
 			<SelectInput
 				items={items}
 				limit={limit}

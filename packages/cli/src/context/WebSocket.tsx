@@ -122,9 +122,10 @@ export function SocketProvider({children}: ReactChildPropInterface) {
 							// the server confirms the skill was loaded into context
 							// (or failed); only then is the notice shown
 							const skillPayload = SkillEventPayloadSchema.parse(payload);
+							// The `⚡` glyph is drawn by the row itself, so it is not in the text.
 							const content = skillPayload.ok
-								? `⚡ skill loaded: ${skillPayload.name}`
-								: `⚡ skill failed to load: ${skillPayload.name}${
+								? `skill loaded: ${skillPayload.name}`
+								: `skill failed to load: ${skillPayload.name}${
 										skillPayload.error ? ` (${skillPayload.error})` : ''
 									}`;
 							messageContext.lastRole.current = Role.skill;

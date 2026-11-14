@@ -2,3 +2,7 @@ node_modules
 dist
 build
 coverage
+
+# Verbatim reference asset for the startup/exit banner (see
+# packages/cli/src/utils/pandaBanner.ts for the ported implementation).
+docs/panda-banner.js

@@ -1,14 +1,17 @@
 import type {ToolCallEntry, ToolCallStatus} from '../types';
 import {diffCountsFor} from './toolCallDiff';
+import {STATUS_DONE, STATUS_FAILED, STATUS_RUNNING} from '../theme';
 
 /**
  * View model for one bullet row in a ToolCallMessage. Raw tool names are
- * never shown: every bullet is status icon + verb + target + optional stats.
+ * never shown: every bullet is a status-coloured dot + verb + target +
+ * optional stats. Status is carried entirely by the dot's colour, so the text
+ * stays neutral and red/green never appear anywhere but the dot and a diff.
  */
 export interface BulletView {
-	/** Stable key (merged bullets keep the first call's id). */
+	/** Stable key (the call id, or `<callId>#<url>` for get_web_page). */
 	key: string;
-	/** Underlying call ids, in order (more than one when merged per file). */
+	/** Underlying call ids, in order. */
 	callIds: string[];
 	status: ToolCallStatus;
 	verb: string;
@@ -18,34 +21,57 @@ export interface BulletView {
 	link?: string;
 	/** Preformatted stats suffix, e.g. '· 10 lines', '· +12 −3', '· 8 results'. */
 	stats?: string;
-	/** True when at least one underlying call has a diff (write/edit). */
+	/** True when the call has a diff (write/edit). */
 	hasDiff: boolean;
 	/** Call ids rendered as diff viewers under this bullet. */
 	diffCallIds: string[];
 	/** True for shell bullets: clicking expands the full command below. */
 	expandable: boolean;
-	/** Combined error of failed underlying calls (shown when expanded). */
+	/** Error text for a failed call (shown when expanded). */
 	error?: string;
+	/**
+	 * Left indent of this bullet's rows. Indent marks a child of a root: a
+	 * batch with a `■ N tools` root indents its bullets; a single-call batch
+	 * (no root, including one multi-URL call expanding to several bullets)
+	 * renders them unindented at column 0.
+	 */
+	indent: number;
 }
 
-/** Left padding of a bullet row (must match BulletRow in ToolCallMessage). */
-export const BULLET_PADDING_LEFT = 1;
+/** Status colour of a bullet dot. Yellow also covers "awaiting permission". */
+export function statusColor(status: ToolCallStatus): string {
+	if (status === 'done') return STATUS_DONE;
+	if (status === 'failed') return STATUS_FAILED;
+	return STATUS_RUNNING;
+}
+
+// ---------- row geometry (must match BulletRow in ToolCallMessage) ----------
+
+/** Indent of a child bullet under its batch root. */
+export const BULLET_INDENT = 2;
+/** Width of the `●` glyph. */
+export const BULLET_GLYPH_WIDTH = 1;
+/** Space between the glyph and the verb. */
+export const BULLET_GLYPH_GAP = 1;
+/** Spaces between the verb and the target. */
+export const BULLET_VERB_GAP = 2;
+/** Separator before the stats suffix (` · `). */
+export const BULLET_STATS_GAP = 3;
 
 /**
- * Display columns available for a bullet's target text within `width`
- * (padding + icon + space + indent + verb + stats are reserved).
+ * Display columns available for a bullet's target text within `rowWidth`
+ * (the full row width, indent included).
  */
-export function bulletTargetMax(bullet: BulletView, width: number): number {
+export function bulletTargetMax(bullet: BulletView, rowWidth: number): number {
 	const stats = bullet.stats ?? '';
-	const verbLength = bullet.verb.length + 1; // verb + trailing space
 	const reserved =
-		BULLET_PADDING_LEFT +
-		1 +
-		1 +
-		2 +
-		verbLength +
-		(stats.length > 0 ? stats.length + 1 : 0);
-	return Math.max(1, width - reserved);
+		bullet.indent +
+		BULLET_GLYPH_WIDTH +
+		BULLET_GLYPH_GAP +
+		bullet.verb.length +
+		BULLET_VERB_GAP +
+		(stats.length > 0 ? BULLET_STATS_GAP + stats.length : 0);
+	return Math.max(1, rowWidth - reserved);
 }
 
 const VERBS: Record<string, string> = {
@@ -92,40 +118,27 @@ export function bulletTarget(args: Record<string, unknown>): string {
 	return firstStringArg(args) ?? '';
 }
 
-function combineStatus(statuses: ToolCallStatus[]): ToolCallStatus {
-	if (statuses.some(status => status === 'running')) return 'running';
-	if (statuses.some(status => status === 'failed')) return 'failed';
-	return 'done';
-}
-
-function formatStats(name: string, calls: ToolCallEntry[]): string | undefined {
+/**
+ * Stats suffix for one call. `edit` uses the real added/removed from the
+ * before/after diff rather than `call.stats`, which counts the lines of the
+ * raw old_str/new_str and over-reports whenever the model includes context
+ * lines to pin the match.
+ */
+function formatStats(name: string, call: ToolCallEntry): string | undefined {
 	if (name === 'write') {
-		// merged writes to one file show the final line count
-		const last = calls.at(-1)?.stats?.lines;
-		return last !== undefined
-			? `· ${last} line${last === 1 ? '' : 's'}`
+		const lines = call.stats?.lines;
+		return lines !== undefined
+			? `· ${lines} line${lines === 1 ? '' : 's'}`
 			: undefined;
 	}
 	if (name === 'edit') {
-		// Real added/removed from the before/after diff, so the bullet always
-		// agrees with the diff viewer's header. `call.stats` counts the lines
-		// of the raw old_str/new_str instead, which over-counts whenever the
-		// model includes context lines to pin the match.
-		let added = 0;
-		let removed = 0;
-		let known = false;
-		for (const call of calls) {
-			// `before` only arrives with the result, and a failed edit may not
-			// have changed the file at all, so only settled calls are counted.
-			if (call.status !== 'done' || call.before === undefined) continue;
-			const counts = diffCountsFor(call);
-			added += counts.added;
-			removed += counts.removed;
-			known = true;
-		}
-		return known ? `· +${added} −${removed}` : undefined;
+		// `before` only arrives with the result, and a failed edit may not have
+		// changed the file at all, so only settled calls are counted.
+		if (call.status !== 'done' || call.before === undefined) return undefined;
+		const counts = diffCountsFor(call);
+		return `· +${counts.added} −${counts.removed}`;
 	}
-	const stats = calls.find(call => call.stats != null)?.stats;
+	const stats = call.stats;
 	if (stats == null) return undefined;
 	if (stats.matches !== undefined)
 		return `· ${stats.matches} result${stats.matches === 1 ? '' : 's'}`;
@@ -141,14 +154,17 @@ function isFileMutation(name: string): boolean {
 }
 
 /**
- * Builds the bullet list for a batch. write/edit calls merge per file path
- * (summed stats, combined status, one diff per underlying call); get_web_page
- * expands to one bullet per requested URL; everything else is one bullet per
- * call.
+ * Builds the bullet list for a batch: exactly one bullet per tool call.
+ *
+ * `get_web_page` is the one exception — a single call can request several
+ * URLs, and one dot cannot show several outcomes, so it expands to one bullet
+ * per requested URL.
  */
 export function buildBullets(calls: ToolCallEntry[]): BulletView[] {
 	const bullets: BulletView[] = [];
-	const fileBulletByPath = new Map<string, BulletView>();
+	// matches the layout's hasRoot rule: a batch of one call has no root, so
+	// its bullets sit at column 0 instead of indenting under nothing
+	const indent = calls.length > 1 ? BULLET_INDENT : 0;
 
 	for (const call of calls) {
 		if (call.name === 'get_web_page') {
@@ -173,46 +189,14 @@ export function buildBullets(calls: ToolCallEntry[]): BulletView[] {
 					verb: VERBS['get_web_page'] ?? 'opening',
 					target: url,
 					link: url,
+					stats: formatStats(call.name, call),
 					hasDiff: false,
 					diffCallIds: [],
 					expandable: false,
 					error: page?.error ?? (status === 'failed' ? call.error : undefined),
+					indent,
 				});
 			}
-			continue;
-		}
-
-		if (isFileMutation(call.name)) {
-			const path =
-				typeof call.arguments['path'] === 'string'
-					? (call.arguments['path'] as string)
-					: '';
-			const existing = path.length > 0 ? fileBulletByPath.get(path) : undefined;
-			if (existing) {
-				existing.callIds.push(call.id);
-				existing.status = combineStatus([existing.status, call.status]);
-				existing.stats = formatStats(
-					call.name,
-					existing.callIds.map(id => calls.find(c => c.id === id)!),
-				);
-				existing.diffCallIds.push(call.id);
-				if (call.error) existing.error = call.error;
-				continue;
-			}
-			const bullet: BulletView = {
-				key: call.id,
-				callIds: [call.id],
-				status: call.status,
-				verb: VERBS[call.name] ?? 'calling',
-				target: path || bulletTarget(call.arguments),
-				stats: formatStats(call.name, [call]),
-				hasDiff: true,
-				diffCallIds: [call.id],
-				expandable: false,
-				error: call.error,
-			};
-			fileBulletByPath.set(path, bullet);
-			bullets.push(bullet);
 			continue;
 		}
 
@@ -225,19 +209,21 @@ export function buildBullets(calls: ToolCallEntry[]): BulletView[] {
 				call.name === 'web_search'
 					? `"${bulletTarget(call.arguments)}"`
 					: bulletTarget(call.arguments),
-			stats: formatStats(call.name, [call]),
-			hasDiff: false,
-			diffCallIds: [],
+			stats: formatStats(call.name, call),
+			hasDiff: isFileMutation(call.name),
+			diffCallIds: isFileMutation(call.name) ? [call.id] : [],
 			expandable: call.name === 'shell',
 			error: call.error,
+			indent,
 		});
 	}
 
 	return bullets;
 }
 
-export function statusIcon(status: ToolCallStatus): string {
-	if (status === 'done') return '✓';
-	if (status === 'failed') return '✗';
-	return '…';
+/** Aggregate status of a batch: any running wins, then any failed. */
+export function combineStatus(statuses: ToolCallStatus[]): ToolCallStatus {
+	if (statuses.some(status => status === 'running')) return 'running';
+	if (statuses.some(status => status === 'failed')) return 'failed';
+	return 'done';
 }
