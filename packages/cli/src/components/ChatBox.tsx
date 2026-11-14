@@ -12,7 +12,7 @@ import {useReasoningUi} from '../hooks/useReasoningUi';
 import {ContentType, Role} from '@baby-panda/types';
 import type {MessageLine, ToolCallBatch} from '../types';
 import {decodeToolCallBatch} from '../types';
-import {getMessageGroups} from '../utils/messageGroups';
+import {buildTranscriptBoxes} from '../utils/responseSlots';
 import {buildToolCallLayout} from '../utils/toolCallLayout';
 import {ToolCallMessage} from './ToolCallMessage';
 import {ReasoningMessage} from './ReasoningMessage';
@@ -29,18 +29,30 @@ const GLYPH_INDENT = 2;
 
 type ChatItem =
 	| {kind: 'banner'; rows: string[]}
-	| {kind: 'tool'; messageIndices: number[]; batch: ToolCallBatch | null}
-	| {
-			kind: 'reasoning';
-			messageIndices: number[];
-			lines: MessageLine[];
-			key: string;
-	  }
 	| {
 			kind: 'text';
 			messageIndices: number[];
 			role: Role | ContentType;
 			lines: MessageLine[];
+			user: boolean;
+	  }
+	| {
+			kind: 'reasoning';
+			messageIndices: number[];
+			key: string;
+			lines: MessageLine[];
+	  }
+	| {
+			kind: 'content';
+			messageIndices: number[];
+			role: Role | ContentType;
+			lines: MessageLine[];
+	  }
+	| {
+			kind: 'tool';
+			messageIndices: number[];
+			key: string;
+			batch: ToolCallBatch | null;
 	  };
 
 const EMPTY_ROW = ' ';
@@ -88,50 +100,62 @@ export function ChatBox({
 		[sessionId, chatWidth],
 	);
 
-	const messageItems = useMemo<ChatItem[]>(() => {
-		const groups = getMessageGroups(
-			viewPortMessages.map(message => ({
-				role: message.role,
-				content: '',
-				createdAt: message.createdAt,
-			})),
-		);
-		return groups.map(messageIndices => {
-			const first = viewPortMessages[messageIndices[0]]!;
-			if (first.role === ContentType.tool_call) {
-				const content = messageHistory[messageIndices[0]]?.content ?? '';
-				return {
-					kind: 'tool' as const,
-					messageIndices,
-					batch: decodeToolCallBatch(content),
-				};
-			}
-			const lines = messageIndices.flatMap(
-				index => viewPortMessages[index]?.lines ?? [],
-			);
-			if (first.role === ContentType.reasoning_content) {
-				return {
-					kind: 'reasoning' as const,
-					messageIndices,
-					lines,
-					key: `reasoning-${messageIndices[0]}`,
-				};
-			}
-			return {
-				kind: 'text' as const,
-				messageIndices,
-				role: first.role,
-				lines,
-			};
-		});
-	}, [viewPortMessages, messageHistory]);
+	// One item per box: the banner, then the transcript boxes in display
+	// order. Each item renders exactly one block plus one trailing blank row,
+	// so the height cache and the rendered content can never disagree.
+	const items = useMemo<ChatItem[]>(() => {
+		const linesOf = (indices: number[]): MessageLine[] =>
+			indices.flatMap(index => viewPortMessages[index]?.lines ?? []);
+		const roleOf = (index: number): Role | ContentType =>
+			viewPortMessages[index]?.role ?? ContentType.content;
 
-	// The banner is the first item of the list, so it scrolls up with the
-	// transcript instead of being erased the moment history is non-empty.
-	const items = useMemo<ChatItem[]>(
-		() => [{kind: 'banner' as const, rows: bannerRows}, ...messageItems],
-		[bannerRows, messageItems],
-	);
+		return [
+			{kind: 'banner' as const, rows: bannerRows},
+			...buildTranscriptBoxes(viewPortMessages).map(box => {
+				switch (box.kind) {
+					case 'user':
+						return {
+							kind: 'text' as const,
+							messageIndices: [box.index],
+							role: roleOf(box.index),
+							lines: linesOf([box.index]),
+							user: true,
+						};
+					case 'prefix':
+						return {
+							kind: 'text' as const,
+							messageIndices: [box.index],
+							role: roleOf(box.index),
+							lines: linesOf([box.index]),
+							user: false,
+						};
+					case 'reasoning':
+						return {
+							kind: 'reasoning' as const,
+							messageIndices: box.indices,
+							key: `reasoning-${box.indices[0] ?? 0}`,
+							lines: linesOf(box.indices),
+						};
+					case 'content':
+						return {
+							kind: 'content' as const,
+							messageIndices: box.indices,
+							role: roleOf(box.indices[0]!),
+							lines: linesOf(box.indices),
+						};
+					case 'tool':
+						return {
+							kind: 'tool' as const,
+							messageIndices: [box.index],
+							key: `tool-${box.index}`,
+							batch: decodeToolCallBatch(
+								messageHistory[box.index]?.content ?? '',
+							),
+						};
+				}
+			}),
+		];
+	}, [viewPortMessages, messageHistory, bannerRows]);
 
 	const isDiffExpanded = useCallback(
 		(callId: string) => expandedDiffs[callId] === true,
@@ -145,23 +169,25 @@ export function ChatBox({
 		() =>
 			items.map(item => {
 				if (item.kind === 'banner') return item.rows.length + 1;
+				if (item.kind === 'reasoning') {
+					return (
+						(isReasoningExpanded(item.key)
+							? Math.max(1, item.lines.length)
+							: 1) + 1
+					);
+				}
 				if (item.kind === 'tool') {
 					// an undecodable batch still costs its separator row
 					if (item.batch == null) return 2;
-					const layout = buildToolCallLayout(item.batch, {
-						expanded: isGroupExpanded(item.batch.id),
-						isDiffExpanded,
-						isCommandExpanded,
-						chatHeight: height,
-						width: chatWidth,
-					});
-					return layout.height + 1;
-				}
-				if (item.kind === 'reasoning') {
-					const content = isReasoningExpanded(item.key)
-						? Math.max(1, item.lines.length)
-						: 1;
-					return content + 1;
+					return (
+						buildToolCallLayout(item.batch, {
+							expanded: isGroupExpanded(item.batch.id),
+							isDiffExpanded,
+							isCommandExpanded,
+							chatHeight: height,
+							width: chatWidth,
+						}).height + 1
+					);
 				}
 				return Math.max(1, item.lines.length) + 1;
 			}),
@@ -182,23 +208,34 @@ export function ChatBox({
 	);
 
 	const responding = settings.responding.responding;
-	const lastItem = items.at(-1);
-	const activeToolBatch =
-		responding && lastItem?.kind === 'tool' && lastItem.batch != null
-			? lastItem.batch
-			: null;
 
-	// the latest tool-call block auto-expands while the agent is responding
+	// The latest reasoning block spins until the whole run finishes: any box
+	// can receive data at any time, so the run — not the block — is the
+	// streaming unit. Past iterations keep their settled marker.
+	const streamingReasoningKey = useMemo(() => {
+		if (!responding) return null;
+		for (let index = items.length - 1; index >= 0; index--) {
+			const item = items[index]!;
+			if (item.kind === 'reasoning') return item.key;
+		}
+		return null;
+	}, [items, responding]);
+
+	// the latest tool-call batch auto-expands while the agent is responding
+	const activeToolBatch = useMemo(() => {
+		if (!responding) return null;
+		for (let index = items.length - 1; index >= 0; index--) {
+			const item = items[index]!;
+			if (item.kind === 'tool') return item.batch;
+		}
+		return null;
+	}, [items, responding]);
+
 	useEffect(() => {
 		if (activeToolBatch) {
 			expandGroup(activeToolBatch.id);
 		}
 	}, [activeToolBatch, expandGroup]);
-
-	// A reasoning block is streaming while the agent is responding and it is
-	// still the last thing in the transcript; once the answer starts it is not.
-	const streamingReasoningKey =
-		responding && lastItem?.kind === 'reasoning' ? lastItem.key : null;
 
 	return (
 		<Box flexGrow={1} flexDirection="column" justifyContent="flex-end">
@@ -219,10 +256,10 @@ export function ChatBox({
 				keyExtractor={(item, index) =>
 					item.kind === 'banner'
 						? 'banner'
-						: item.kind === 'tool' && item.batch
-							? `tool-${item.batch.id}`
-							: item.kind === 'reasoning'
-								? `reasoning-${item.key}`
+						: item.kind === 'reasoning'
+							? item.key
+							: item.kind === 'tool'
+								? item.key
 								: `text-${item.messageIndices[0] ?? index}`
 				}
 				renderItem={({item, startRow, clipTop, visibleRows}) => {
@@ -237,32 +274,6 @@ export function ChatBox({
 								{item.rows.map((row, rowIndex) => (
 									<Text key={rowIndex}>{row}</Text>
 								))}
-								<Box height={1} flexShrink={0} />
-							</>
-						);
-					}
-
-					if (item.kind === 'tool') {
-						// an undecodable batch renders nothing rather than throwing
-						if (item.batch == null) return <Box height={1} flexShrink={0} />;
-						const batch = item.batch;
-						return (
-							<>
-								<ToolCallMessage
-									batch={batch}
-									expanded={isGroupExpanded(batch.id)}
-									onToggleGroup={() => toggleGroup(batch.id)}
-									isDiffExpanded={isDiffExpanded}
-									onToggleDiff={toggleDiff}
-									isCommandExpanded={isCommandExpanded}
-									onToggleCommand={toggleCommand}
-									startRow={startRow}
-									clipTop={clipTop}
-									visibleRows={visibleRows}
-									chatHeight={height}
-									width={chatWidth}
-									focused={itemFocused}
-								/>
 								<Box height={1} flexShrink={0} />
 							</>
 						);
@@ -287,44 +298,92 @@ export function ChatBox({
 						);
 					}
 
-					if (item.kind !== 'text') return <></>;
+					if (item.kind === 'tool') {
+						return (
+							<>
+								{/* an undecodable batch renders nothing rather than throwing */}
+								{item.batch == null ? (
+									<Box height={1} flexShrink={0} />
+								) : (
+									<ToolCallMessage
+										batch={item.batch}
+										expanded={isGroupExpanded(item.batch.id)}
+										onToggleGroup={() => toggleGroup(item.batch!.id)}
+										isDiffExpanded={isDiffExpanded}
+										onToggleDiff={toggleDiff}
+										isCommandExpanded={isCommandExpanded}
+										onToggleCommand={toggleCommand}
+										startRow={startRow}
+										clipTop={clipTop}
+										visibleRows={visibleRows}
+										chatHeight={height}
+										width={chatWidth}
+										focused={itemFocused}
+									/>
+								)}
+								<Box height={1} flexShrink={0} />
+							</>
+						);
+					}
 
-					const isUser = item.role === Role.user;
-					return (
-						<>
-							{item.lines.map((line, lineIndex) => (
-								<Box
-									key={lineIndex}
-									width="100%"
-									height={1}
-									flexShrink={0}
-									flexDirection="row"
-									backgroundColor={
-										isUser ? USER_BAND_BACKGROUND : APP_BACKGROUND_COLOR
-									}
-								>
-									{/* The glyph marks the first row only; wrapped lines
-									    indent to align under the text. */}
-									{lineIndex === 0 ? (
-										<>
-											<Text color={roleGlyphColor(item.role)}>
-												{roleGlyph(item.role)}
-											</Text>
-											<Text> </Text>
-										</>
-									) : (
-										<Text>{' '.repeat(GLYPH_INDENT)}</Text>
-									)}
-									<Box flexGrow={1} height={1} overflow="hidden">
-										<Text wrap="truncate">{line.content || EMPTY_ROW}</Text>
-									</Box>
-								</Box>
-							))}
-							<Box height={1} flexShrink={0} />
-						</>
-					);
+					if (item.kind === 'text' || item.kind === 'content') {
+						return (
+							<GlyphBlock
+								role={item.role}
+								lines={item.lines}
+								user={item.kind === 'text' && item.user}
+							/>
+						);
+					}
+
+					return <></>;
 				}}
 			/>
 		</Box>
+	);
+}
+
+/**
+ * A plain text message: glyph on the first row, wrapped continuation lines
+ * indenting to align under the text, and a full-width band behind user
+ * messages.
+ */
+function GlyphBlock({
+	role,
+	lines,
+	user,
+}: {
+	role: Role | ContentType;
+	lines: MessageLine[];
+	user: boolean;
+}) {
+	return (
+		<>
+			{lines.map((line, lineIndex) => (
+				<Box
+					key={lineIndex}
+					width="100%"
+					height={1}
+					flexShrink={0}
+					flexDirection="row"
+					backgroundColor={user ? USER_BAND_BACKGROUND : APP_BACKGROUND_COLOR}
+				>
+					{/* The glyph marks the first row only; wrapped lines
+					    indent to align under the text. */}
+					{lineIndex === 0 ? (
+						<>
+							<Text color={roleGlyphColor(role)}>{roleGlyph(role)}</Text>
+							<Text> </Text>
+						</>
+					) : (
+						<Text>{' '.repeat(GLYPH_INDENT)}</Text>
+					)}
+					<Box flexGrow={1} height={1} overflow="hidden">
+						<Text wrap="truncate">{line.content || EMPTY_ROW}</Text>
+					</Box>
+				</Box>
+			))}
+			<Box height={1} flexShrink={0} />
+		</>
 	);
 }

@@ -44,6 +44,7 @@ import {LodingIndicator} from './components/LodingIndicator';
 import {ToolCallStatus} from './components/ToolCallStatus';
 import {useToolCalls} from './hooks/useToolCalls';
 import {getMessageGroups} from './utils/messageGroups';
+import {buildTranscriptBoxes} from './utils/responseSlots';
 import {APP_BACKGROUND_COLOR} from './theme';
 
 const SLASH_COMMANDS: {name: string; description: string}[] = [
@@ -76,6 +77,7 @@ export default function App() {
 	const {clearToolCalls} = useToolCalls();
 	const {toggleGroup} = useToolCallUi();
 	const {toggleReasoning} = useReasoningUi();
+	const transcriptBoxes = buildTranscriptBoxes(messageHistory);
 	const refreshSkills = () => {
 		getSkillsFiles()
 			.then(setSkills)
@@ -462,11 +464,15 @@ export default function App() {
 			// expand/collapse the focused reasoning block or tool-call group
 			const focusedMessage = messageHistory[focusedMessageIndex];
 			if (focusedMessage?.role === ContentType.reasoning_content) {
-				const group = messageGroups.find(group =>
-					group.includes(focusedMessageIndex),
+				// the reasoning key is the owning box's first message index,
+				// matching the key ChatBox renders the block with
+				const box = transcriptBoxes.find(
+					candidate =>
+						candidate.kind === 'reasoning' &&
+						candidate.indices.includes(focusedMessageIndex),
 				);
-				if (group) {
-					toggleReasoning(`reasoning-${group[0]}`);
+				if (box?.kind === 'reasoning') {
+					toggleReasoning(`reasoning-${box.indices[0]}`);
 				}
 				return;
 			}
