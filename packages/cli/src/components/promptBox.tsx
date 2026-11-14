@@ -23,7 +23,7 @@ import {
 	type PromptValue,
 } from '../utils/promptValue';
 
-const CURSOR_COLOR = '#9fe3bd';
+const CURSOR_COLOR = '#ffffff';
 const RULE_COLOR = '#555555';
 const SCROLLBAR_TRACK = '│';
 const SCROLLBAR_THUMB = '┃';

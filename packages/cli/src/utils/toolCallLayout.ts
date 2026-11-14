@@ -1,7 +1,8 @@
-import type {ToolCallBatch, ToolCallEntry} from '../types';
+import type {ToolCallBatch, ToolCallEntry, ToolCallStatus} from '../types';
 import {
 	buildBullets,
 	bulletTargetMax,
+	combineStatus,
 	type BulletView,
 } from './toolCallBullets';
 import type {SideBySideDiff} from './diffRows';
@@ -9,22 +10,26 @@ import {buildCallDiff, buildDiffSummary} from './toolCallDiff';
 import {splitTruncated, wrapText} from './formatLink';
 
 export type LayoutRow =
-	| {type: 'header'}
+	| {type: 'root'; status: ToolCallStatus; callCount: number}
 	| {type: 'bullet'; bullet: BulletView}
 	| {type: 'error'; bullet: BulletView}
 	| {type: 'diff'; call: ToolCallEntry; diff: SideBySideDiff}
-	| {type: 'command'; bullet: BulletView; line: string}
-	| {type: 'overflowHint'};
+	| {type: 'command'; bullet: BulletView; line: string};
 
 export interface ToolCallLayout {
 	rows: LayoutRow[];
-	/** Height when collapsed: min(5, content). */
+	/** Height when collapsed: the root line, or the lone bullet. */
 	collapsedHeight: number;
 	/** Full content height when expanded (before the chatHeight cap). */
 	expandedFullHeight: number;
 	/** Height actually used: expanded ? min(full, chatHeight) : collapsed. */
 	height: number;
 	bullets: BulletView[];
+	/**
+	 * True when the batch renders a `■ N tools` root above its bullets. A
+	 * single-call batch flattens to a lone `●` with no root.
+	 */
+	hasRoot: boolean;
 	/**
 	 * Content-line span of every entry in `rows`. A diff row occupies as many
 	 * lines as its viewer renders, so a terminal row cannot be used directly
@@ -70,13 +75,21 @@ export type RowClickAction =
  * header line alone, so clicking the diff text — which is most of the viewer —
  * never collapses it; the user has to click the bullet or the `± path` header
  * again.
+ *
+ * `hasRoot` tells a root-level bullet (a single-call batch, which has no root
+ * to click) apart from a child bullet inside a batch: the former toggles its
+ * own detail, the latter has nothing of its own to toggle.
  */
 export function resolveRowClick(
 	span: LayoutRowSpan | undefined,
 	line: number,
+	hasRoot: boolean,
 ): RowClickAction {
 	if (!span) return {type: 'ignore'};
 	const row = span.row;
+	if (row.type === 'root') {
+		return {type: 'toggleGroup'};
+	}
 	if (row.type === 'bullet') {
 		if (row.bullet.hasDiff) {
 			return {type: 'toggleDiff', callId: row.bullet.diffCallIds[0]!};
@@ -84,7 +97,7 @@ export function resolveRowClick(
 		if (row.bullet.expandable) {
 			return {type: 'toggleCommand', key: row.bullet.key};
 		}
-		return {type: 'toggleGroup'};
+		return hasRoot ? {type: 'ignore'} : {type: 'toggleGroup'};
 	}
 	if (row.type === 'diff') {
 		return line === span.start
@@ -94,21 +107,21 @@ export function resolveRowClick(
 	if (row.type === 'command') {
 		return {type: 'toggleCommand', key: row.bullet.key};
 	}
-	return {type: 'toggleGroup'};
+	return {type: 'ignore'};
 }
 
-export const COLLAPSED_MAX_ROWS = 5;
-export const COLLAPSED_MAX_BULLETS = 3;
-
-/** Left indent of expanded command continuation lines (must match the renderer). */
-export const COMMAND_INDENT = 5;
+/**
+ * Gap between a bullet's own indent and its expanded command continuation
+ * lines (must match the renderer).
+ */
+export const COMMAND_GAP = 3;
 
 export interface ToolCallLayoutOptions {
 	expanded: boolean;
 	isDiffExpanded: (callId: string) => boolean;
 	isCommandExpanded: (bulletKey: string) => boolean;
 	chatHeight: number;
-	/** Content width available to the message (marker column excluded). */
+	/** Content width available to the message. */
 	width: number;
 }
 
@@ -145,6 +158,9 @@ function rowLineCount(
  * one still carries its real added/removed counts for the header); expanded
  * shell commands add one row per wrapped continuation line of the command
  * that was cut off by the bullet's '…'.
+ *
+ * A batch of one call renders as a lone bullet with no root; a batch of
+ * several renders a `■ N tools` root that folds the whole batch away.
  */
 export function buildToolCallLayout(
 	batch: ToolCallBatch,
@@ -153,25 +169,28 @@ export function buildToolCallLayout(
 	const {expanded, isDiffExpanded, isCommandExpanded, chatHeight, width} =
 		options;
 	const bullets = buildBullets(batch.calls);
-	const rows: LayoutRow[] = [{type: 'header'}];
-	const visibleBullets = expanded
-		? bullets
-		: bullets.slice(0, COLLAPSED_MAX_BULLETS);
+	// Root is decided by call count, not bullet count: one get_web_page call
+	// asking for several URLs becomes several bullets, and `■ 1 tool` must
+	// never appear — a single-call batch flattens to root-level bullets.
+	const hasRoot = batch.calls.length > 1;
+	const rows: LayoutRow[] = [];
 
-	for (const bullet of visibleBullets) {
-		rows.push({type: 'bullet', bullet});
-		if (expanded && bullet.error) {
-			rows.push({type: 'error', bullet});
-		}
-		if (expanded && bullet.expandable && isCommandExpanded(bullet.key)) {
-			const targetMax = bulletTargetMax(bullet, width);
-			const {rest} = splitTruncated(bullet.target, targetMax);
-			const wrapWidth = Math.max(1, width - COMMAND_INDENT);
-			for (const line of wrapText(rest, wrapWidth)) {
-				rows.push({type: 'command', bullet, line});
+	const appendBullets = (withDetails: boolean) => {
+		for (const bullet of bullets) {
+			rows.push({type: 'bullet', bullet});
+			if (!withDetails) continue;
+			if (bullet.error) {
+				rows.push({type: 'error', bullet});
 			}
-		}
-		if (expanded) {
+			if (bullet.expandable && isCommandExpanded(bullet.key)) {
+				const targetMax = bulletTargetMax(bullet, width);
+				const {rest} = splitTruncated(bullet.target, targetMax);
+				const commandIndent = bullet.indent + COMMAND_GAP;
+				const wrapWidth = Math.max(1, width - commandIndent);
+				for (const line of wrapText(rest, wrapWidth)) {
+					rows.push({type: 'command', bullet, line});
+				}
+			}
 			for (const callId of bullet.diffCallIds) {
 				const call = batch.calls.find(item => item.id === callId);
 				if (!call) continue;
@@ -183,9 +202,17 @@ export function buildToolCallLayout(
 				});
 			}
 		}
-	}
-	if (!expanded && bullets.length > COLLAPSED_MAX_BULLETS) {
-		rows.push({type: 'overflowHint'});
+	};
+
+	if (hasRoot) {
+		rows.push({
+			type: 'root',
+			status: combineStatus(batch.calls.map(call => call.status)),
+			callCount: batch.calls.length,
+		});
+		if (expanded) appendBullets(true);
+	} else {
+		appendBullets(expanded);
 	}
 
 	const collapsedHeight = rows.length;
@@ -200,14 +227,15 @@ export function buildToolCallLayout(
 
 	const height = expanded
 		? Math.min(expandedFullHeight, Math.max(1, chatHeight))
-		: Math.min(COLLAPSED_MAX_ROWS, collapsedHeight);
+		: collapsedHeight;
 
 	return {
 		rows,
-		collapsedHeight: Math.min(COLLAPSED_MAX_ROWS, collapsedHeight),
+		collapsedHeight,
 		expandedFullHeight,
 		height,
 		bullets,
+		hasRoot,
 		rowSpans,
 	};
 }

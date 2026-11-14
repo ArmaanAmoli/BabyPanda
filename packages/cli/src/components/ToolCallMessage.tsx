@@ -10,13 +10,12 @@ import {
 	type LayoutRowSpan,
 	resolveRowClick,
 	rowSpanAtLine,
-	COLLAPSED_MAX_BULLETS,
-	COMMAND_INDENT,
+	COMMAND_GAP,
 } from '../utils/toolCallLayout';
 import {
+	BULLET_INDENT,
 	bulletTargetMax,
-	BULLET_PADDING_LEFT,
-	statusIcon,
+	statusColor,
 	type BulletView,
 } from '../utils/toolCallBullets';
 import {
@@ -26,11 +25,10 @@ import {
 	truncateEnd,
 } from '../utils/formatLink';
 import {DiffViewer} from './DiffViewer';
-import {APP_BACKGROUND_COLOR} from '../theme';
+import {APP_BACKGROUND_COLOR, HIGHLIGHT_BACKGROUND, TEXT_WHITE} from '../theme';
 
-const TOOL_COLOR = '#4d3838';
-export const MARKER_WIDTH = 1;
-const ROW_PADDING_LEFT = 1;
+/** Muted grey for secondary text: hints, command continuation, error detail. */
+const MUTED_TEXT = '#8a7f7f';
 
 export interface ToolCallMessageProps {
 	batch: ToolCallBatch;
@@ -51,65 +49,14 @@ export interface ToolCallMessageProps {
 	focused: boolean;
 }
 
-function BulletRow({
-	bullet,
-	width,
-	highlighted,
-}: {
-	bullet: BulletView;
-	width: number;
-	highlighted: boolean;
-}) {
-	const icon = statusIcon(bullet.status);
-	const iconColor =
-		bullet.status === 'done'
-			? '#9fe3bd'
-			: bullet.status === 'failed'
-				? '#f08a8a'
-				: '#8a7f7f';
-	const stats = bullet.stats ?? '';
-	const verb = `${bullet.verb} `;
-	const targetMax = bulletTargetMax(bullet, width);
-
-	let targetText: string;
-	if (bullet.link) {
-		const display = linkDisplayText(bullet.link, targetMax);
-		targetText = supportsOsc8Hyperlinks()
-			? osc8Link(bullet.link, display)
-			: display;
-	} else {
-		targetText = truncateEnd(bullet.target, targetMax);
-	}
-
-	return (
-		<Box
-			width={width}
-			height={1}
-			flexShrink={0}
-			paddingLeft={BULLET_PADDING_LEFT}
-			overflow="hidden"
-			backgroundColor={highlighted ? '#242424' : APP_BACKGROUND_COLOR}
-		>
-			<Text color={iconColor}>{icon}</Text>
-			<Text> </Text>
-			<Text color="#c9bebe">{'  '}</Text>
-			<Text color="#e8dede" wrap="truncate">
-				{verb}
-			</Text>
-			<Text color="#9fb4c7" wrap="truncate">
-				{targetText}
-			</Text>
-			{stats.length > 0 && <Text color="#8a7f7f"> {stats}</Text>}
-		</Box>
-	);
-}
-
 /**
- * One assistant message's tool calls as a stateful chat block. Collapsed to a
- * fixed height (min(5, content)); click (or Space when focused) expands it.
- * Bullets are status icon + verb + target + stats; write/edit calls also get a
- * collapsible DiffViewer each. Wheel over the expanded block scrolls its
- * internal content; clicks use the item's actual visible row range.
+ * One assistant message's tool calls as a bullet block.
+ *
+ * A batch of several calls renders a square `■ N tools` root that folds the
+ * whole batch; a batch of one flattens to a lone `●`. Each bullet is a
+ * status-coloured dot plus a white verb and a dim target, and clicking it
+ * expands that call's own diff, command or error. Status lives entirely in
+ * the dot's colour, so red and green never appear in the text.
  */
 export function ToolCallMessage({
 	batch,
@@ -126,7 +73,6 @@ export function ToolCallMessage({
 	width,
 	focused,
 }: ToolCallMessageProps) {
-	const contentWidth = Math.max(10, width - MARKER_WIDTH);
 	const layout = useMemo(
 		() =>
 			buildToolCallLayout(batch, {
@@ -134,16 +80,9 @@ export function ToolCallMessage({
 				isDiffExpanded,
 				isCommandExpanded,
 				chatHeight,
-				width: contentWidth,
+				width,
 			}),
-		[
-			batch,
-			expanded,
-			isDiffExpanded,
-			isCommandExpanded,
-			chatHeight,
-			contentWidth,
-		],
+		[batch, expanded, isDiffExpanded, isCommandExpanded, chatHeight, width],
 	);
 	const height = layout.height;
 	const maxGroupScroll = Math.max(0, layout.expandedFullHeight - height);
@@ -178,7 +117,7 @@ export function ToolCallMessage({
 		const logicalRow = clipTop + (event.row - startRow) + groupScrollTop;
 		if (event.name === 'left-press') {
 			const span = spanAt(logicalRow);
-			const action = resolveRowClick(span, logicalRow);
+			const action = resolveRowClick(span, logicalRow, layout.hasRoot);
 			switch (action.type) {
 				case 'toggleGroup':
 					onToggleGroup();
@@ -197,55 +136,108 @@ export function ToolCallMessage({
 			if (!expanded) onToggleGroup();
 		} else if (event.name === 'move') {
 			const span = spanAt(logicalRow);
-			setHoveredRow(span?.row.type === 'bullet' ? span.index : null);
+			setHoveredRow(
+				span?.row.type === 'bullet' || span?.row.type === 'root'
+					? span.index
+					: null,
+			);
 		}
 	});
 
-	const callCount = batch.calls.length;
-	// only offer "click to collapse" when expanding actually added rows
-	const canCollapse = layout.expandedFullHeight > layout.collapsedHeight;
-	const headerText = `⚒ ${callCount} tool call${callCount === 1 ? '' : 's'}${
-		expanded && canCollapse ? ' · click to collapse' : ''
-	}`;
+	// Collapsing a rooted batch always hides its bullets, so the hint follows
+	// hasRoot. expandedFullHeight is 0 while collapsed, so comparing it to
+	// collapsedHeight here would keep the hint hidden exactly when it applies.
+	const canExpand = layout.hasRoot;
+
+	const renderRoot = (
+		row: Extract<LayoutRow, {type: 'root'}>,
+		index: number,
+	) => {
+		const highlighted = (focused && !expanded) || hoveredRow === index;
+		return (
+			<Box
+				key={index}
+				height={1}
+				flexShrink={0}
+				overflow="hidden"
+				backgroundColor={
+					highlighted ? HIGHLIGHT_BACKGROUND : APP_BACKGROUND_COLOR
+				}
+			>
+				<Text color={statusColor(row.status)}>■</Text>
+				<Text> </Text>
+				<Text color={TEXT_WHITE} wrap="truncate">
+					{row.callCount} tool{row.callCount === 1 ? '' : 's'}
+				</Text>
+				{!expanded && canExpand && (
+					<Text color={MUTED_TEXT}> · click to expand</Text>
+				)}
+			</Box>
+		);
+	};
+
+	const renderBullet = (
+		bullet: BulletView,
+		index: number,
+		highlighted: boolean,
+	) => {
+		const targetMax = bulletTargetMax(bullet, width);
+		let targetText: string;
+		if (bullet.link) {
+			const display = linkDisplayText(bullet.link, targetMax);
+			targetText = supportsOsc8Hyperlinks()
+				? osc8Link(bullet.link, display)
+				: display;
+		} else {
+			targetText = truncateEnd(bullet.target, targetMax);
+		}
+
+		return (
+			<Box
+				key={index}
+				width={width}
+				height={1}
+				flexShrink={0}
+				paddingLeft={bullet.indent}
+				overflow="hidden"
+				backgroundColor={
+					highlighted ? HIGHLIGHT_BACKGROUND : APP_BACKGROUND_COLOR
+				}
+			>
+				<Text color={statusColor(bullet.status)}>●</Text>
+				<Text> </Text>
+				<Text color={TEXT_WHITE} wrap="truncate">
+					{bullet.verb}
+				</Text>
+				<Text> </Text>
+				<Text> </Text>
+				<Text dimColor wrap="truncate">
+					{targetText}
+				</Text>
+				{bullet.stats !== undefined && bullet.stats.length > 0 && (
+					<Text dimColor> {bullet.stats}</Text>
+				)}
+			</Box>
+		);
+	};
 
 	const renderRow = (row: LayoutRow, index: number) => {
 		const rowHighlighted = (focused && !expanded) || hoveredRow === index;
 		switch (row.type) {
-			case 'header':
-				return (
-					<Box
-						key={index}
-						height={1}
-						flexShrink={0}
-						paddingLeft={ROW_PADDING_LEFT}
-						overflow="hidden"
-						backgroundColor={focused ? '#242424' : APP_BACKGROUND_COLOR}
-					>
-						<Text color="#8a7f7f" wrap="truncate">
-							{headerText}
-						</Text>
-					</Box>
-				);
+			case 'root':
+				return renderRoot(row, index);
 			case 'bullet':
-				return (
-					<Box key={index} height={1} flexShrink={0}>
-						<BulletRow
-							bullet={row.bullet}
-							width={contentWidth}
-							highlighted={rowHighlighted}
-						/>
-					</Box>
-				);
+				return renderBullet(row.bullet, index, rowHighlighted);
 			case 'error':
 				return (
 					<Box
 						key={index}
 						height={1}
 						flexShrink={0}
-						paddingLeft={ROW_PADDING_LEFT + 4}
+						paddingLeft={row.bullet.indent + 2}
 						overflow="hidden"
 					>
-						<Text color="#f08a8a" wrap="truncate">
+						<Text color={TEXT_WHITE} wrap="truncate">
 							{row.bullet.error ?? 'failed'}
 						</Text>
 					</Box>
@@ -258,39 +250,24 @@ export function ToolCallMessage({
 						key={index}
 						height={1}
 						flexShrink={0}
-						paddingLeft={COMMAND_INDENT}
+						paddingLeft={row.bullet.indent + COMMAND_GAP}
 						overflow="hidden"
 					>
-						<Text color="#9fb4c7" wrap="truncate">
+						<Text dimColor wrap="truncate">
 							{row.line}
 						</Text>
 					</Box>
 				);
 			case 'diff':
 				return (
-					<Box key={index} flexShrink={0} paddingLeft={ROW_PADDING_LEFT + 2}>
+					<Box key={index} flexShrink={0} paddingLeft={BULLET_INDENT}>
 						<DiffViewer
 							call={row.call}
 							diff={row.diff}
 							expanded={isDiffExpanded(row.call.id)}
-							width={contentWidth - 2}
+							width={width - BULLET_INDENT}
 							chatHeight={chatHeight}
 						/>
-					</Box>
-				);
-			case 'overflowHint':
-				return (
-					<Box
-						key={index}
-						height={1}
-						flexShrink={0}
-						paddingLeft={ROW_PADDING_LEFT + 2}
-						overflow="hidden"
-					>
-						<Text color="#6b6060" wrap="truncate">
-							… {layout.bullets.length - COLLAPSED_MAX_BULLETS} more · click to
-							expand
-						</Text>
 					</Box>
 				);
 		}
@@ -307,20 +284,7 @@ export function ToolCallMessage({
 			backgroundColor={APP_BACKGROUND_COLOR}
 		>
 			<Box marginTop={-groupScrollTop} flexShrink={0} flexDirection="column">
-				{layout.rows.map((row, index) => (
-					<Box key={index} flexDirection="row" flexShrink={0}>
-						<Box
-							width={MARKER_WIDTH}
-							height={row.type === 'diff' ? undefined : 1}
-							flexShrink={0}
-						>
-							<Text color={TOOL_COLOR}>▏</Text>
-						</Box>
-						<Box flexGrow={1} flexShrink={0} flexDirection="column">
-							{renderRow(row, index)}
-						</Box>
-					</Box>
-				))}
+				{layout.rows.map((row, index) => renderRow(row, index))}
 			</Box>
 		</Box>
 	);

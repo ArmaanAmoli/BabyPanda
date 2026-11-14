@@ -1,6 +1,5 @@
 import React from 'react';
 import {Box, Text} from 'ink';
-import BigText from 'ink-big-text';
 import {useState, useEffect, useRef} from 'react';
 import PromptBox from './components/promptBox';
 import {GAP_CHAT_BOX_PROMPT_BOX, PADDING_APP} from './layout';
@@ -33,6 +32,7 @@ import {useTerminal} from './hooks/useTerminal';
 import type {Focused} from './types';
 import {decodeToolCallBatch} from './types';
 import {useToolCallUi} from './hooks/useToolCallUi';
+import {useReasoningUi} from './hooks/useReasoningUi';
 import {useInput} from 'ink';
 import {useVisibleMessages} from './hooks/useVisibleMessages';
 import {copyToClipboard} from './utils/copyToClipboard';
@@ -75,6 +75,7 @@ export default function App() {
 	const settings = useSettings();
 	const {clearToolCalls} = useToolCalls();
 	const {toggleGroup} = useToolCallUi();
+	const {toggleReasoning} = useReasoningUi();
 	const refreshSkills = () => {
 		getSkillsFiles()
 			.then(setSkills)
@@ -169,10 +170,13 @@ export default function App() {
 		4,
 		rows - statusHeight - promptHeight - GAP_CHAT_BOX_PROMPT_BOX - 1,
 	);
+	// The bottom activity area is reserved for permission prompts and compaction.
+	// Thinking is signalled by the spinner on the reasoning block itself, so
+	// ordinary streaming hands these rows back to the chat.
 	const activityHeight =
 		pendingPermissionMessages.length > 0
 			? Math.min(permissionContentHeight, permissionMaxHeight)
-			: settings.responding.responding
+			: settings.compaction.compacting
 				? 4
 				: 0;
 	const setupItemCount = needsProviderKey
@@ -455,8 +459,17 @@ export default function App() {
 			}
 		}
 		if (_input === ' ' && focus === 'ChatBox' && focusedMessageIndex !== null) {
-			// expand/collapse the focused tool-call group
+			// expand/collapse the focused reasoning block or tool-call group
 			const focusedMessage = messageHistory[focusedMessageIndex];
+			if (focusedMessage?.role === ContentType.reasoning_content) {
+				const group = messageGroups.find(group =>
+					group.includes(focusedMessageIndex),
+				);
+				if (group) {
+					toggleReasoning(`reasoning-${group[0]}`);
+				}
+				return;
+			}
 			if (focusedMessage?.role === ContentType.tool_call) {
 				const batch = decodeToolCallBatch(focusedMessage.content);
 				if (batch) {
@@ -492,19 +505,12 @@ export default function App() {
 				gap={GAP_CHAT_BOX_PROMPT_BOX}
 			>
 				<Box height={chatHeight} flexDirection="column">
-					{messageHistory.length === 0 && (
-						<BigText
-							text="BABY PANDA"
-							align="center"
-							font="block"
-							colors={['white']}
-						/>
-					)}
-
 					{/* Mouse rows are 1-based, so the chat region starts at row 1.
 					    This also keeps the visible line count (end - start + 1)
-					    equal to the container height (rows - HEIGHT_OF_PROMPT_BOX). */}
-					<ChatBox height={chatHeight} />
+					    equal to the container height (rows - HEIGHT_OF_PROMPT_BOX).
+					    The banner is the first item inside ChatBox, so it scrolls
+					    up with the transcript rather than being erased on input. */}
+					<ChatBox height={chatHeight} sessionId={sessionId} />
 				</Box>
 
 				<Box
@@ -525,7 +531,7 @@ export default function App() {
 					)}
 
 					{pendingPermissionMessages.length === 0 &&
-						settings.responding.responding && (
+						settings.compaction.compacting && (
 							<Box
 								height={4}
 								flexDirection="column"
@@ -538,8 +544,8 @@ export default function App() {
 								</Box>
 								<Box height={1} flexDirection="row" width="100%">
 									<LodingIndicator
-										isResponding={settings.responding.responding}
-										isCompacting={settings.compaction.compacting}
+										isResponding={settings.compaction.compacting}
+										isCompacting
 									/>
 								</Box>
 							</Box>

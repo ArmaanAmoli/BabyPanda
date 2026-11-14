@@ -238,11 +238,12 @@ function buildChatMessages(messagesList: unknown[]): ChatMessage[] {
 
 		if (role === Role.skill) {
 			// Skill rows (outer role wins) render as a one-line loaded notice,
-			// never as a user bubble with the whole SKILL.md body.
+			// never as a user bubble with the whole SKILL.md body. The `⚡`
+			// glyph is drawn by the row itself, so it is not in the text.
 			const name = typeof record.name === 'string' ? record.name : '';
 			entries.push({
 				role: Role.skill,
-				content: `⚡ skill loaded: ${name}`,
+				content: `skill loaded: ${name}`,
 				createdAt: null,
 			});
 			continue;

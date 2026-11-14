@@ -82,16 +82,17 @@ describe('edit bullet stats', () => {
 		}
 	});
 
-	test('a merged bullet equals the sum of its per-call diff viewers', () => {
+	test('two edits to one file are two bullets with their own stats', () => {
 		const v0 = 'a\nb\nc\nd\n';
 		const v1 = v0.replace('b\nc', 'b\nB\nC\nc');
 		const first = editCall('m1', v0, {old_str: 'b\nc', new_str: 'b\nB\nC\nc'});
 		const second = editCall('m2', v1, {old_str: 'd', new_str: 'D'});
-		const a = diffCounts(first);
-		const b = diffCounts(second);
-		expect(bulletStats([first, second])).toBe(
-			`· +${a.added + b.added} −${a.removed + b.removed}`,
-		);
+		// one bullet per call, never merged: each carries its own diff counts
+		const bullets = buildBullets([first, second]);
+		expect(bullets).toHaveLength(2);
+		expect(bullets.map(bullet => bullet.stats)).toEqual(['· +2 −0', '· +1 −1']);
+		expect(bulletStats([first])).toBe('· +2 −0');
+		expect(bulletStats([second])).toBe('· +1 −1');
 	});
 
 	test('show no stats for a call that has not settled', () => {
@@ -131,6 +132,30 @@ describe('edit bullet stats', () => {
 		const second = bulletStats([{...call}]);
 		expect(second).toBe(first);
 		expect(first).toBe('· +2 −0');
+	});
+
+	test('a lone bullet is unindented; bullets under a root are indented', () => {
+		const single = buildBullets([
+			editCall('solo', 'a\nb\n', {old_str: 'a', new_str: 'A'}),
+		]);
+		expect(single[0]!.indent).toBe(0);
+
+		// one call requesting several URLs still has no root: unindented
+		const multiUrl = buildBullets([
+			{
+				id: 'web-1',
+				name: 'get_web_page',
+				arguments: {url: ['https://a.example', 'https://b.example']},
+				status: 'done',
+			},
+		]);
+		expect(multiUrl.map(bullet => bullet.indent)).toEqual([0, 0]);
+
+		const grouped = buildBullets([
+			editCall('g1', 'a\nb\n', {old_str: 'a', new_str: 'A'}),
+			editCall('g2', 'c\nd\n', {old_str: 'c', new_str: 'C'}),
+		]);
+		expect(grouped.map(bullet => bullet.indent)).toEqual([2, 2]);
 	});
 });
 
