@@ -87,7 +87,6 @@ const websocketHandler = (c: Context, next: Next) => {
         };
 
         const onError = async (err: Error) => {
-          console.error('[AGENT:STREAM ERROR] ', err);
           await logError(LogType.server, cwd, sessionId, 'agent stream error', err);
         };
 

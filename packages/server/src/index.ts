@@ -13,8 +13,8 @@ import { websocketHandler } from './webSocket';
 import type { WSContext } from 'hono/ws';
 import { websocket } from '@hono/bun';
 import { Models } from '@agent/config/models';
-import { dbToAgentMessages, cleanOldLogs, resolveLogTtlDays } from '@baby-panda/utils';
-import { Role, type ApiKeyType, API_KEY_TYPES } from '@baby-panda/types';
+import { dbToAgentMessages, cleanOldLogs, resolveLogTtlDays, logError } from '@baby-panda/utils';
+import { Role, type ApiKeyType, API_KEY_TYPES, LogType } from '@baby-panda/types';
 
 const defaultPort = 3500;
 const configuredPort = Number(process.env['BABY_PANDA_PORT'] ?? defaultPort);
@@ -114,7 +114,9 @@ app.post('/add-provider', async (c) => {
       statusText: 'Created',
     });
   } catch (err) {
-    console.error('[PROVIDER] Unable to save provider key:', err);
+    // No session exists yet when a key is first saved, so the log file is
+    // keyed by the endpoint rather than a session id.
+    await logError(LogType.server, cwd, 'add-provider', 'unable to save api key', err);
     return new Response(`Unable to add provider ${err}`, {
       status: 500,
       statusText: 'Internal Server Error',

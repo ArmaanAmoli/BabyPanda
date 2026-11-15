@@ -126,12 +126,15 @@ const printExitBanner = (sessionId: string) => {
 const shutdown = (exitCode: number, error?: unknown) => {
 	if (shuttingDown) return;
 	shuttingDown = true;
-	if (error !== undefined) {
-		console.error('BabyPanda stopped unexpectedly:', error);
-	}
 	cleanup();
 	stopServer();
 	appUnmount?.();
+	// The crash reason is printed after cleanup(): while the alternate screen
+	// is still up, anything written to it is discarded when we leave it, so an
+	// earlier write would make a crash look silent.
+	if (error !== undefined) {
+		console.error('BabyPanda stopped unexpectedly:', error);
+	}
 	// only a clean exit gets the farewell; a crash keeps its error visible
 	if (exitCode === 0) {
 		printExitBanner(initialSessionId ?? '');
