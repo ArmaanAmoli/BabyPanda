@@ -2,6 +2,8 @@
 import { BabyPandaAgent } from '@agent/agent';
 import type { AgentToolCallUncertain } from '../config/tools';
 import type { FinishReason } from '../types';
+import { LogType } from '@baby-panda/types';
+import { logError } from '@baby-panda/utils';
 
 export interface RawReplyChunkFromLLM {
   tool_calls: AgentToolCallUncertain[];
@@ -10,14 +12,53 @@ export interface RawReplyChunkFromLLM {
   finish_reason: FinishReason;
 }
 
+/**
+ * Records the provider's own token accounting as the context-window reading.
+ *
+ * `prompt_tokens` is the size of the context actually sent, which is what a
+ * context-window reading means. `total_tokens` adds the completion on top,
+ * and at least one provider reports it cumulatively across the session
+ * rather than per request -- which drove the reading past 100% and set
+ * compaction off on every following turn.
+ *
+ * The provider's number is the only source here; nothing is estimated.
+ */
+function applyUsage(agent: BabyPandaAgent, usage: Record<string, unknown>) {
+  const promptTokens = usage.prompt_tokens;
+  const totalTokens = usage.total_tokens;
+
+  const used =
+    typeof promptTokens === 'number' && Number.isFinite(promptTokens)
+      ? promptTokens
+      : typeof totalTokens === 'number' && Number.isFinite(totalTokens)
+        ? totalTokens
+        : undefined;
+
+  if (used === undefined || used < 0) return;
+
+  agent.contextWindowUsed = used;
+  agent.emit('context-update', agent.getModelState());
+
+  // A reading above the window is a provider reporting anomaly, not a real
+  // overrun: the request would have been rejected. Record it so the raw
+  // numbers are visible next time instead of silently driving compaction.
+  const contextWindow = agent.getModelState().contextWindow;
+  if (used > contextWindow) {
+    void logError(
+      LogType.agent,
+      agent.projectDirectoryName,
+      agent.sessionId,
+      `provider reported ${used} tokens against a ${contextWindow}-token context window`,
+    );
+  }
+}
+
 export const getContent = (encoded: string, agent?: BabyPandaAgent): RawReplyChunkFromLLM => {
   try {
     const json = JSON.parse(encoded);
     if (json.usage) {
-      // console.log("Toke Usage: ", json.usage )//temporary;
       if (agent) {
-        agent.contextWindowUsed = json.usage.total_tokens;
-        agent.emit('context-update', agent.getModelState());
+        applyUsage(agent, json.usage as Record<string, unknown>);
       }
     }
     // Usage-only terminator chunks arrive with an empty choices array, so the
