@@ -4,7 +4,7 @@ import path from 'path';
 import { getMatchingFolders } from '../getMatchingFolders';
 import { getYamlHeaders } from '../getYAMLHeaders';
 import { z } from 'zod';
-import { fileURLToPath } from 'url';
+import skillsInstructions from './SKILLS.md' with { type: 'text' };
 
 const skillFoldersNameRegex = /^[a-z]+(-+[a-z]+)*$/;
 
@@ -30,9 +30,6 @@ const SkillHeadersSchema = z.object({
   'argument-hint': stringOrList,
   'disable-model-invocation': z.boolean().optional().default(false),
 });
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
 
 export type SkillSource = 'global' | 'project';
 
@@ -167,7 +164,8 @@ export function wrapSkillContent(name: string, body: string): string {
 }
 
 export async function getSkillsInstructions(): Promise<string> {
-  const filePath = path.join(__dirname, 'SKILLS.md');
-  const content = await fs.promises.readFile(filePath, 'utf-8');
-  return content;
+  // Embedded rather than read from disk: a compiled binary has no real
+  // directory to resolve `__dirname` against, so a runtime read of this file
+  // fails with ENOENT inside Bun's virtual filesystem.
+  return skillsInstructions;
 }

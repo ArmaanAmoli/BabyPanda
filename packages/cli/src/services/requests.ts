@@ -106,7 +106,6 @@ export async function startSession() {
 	while (true) {
 		const {done, value} = await reader.read();
 		if (done) {
-			console.log('stream ended');
 			break;
 		} else {
 			chunks.push(value);
@@ -148,7 +147,6 @@ async function getAllSessions(): Promise<Session[]> {
 	while (true) {
 		const {done, value} = await reader.read();
 		if (done) {
-			console.log('stream ended');
 			break;
 		} else {
 			chunks.push(value);
@@ -364,7 +362,6 @@ export async function getMessages(sessionId: string): Promise<ChatMessage[]> {
 	while (true) {
 		const {done, value} = await reader.read();
 		if (done) {
-			console.log('stream ended');
 			break;
 		} else {
 			chunks.push(value);

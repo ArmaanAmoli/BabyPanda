@@ -38,7 +38,8 @@
     "memory/**/*.ts",
     "services/**/*.ts",
     "test/**/*.ts",
-    "utils/**/*.ts"
+    "utils/**/*.ts",
+    "../utils/text-imports.d.ts"
   ],
   "exclude": ["node_modules", "dist"]
 }

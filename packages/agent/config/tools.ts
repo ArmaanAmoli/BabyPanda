@@ -331,4 +331,23 @@ export const baseTools: ModelTool[] = [
       },
     },
   },
+  {
+    type: 'function',
+    function: {
+      name: 'readSkill',
+      description:
+        'Read the SKILL.md instructions of a skill, so they can be followed for the current task.',
+      parameters: {
+        type: 'object',
+        properties: {
+          name: {
+            type: 'string',
+            description: 'Skill name, exactly as listed in the system instructions.',
+          },
+        },
+        required: ['name'],
+        additionalProperties: false,
+      },
+    },
+  },
 ];
