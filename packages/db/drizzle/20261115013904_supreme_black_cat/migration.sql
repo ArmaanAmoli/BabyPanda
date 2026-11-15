@@ -1,0 +1,1 @@
+ALTER TABLE `api_keys` ADD `type` text DEFAULT 'model' NOT NULL;

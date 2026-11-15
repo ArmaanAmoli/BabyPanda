@@ -441,6 +441,23 @@ export const GetWebPageSchema = z.object({
 
 export const ToolContentFrontEndSchema = z.object({ name: z.string(), argument: z.unknown() });
 
+/**
+ * What a row in `api_keys` is for. `model` rows are LLM provider credentials
+ * (the key doubles as the primary key of the table); `web` rows are
+ * credentials for web-facing tools such as Exa. Splitting them by type keeps
+ * "which providers can I chat with" and "which web tools are configured"
+ * separable as more of each are added.
+ */
+export type ApiKeyType = 'model' | 'web';
+
+export const API_KEY_TYPES: ApiKeyType[] = ['model', 'web'];
+
+/** Provider name used for Exa credentials in the `api_keys` table. */
+export const EXA_PROVIDER = 'exa';
+
+/** Endpoint stored alongside an Exa key; matches the exa-js default. */
+export const EXA_ENDPOINT = 'https://api.exa.ai';
+
 export const ReadSkillSchema = z.object({
   name: z.string(),
 });

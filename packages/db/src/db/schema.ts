@@ -1,5 +1,5 @@
 import { integer, sqliteTable, text } from 'drizzle-orm/sqlite-core';
-import { Role } from '@baby-panda/types';
+import { Role, type ApiKeyType } from '@baby-panda/types';
 
 export const Session = sqliteTable('session', {
   id: text('session_id').primaryKey(),
@@ -26,6 +26,9 @@ export const ApiKeys = sqliteTable('api_keys', {
   provider: text('provider').notNull(),
   endpoint: text('endpoint').notNull(),
   key: text('key').primaryKey().notNull(),
+  // Rows written before this column existed are model providers, so the
+  // default keeps them queryable as such.
+  type: text('type').$type<ApiKeyType>().notNull().default('model'),
 });
 
 // export const CompactionResults = sqliteTable(

@@ -4,6 +4,7 @@ import {
   createSession,
   addProvider,
   getProviders,
+  getWebApiKeys,
   getSessionsByProjectDirectory,
 } from '@baby-panda/db';
 import { BabyPandaAgent } from '@baby-panda/agent';
@@ -13,7 +14,7 @@ import type { WSContext } from 'hono/ws';
 import { websocket } from '@hono/bun';
 import { Models } from '@agent/config/models';
 import { dbToAgentMessages, cleanOldLogs, resolveLogTtlDays } from '@baby-panda/utils';
-import { Role } from '@baby-panda/types';
+import { Role, type ApiKeyType, API_KEY_TYPES } from '@baby-panda/types';
 
 const defaultPort = 3500;
 const configuredPort = Number(process.env['BABY_PANDA_PORT'] ?? defaultPort);
@@ -92,11 +93,20 @@ app.post('/add-provider', async (c) => {
       statusText: 'Bad Request',
     });
   }
+  // Existing callers omit `type`; they are all chat-provider credentials.
+  const type: ApiKeyType = body.type ?? 'model';
+  if (!API_KEY_TYPES.includes(type)) {
+    return new Response(`unknown api key type: ${String(body.type)}`, {
+      status: 400,
+      statusText: 'Bad Request',
+    });
+  }
   try {
     await addProvider({
       key: body.key,
       provider: body.provider,
       endpoint: body.endpoint,
+      type,
     });
 
     return new Response('Provider Added', {
@@ -110,6 +120,11 @@ app.post('/add-provider', async (c) => {
       statusText: 'Internal Server Error',
     });
   }
+});
+
+app.get('/web-api-keys', async () => {
+  const configured = await getWebApiKeys();
+  return new Response(JSON.stringify(configured), { status: 200 });
 });
 
 app.get('/providers', async () => {

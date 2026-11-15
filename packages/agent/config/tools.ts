@@ -50,6 +50,45 @@ export const AgentToolCallSchema = z.object({
 
 export type AgentToolCall = z.infer<typeof AgentToolCallSchema>;
 
+/**
+ * Tools that need a web credential (Exa today). They are only offered to the
+ * model when a `web`-type key is configured, so an unconfigured install never
+ * advertises a tool that cannot run.
+ */
+export const webTools: ModelTool[] = [
+  {
+    type: 'function',
+    function: {
+      name: 'web_search',
+      description: 'Search the web and return relevant links.',
+      parameters: {
+        type: 'object',
+        properties: { query: { type: 'string' } },
+        required: ['query'],
+        additionalProperties: false,
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'get_web_page',
+      description: 'Fetch content from one or more web pages.',
+      parameters: {
+        type: 'object',
+        properties: { url: { type: 'array', items: { type: 'string' } } },
+        required: ['url'],
+        additionalProperties: false,
+      },
+    },
+  },
+];
+
+/** The tool list for one request: everything, plus web tools only when configured. */
+export function buildTools(webToolsConfigured: boolean): ModelTool[] {
+  return webToolsConfigured ? [...baseTools, ...webTools] : [...baseTools];
+}
+
 // export interface AgentToolCallMessage {
 //   role: 'assistant';
 //   content: string | null;
@@ -60,7 +99,7 @@ export type AgentToolCall = z.infer<typeof AgentToolCallSchema>;
 //   message: AgentToolCallMessage;
 // }
 
-export const tools: ModelTool[] = [
+export const baseTools: ModelTool[] = [
   {
     type: 'function',
     function: {
@@ -213,32 +252,6 @@ export const tools: ModelTool[] = [
         type: 'object',
         properties: { path: { type: 'string' } },
         required: ['path'],
-        additionalProperties: false,
-      },
-    },
-  },
-  {
-    type: 'function',
-    function: {
-      name: 'web_search',
-      description: 'Search the web and return relevant links.',
-      parameters: {
-        type: 'object',
-        properties: { query: { type: 'string' } },
-        required: ['query'],
-        additionalProperties: false,
-      },
-    },
-  },
-  {
-    type: 'function',
-    function: {
-      name: 'get_web_page',
-      description: 'Fetch content from one or more web pages.',
-      parameters: {
-        type: 'object',
-        properties: { url: { type: 'array', items: { type: 'string' } } },
-        required: ['url'],
         additionalProperties: false,
       },
     },

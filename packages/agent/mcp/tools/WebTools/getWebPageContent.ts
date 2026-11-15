@@ -1,15 +1,8 @@
 import Exa from 'exa-js';
-import * as dotenv from 'dotenv';
-import * as path from 'path';
-import { fileURLToPath } from 'url';
 import { z } from 'zod';
-//to be removed
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-dotenv.config({ path: path.resolve(__dirname, '../../../.env') });
-//
+import { getWebApiKeys } from '@baby-panda/db';
+import { EXA_PROVIDER } from '@baby-panda/types';
 
-const exa = new Exa();
 const WebPageResultsSchema = z.array(
   z.object({
     id: z.string(),
@@ -26,7 +19,27 @@ const WebPageResultsSchema = z.array(
 
 type WebPageResults = z.infer<typeof WebPageResultsSchema>;
 
+/**
+ * Builds an Exa client from the stored `web` credential, per call. A
+ * module-level `new Exa()` throws when no key is saved, which took the whole
+ * process down at import time.
+ */
+async function getExaClient(): Promise<Exa> {
+  const configured = await getWebApiKeys();
+  const credential = configured.find(
+    (item) => item.provider?.toLowerCase() === EXA_PROVIDER.toLowerCase(),
+  );
+  if (!credential?.hasKey) {
+    throw new Error(
+      'get_web_page is not configured: no Exa API key has been saved. ' +
+        'The user can add one with the /web-api-keys command.',
+    );
+  }
+  return new Exa(credential.hasKey);
+}
+
 export async function getWebPage(url: string[]): Promise<WebPageResults> {
+  const exa = await getExaClient();
   const result = await exa.getContents(url, {
     text: true,
     extras: {

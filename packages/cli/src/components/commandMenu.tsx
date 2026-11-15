@@ -55,3 +55,31 @@ export function ProviderSetupBox({
 		</Box>
 	);
 }
+
+/**
+ * Optional Exa credential prompt. Unlike the provider key this one can be
+ * skipped: web search is a convenience, not a requirement to run, so the copy
+ * says plainly what stops working and how to come back to it later.
+ */
+export function WebApiKeyBox({onSubmit}: {onSubmit: (key: string) => void}) {
+	const [key, setKey] = React.useState('');
+	return (
+		<Box flexDirection="column" paddingX={1} paddingTop={1}>
+			<Text color="#f0c674">
+				Add an Exa API key to enable web search? (optional)
+			</Text>
+			<Text dimColor>
+				Without it the agent cannot use web_search or get_web_page. Press escape
+				to skip — you can add it later with /web-api-keys.
+			</Text>
+			<InlineInput
+				value={key}
+				placeholder="Paste your Exa API key and press enter"
+				onChange={setKey}
+				onSubmit={() => {
+					if (key.trim()) onSubmit(key.trim());
+				}}
+			/>
+		</Box>
+	);
+}

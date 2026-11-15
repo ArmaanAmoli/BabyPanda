@@ -3,7 +3,7 @@ import { setTimeout } from 'node:timers/promises';
 // import type { Message } from '@baby-panda/types';
 import type { MessagesArray, ReasoningEffort } from '@baby-panda/types';
 import type { UrlApi } from './types'; // verbatimModuleSyntax
-import { tools } from './config/tools';
+import { baseTools, type ModelTool } from './config/tools';
 
 interface ChatCompletionArgs {
   response?: AxiosResponse;
@@ -37,6 +37,7 @@ class BabyPandaClient {
     reasoningEffort: ReasoningEffort,
     isRetrying: boolean,
     retrysDone: number,
+    requestTools: ModelTool[] = baseTools,
   ): Promise<ChatCompletionArgs> {
     const attempt = retrysDone + 1;
     const options = {
@@ -55,7 +56,7 @@ class BabyPandaClient {
       data: {
         model,
         messages,
-        tools,
+        tools: requestTools,
         temperature: 0.5,
         top_p: 1,
         max_tokens: 8192,
@@ -100,7 +101,14 @@ class BabyPandaClient {
         isRetrying = true;
       }
       if (isRetrying && retrysDone < this.maxRetrys) {
-        return await this._attempt(messages, model, reasoningEffort, true, retrysDone);
+        return await this._attempt(
+          messages,
+          model,
+          reasoningEffort,
+          true,
+          retrysDone,
+          requestTools,
+        );
       }
       return { systemError: true, error };
     }
@@ -110,8 +118,9 @@ class BabyPandaClient {
     messages: MessagesArray,
     model: string,
     reasoningEffort: ReasoningEffort,
+    requestTools: ModelTool[] = baseTools,
   ): Promise<ChatCompletionArgs> {
-    return await this._attempt(messages, model, reasoningEffort, false, 0);
+    return await this._attempt(messages, model, reasoningEffort, false, 0, requestTools);
   }
 }
 

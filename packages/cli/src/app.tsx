@@ -10,16 +10,22 @@ import {
 	textValue,
 	type PromptValue,
 } from './utils/promptValue';
-import {CommandMenu, ProviderSetupBox} from './components/commandMenu';
+import {
+	CommandMenu,
+	ProviderSetupBox,
+	WebApiKeyBox,
+} from './components/commandMenu';
 import {ChatBox} from './components/ChatBox';
 import {
 	ContentType,
 	ReasoningEffort,
 	Role,
 	WsEventTypes,
+	EXA_PROVIDER,
 } from '@baby-panda/types';
 import type {WsEventMessage} from '@baby-panda/types';
 import {getMessages, getProviders, saveProviderKey} from './services/requests';
+import {getWebApiKeys, saveWebApiKey} from './services/requests';
 import {useSession} from './hooks/useSession';
 import {
 	PermissionBox,
@@ -52,6 +58,7 @@ const SLASH_COMMANDS: {name: string; description: string}[] = [
 	{name: 'model', description: 'switch model'},
 	{name: 'efforts', description: 'set reasoning effort'},
 	{name: 'sandbox', description: 'toggle shell sandbox'},
+	{name: 'web-api-keys', description: 'add an Exa key for web search'},
 ];
 export default function App() {
 	const [focus, setFocus] = useState<Focused | null>('PromptBox');
@@ -67,6 +74,13 @@ export default function App() {
 	const [slashMenuOpen, setSlashMenuOpen] = useState(false);
 	const [providersLoaded, setProvidersLoaded] = useState(false);
 	const [setupProviderName, setSetupProviderName] = useState<string>();
+	// Web tools are opt-in. `null` = still loading, `true` = a key is saved,
+	// `false` = none saved (the prompt shows once, then the notice stays).
+	const [webKeyConfigured, setWebKeyConfigured] = useState<boolean | null>(
+		null,
+	);
+	const [showWebKeyPrompt, setShowWebKeyPrompt] = useState(false);
+	const [webKeyPromptDismissed, setWebKeyPromptDismissed] = useState(false);
 	const [clipboardStatus, setClipboardStatus] = useState<string>();
 	const clipboardStatusTimer = useRef<
 		ReturnType<typeof setTimeout> | undefined
@@ -197,6 +211,9 @@ export default function App() {
 			? 4
 			: Math.min(setupItemCount, setupLimit) + 2
 		: 0;
+	// The Exa prompt is optional, so it never blocks the prompt box: it takes
+	// the rows the provider setup would have used, and only while it is open.
+	const webKeyPromptHeight = showWebKeyPrompt ? 5 : 0;
 	const menuItemCount = showProviderMenu
 		? settings.providers.providers.length
 		: showModelMenu
@@ -219,7 +236,8 @@ export default function App() {
 		statusHeight +
 		promptHeight +
 		activityHeight +
-		setupHeight;
+		setupHeight +
+		webKeyPromptHeight;
 	const chatHeight = Math.max(1, rows - bottomHeight - GAP_CHAT_BOX_PROMPT_BOX);
 
 	useEffect(() => {
@@ -238,6 +256,26 @@ export default function App() {
 			.catch(error => {
 				setProvidersLoaded(true);
 				setClipboardStatus(`Provider loading failed: ${String(error)}`);
+			});
+	}, []);
+
+	// Web search is optional, so a missing key is not an error: prompt once at
+	// startup and leave a notice behind if the user skips it.
+	useEffect(() => {
+		void getWebApiKeys()
+			.then(keys => {
+				const configured = keys.some(
+					key =>
+						key.provider?.toLowerCase() === EXA_PROVIDER.toLowerCase() &&
+						key.hasKey,
+				);
+				setWebKeyConfigured(configured);
+				if (!configured) setShowWebKeyPrompt(true);
+			})
+			.catch(error => {
+				setWebKeyConfigured(false);
+				setShowWebKeyPrompt(true);
+				showClipboardStatus(`Web key check failed: ${String(error)}`);
 			});
 	}, []);
 
@@ -355,6 +393,13 @@ export default function App() {
 				return;
 			}
 			// execute command
+			if (token === 'web-api-keys') {
+				setPrompt(textValue(''));
+				setIsCommand(false);
+				setSlashMenuOpen(false);
+				setShowWebKeyPrompt(true);
+				return;
+			}
 			try {
 				const setting = executeCommand(promptText(prompt));
 				const wsMessage: WsEventMessage = {
@@ -488,6 +533,11 @@ export default function App() {
 			}
 		}
 		if (key.escape) {
+			if (showWebKeyPrompt) {
+				setShowWebKeyPrompt(false);
+				setWebKeyPromptDismissed(true);
+				return;
+			}
 			if (slashMenuOpen) {
 				setSlashMenuOpen(false);
 				return;
@@ -558,6 +608,33 @@ export default function App() {
 						</Box>
 					)}
 
+					{showWebKeyPrompt && (
+						<Box
+							height={webKeyPromptHeight}
+							width="100%"
+							backgroundColor={APP_BACKGROUND_COLOR}
+						>
+							<WebApiKeyBox
+								onSubmit={key => {
+									void saveWebApiKey(key)
+										.then(() => {
+											setWebKeyConfigured(true);
+											setShowWebKeyPrompt(false);
+											setWebKeyPromptDismissed(false);
+											showClipboardStatus(
+												'Exa API key saved — web search is enabled',
+											);
+										})
+										.catch(error => {
+											showClipboardStatus(
+												`Could not save Exa key: ${String(error)}`,
+											);
+										});
+								}}
+							/>
+						</Box>
+					)}
+
 					{needsProviderKey && setupProvider && (
 						<Box
 							height={setupHeight}
@@ -611,7 +688,7 @@ export default function App() {
 						</Box>
 					)}
 
-					{!needsProviderKey && (
+					{!needsProviderKey && !showWebKeyPrompt && (
 						<>
 							{showProviderMenu && (
 								<CommandMenu
@@ -659,7 +736,7 @@ export default function App() {
 						</>
 					)}
 
-					{!needsProviderKey && (
+					{!needsProviderKey && !showWebKeyPrompt && (
 						<Box
 							height={promptHeight}
 							width="100%"
@@ -676,7 +753,7 @@ export default function App() {
 							/>
 						</Box>
 					)}
-					{!needsProviderKey && (
+					{!needsProviderKey && !showWebKeyPrompt && (
 						<Box
 							height={statusHeight}
 							paddingX={1}
@@ -704,6 +781,9 @@ export default function App() {
 									: 0}
 								% used
 							</Text>
+							{webKeyConfigured === false && (
+								<Text color="#f0c674"> · web search off (/web-api-keys)</Text>
+							)}
 						</Box>
 					)}
 				</Box>

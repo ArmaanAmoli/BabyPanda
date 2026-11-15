@@ -3,7 +3,6 @@ import { Role, LogType } from '@baby-panda/types';
 import { logError } from '@baby-panda/utils';
 // import { MessageContentSchema } from '@baby-panda/types';
 import { BabyPandaAgent } from '@agent/agent';
-import { readFileSync } from 'fs';
 import {
   appendResponse,
   getContent,
@@ -12,17 +11,14 @@ import {
 import { cleanMessages, normalizeToolCalls } from '@agent/utils/cleanMessages';
 // import { jsonrepair } from 'jsonrepair';
 
-import path from 'path';
-import { fileURLToPath } from 'url';
 import { getMostRecentCompactionSummary, getMessagesForSummary } from '@baby-panda/db';
+// Embedded rather than read from disk: a compiled binary has no real directory
+// to resolve `__dirname` against, so a runtime read of these files fails.
+import babyPandaInstructions from '../BabyPanda/BabyPanda.md' with { type: 'text' };
+import compactionInstructions from '../BabyPanda/Compaction.md' with { type: 'text' };
 
 const MAX_RETRIES = 2;
 const MAX_CONTINUES = 3;
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(path.dirname(__filename));
-const systemInstructionFilePath = path.join(__dirname, 'BabyPanda', 'BabyPanda.md');
-const CompactionInstructionFilePath = path.join(__dirname, 'BabyPanda', 'Compaction.md');
 
 export async function compaction(agent: BabyPandaAgent) {
   type T = Awaited<ReturnType<typeof getMessagesForSummary>>;
@@ -47,8 +43,7 @@ export async function compaction(agent: BabyPandaAgent) {
   if (compactionSummary !== undefined) {
     messages2 = [{ role: Role.user, content: compactionSummary.content }, ...messages2];
   }
-  const systemInstructions = readFileSync(systemInstructionFilePath).toString();
-  const compactionInstructions = readFileSync(CompactionInstructionFilePath).toString();
+  const systemInstructions = babyPandaInstructions;
 
   // Some models strictly want user message strictly at the end of message
   const compactionInstructionsMessage: UserMessage = {
