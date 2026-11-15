@@ -452,6 +452,16 @@ function PromptInput({
 				return;
 			}
 
+			// The Kitty keyboard protocol reports Ctrl+J as `ESC [ 106 ; 5 u`,
+			// which Ink parses to ctrl + j rather than a line feed, so the
+			// check above never sees it. Without this it falls through to the
+			// control-key block below, where `j` is unhandled and the keypress
+			// is dropped.
+			if (key.ctrl && input === 'j') {
+				insertNewline();
+				return;
+			}
+
 			if (key.return) {
 				if (key.shift || key.meta) {
 					insertNewline();
