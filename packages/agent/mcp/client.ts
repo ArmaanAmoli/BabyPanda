@@ -1,39 +1,37 @@
-import { Client } from '@modelcontextprotocol/client';
-import { StdioClientTransport } from '@modelcontextprotocol/client/stdio';
+import { Client, InMemoryTransport } from '@modelcontextprotocol/client';
 import type { Tool, ToolResult } from '@agent/types';
-import { Role, type ToolMessage } from '@baby-panda/types';
+import { Role, type ToolMessage, LogType } from '@baby-panda/types';
+import type { McpServer } from '@modelcontextprotocol/server';
+import { logError } from '@baby-panda/utils';
 
 export class MCPClient {
   private mcp: Client;
-  private transport: StdioClientTransport | null = null;
   private sessionId: string;
+  private projectName: string;
   private tools: unknown[] = [];
-  constructor(sessionId: string) {
+
+  constructor(sessionId: string, projectName: string) {
     this.mcp = new Client({ name: 'baby-panda/mcp-client', version: '1.0.0' });
     this.sessionId = sessionId;
+    this.projectName = projectName;
   }
-  async connectToServer(serverScriptPath: string, cwd: string) {
+
+  /**
+   * Connects the client to an already-constructed MCP server over an
+   * in-memory transport pair.
+   *
+   * The server must be connected first: the client sends `initialize` as
+   * soon as it connects, and if the server's transport is not yet
+   * listening that request is written into a pipe with no reader and the
+   * call times out.
+   */
+  async connectToServer(server: McpServer) {
+    const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
     try {
-      const isJs = serverScriptPath.endsWith('.ts');
-      if (!isJs) {
-        throw new Error('Server script must be a .ts file');
-      }
-      console.log('MCP:', cwd);
-      this.transport = new StdioClientTransport({
-        command: 'bun',
-        args: [serverScriptPath],
-        cwd: cwd,
-        env: {
-          ...process.env,
-          CLIENT_CWD: cwd,
-        },
-      });
-      console.log('StdioClientTreansportCreated');
-      await this.mcp.connect(this.transport);
-      console.log('[MCP CLIENT]: connected');
+      await server.connect(serverTransport);
+      await this.mcp.connect(clientTransport, { timeout: 5000 });
       const toolsResult = await this.mcp.listTools();
       this.tools = toolsResult.tools.map((tool) => {
-        console.log(tool);
         return {
           name: tool.name,
           description: tool.description,
@@ -41,10 +39,17 @@ export class MCPClient {
         };
       });
     } catch (err) {
-      console.log('[ERROR] packages/agent/mcp/client.ts Failed to connect to MCP server: ', err);
+      await logError(
+        LogType.mcp,
+        this.projectName,
+        this.sessionId,
+        'failed to connect to the MCP server',
+        err,
+      );
       throw err;
     }
   }
+
   /**
    * Executes a single tool and returns the raw result (with `result` or
    * `error`), so the caller can derive stats / before-snapshots and emit
@@ -60,7 +65,13 @@ export class MCPClient {
         result: result,
       };
     } catch (err) {
-      console.error(`An error occured while calling ${tool} \n ${err}`);
+      await logError(
+        LogType.mcp,
+        this.projectName,
+        this.sessionId,
+        `MCP tool call failed: ${tool.name}`,
+        err,
+      );
       return {
         id: tool.id,
         name: tool.name,
@@ -69,6 +80,7 @@ export class MCPClient {
       };
     }
   }
+
   async callTools(tools: Tool[]): Promise<ToolMessage[]> {
     const mcpResult: ToolResult[] = [];
     for (const tool of tools) {

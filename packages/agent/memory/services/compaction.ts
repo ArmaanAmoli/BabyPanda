@@ -1,5 +1,6 @@
 import type { MessagesArray, SystemMessage, UserMessage } from '@baby-panda/types';
-import { Role } from '@baby-panda/types';
+import { Role, LogType } from '@baby-panda/types';
+import { logError } from '@baby-panda/utils';
 // import { MessageContentSchema } from '@baby-panda/types';
 import { BabyPandaAgent } from '@agent/agent';
 import { readFileSync } from 'fs';
@@ -159,7 +160,13 @@ export async function compaction(agent: BabyPandaAgent) {
           });
         });
       } catch (err) {
-        console.log(err);
+        void logError(
+          LogType.agent,
+          agent.projectDirectoryName,
+          sessionId,
+          'compaction stream error',
+          err,
+        );
         if (!isRetrying) {
           isRetrying = true;
         } else if (isRetrying && retriesDone < MAX_RETRIES) {

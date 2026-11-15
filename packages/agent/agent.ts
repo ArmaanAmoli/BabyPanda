@@ -68,6 +68,7 @@ import type { ShellResult } from './mcp/tools/Shell/shell';
 import { runSandboxed, type SandboxResult } from './mcp/tools/Shell/sandbox';
 import { AgentToolCallSchema, type AgentToolCall } from './config/tools';
 import { getAgentInstructions } from './memory/services/fetchAgentInstructions';
+import { createMCPServer } from './mcp/index';
 // import { getSkillsFiles, getSkillsInstructions } from './skill/skill';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -242,10 +243,9 @@ export class BabyPandaAgent extends EventEmitter {
 
   constructor({ url, apikey }: UrlApi, sessionId: string) {
     super();
-    console.log('agent cwd ', this.cwd);
-    console.log(sessionId, 'in agent constructor');
     this.sessionId = sessionId;
-    this.mcpClient = new MCPClient(this.sessionId);
+    this.projectDirectoryName = process.cwd().replaceAll('/', '-').replace('-', '');
+    this.mcpClient = new MCPClient(this.sessionId, this.projectDirectoryName);
     this.client = new BabyPandaClient({ url, apikey }, sessionId);
     this.provider = ProvidersEnum.Nvidia;
     this.model = 'minimaxai/minimax-m3.1-flash';
@@ -262,7 +262,6 @@ export class BabyPandaAgent extends EventEmitter {
       mkdirSync(projectDir, { recursive: true });
       writeFileSync(memoryFile, '');
     }
-    this.projectDirectoryName = process.cwd().replaceAll('/', '-').replace('-', '');
 
     this.systemInstructions = {
       role: Role.system,
@@ -272,11 +271,9 @@ export class BabyPandaAgent extends EventEmitter {
 
   public async init() {
     await this.connectToMCP();
-    console.log('agent:init');
   }
   private async connectToMCP() {
-    await this.mcpClient.connectToServer(__dirname + '/mcp/index.ts', this.cwd);
-    console.log('agent:MCP');
+    await this.mcpClient.connectToServer(createMCPServer());
   }
   private async getNoMessages() {
     try {
@@ -285,9 +282,7 @@ export class BabyPandaAgent extends EventEmitter {
         throw new Error('Session Id no found');
       }
       this.numberOfMessages = session[0].messagesCount;
-      console.log('agent:MessageCount');
     } catch (err) {
-      console.log(`An error occured while initiating agent ${err}`);
       throw err;
     }
   }
@@ -296,7 +291,6 @@ export class BabyPandaAgent extends EventEmitter {
   }
   private async getMessageHistory(index: number = 0): Promise<MessagesArray> {
     const messageHistoryFromDb = await getMessages(this.sessionId, index);
-    console.log('agent:MessageHistory');
     // Stored rows may miss `role` (or hold MCP-shaped content), so every entry
     // is normalized before the history is used for LLM requests.
     return cleanMessages(messageHistoryFromDb);
@@ -392,7 +386,6 @@ export class BabyPandaAgent extends EventEmitter {
 
     let injectContinuePrompt: boolean = false;
     while (true) {
-      console.log('in the loop');
       this.isRunning = true;
 
       const userInput = this.messageQueue.at(0);

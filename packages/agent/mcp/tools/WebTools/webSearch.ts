@@ -28,7 +28,6 @@ export async function webSearch(query: string): Promise<WebSearchResults> {
     const parsed = WebSearchResultsSchema.parse(results);
     return parsed ?? [];
   } catch (err) {
-    console.log(results);
     throw new Error(`Error occured while parsing WebSearchResults in webSearch.ts, ${err}`);
   }
 }
