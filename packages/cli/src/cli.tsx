@@ -190,6 +190,11 @@ const {waitUntilExit, unmount} = render(
 	{
 		alternateScreen: true,
 		incrementalRendering: true, // we dont want ink to erase the entire terminal and repaint it will cause filckering
+		// Ink's own Ctrl+C handling compares the raw chunk against '\x03', so it
+		// misses a Kitty-protocol key report and any chunk that carries Ctrl+C
+		// alongside another byte. It also swallows the parsed form inside
+		// useInput when this flag is on. App handles the key itself instead.
+		exitOnCtrlC: false,
 		stdin: filteredStdin as unknown as NodeJS.ReadStream,
 	},
 );

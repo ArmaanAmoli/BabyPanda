@@ -148,9 +148,16 @@ export class FilteredStdin extends PassThrough {
 					break;
 				}
 
-				this.push(Buffer.from(this.buffer[0]));
-				this.buffer = this.buffer.slice(1);
-				continue;
+				// Anything else is an escape sequence we do not need to
+				// interpret: an arrow key, a Kitty-protocol key report, or a
+				// lone ESC that already failed the prefix test above. Push it
+				// whole. Emitting the ESC byte on its own splits the sequence,
+				// and the consumer can then never parse it — which is how a
+				// Kitty-encoded Ctrl+C (`ESC [ 99 ; 5 u`) stopped reaching the
+				// exit handler.
+				this.push(Buffer.from(this.buffer));
+				this.buffer = '';
+				break;
 			}
 
 			if (pasteStartIndex > 0) {

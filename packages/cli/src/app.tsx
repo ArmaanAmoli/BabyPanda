@@ -1,5 +1,5 @@
 import React from 'react';
-import {Box, Text} from 'ink';
+import {Box, Text, useApp} from 'ink';
 import {useState, useEffect, useRef} from 'react';
 import PromptBox from './components/promptBox';
 import {GAP_CHAT_BOX_PROMPT_BOX, PADDING_APP} from './layout';
@@ -61,6 +61,7 @@ const SLASH_COMMANDS: {name: string; description: string}[] = [
 	{name: 'web-api-keys', description: 'add an Exa key for web search'},
 ];
 export default function App() {
+	const {exit} = useApp();
 	const [focus, setFocus] = useState<Focused | null>('PromptBox');
 	const socket = useSocket();
 	const sessionState = useSession();
@@ -469,6 +470,24 @@ export default function App() {
 	};
 
 	useInput((_input, key) => {
+		// Ctrl+C is handled here rather than left to Ink's `exitOnCtrlC`,
+		// which compares the raw chunk with `input === '\x03'`. That misses
+		// two real cases: a terminal reporting the key through the Kitty
+		// keyboard protocol sends `ESC [ 99 ; 5 u` instead, and a chunk that
+		// carries Ctrl+C alongside any other byte fails the exact match too.
+		// `useInput` parses the keypress either way, so both arrive here as
+		// ctrl + c.
+		if (key.ctrl && _input === 'c') {
+			exit();
+			return;
+		}
+		// A chunk carrying Ctrl+C alongside any other byte parses as a single
+		// unnamed keypress, so `key.ctrl` is false and the check above misses
+		// it. The ETX byte is unambiguous wherever it appears.
+		if (_input.includes('\u0003')) {
+			exit();
+			return;
+		}
 		if (key.tab) {
 			const newFocus: Focused = focus === 'ChatBox' ? 'PromptBox' : 'ChatBox';
 			setFocus(newFocus);
