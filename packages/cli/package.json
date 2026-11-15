@@ -9,6 +9,7 @@
 	},
 	"scripts": {
 		"build": "tsc",
+		"build-binary": "bun scripts/build-binary.ts",
 		"dev": "bun src/cli.tsx",
 		"test": "prettier --check . && xo && ava",
 		"start": "node dist/cli.js",

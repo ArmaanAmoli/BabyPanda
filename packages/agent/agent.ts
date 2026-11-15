@@ -1,4 +1,7 @@
 import { BabyPandaClient } from './client';
+// Embedded rather than read from disk: a compiled binary has no real directory
+// to resolve `__dirname` against, so a runtime read of these files fails.
+import babyPandaInstructions from './memory/BabyPanda/BabyPanda.md' with { type: 'text' };
 import type {
   UserPermission,
   MessagesArray,
@@ -20,19 +23,13 @@ import {
   ReasoningEffort,
   ShellCallSchema,
   ToolError,
+  EXA_PROVIDER,
 } from '@baby-panda/types';
 import { Role } from '@baby-panda/types';
 import type { SkillMessage } from '@baby-panda/types';
 import type { UrlApi, Tool, ToolResult } from './types';
 import { MessageQueueEvents } from './types';
-import {
-  readFileSync,
-  existsSync,
-  lstatSync,
-  mkdirSync,
-  writeFileSync,
-  promises as fsPromises,
-} from 'fs';
+import { existsSync, lstatSync, mkdirSync, writeFileSync, promises as fsPromises } from 'fs';
 import { EventEmitter } from 'events';
 import { MCPClient } from './mcp/client';
 import {
@@ -40,6 +37,7 @@ import {
   getSession,
   createMessage,
   getMostRecentCompactionSummary,
+  getWebApiKeys,
 } from '@baby-panda/db';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -67,15 +65,15 @@ import { shell } from './mcp/tools/Shell/shell';
 import type { ShellResult } from './mcp/tools/Shell/shell';
 import { runSandboxed, type SandboxResult } from './mcp/tools/Shell/sandbox';
 import { AgentToolCallSchema, type AgentToolCall } from './config/tools';
+import { baseTools, buildTools, type ModelTool } from './config/tools';
 import { getAgentInstructions } from './memory/services/fetchAgentInstructions';
+import { createMCPServer } from './mcp/index';
 // import { getSkillsFiles, getSkillsInstructions } from './skill/skill';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const cwd = process.cwd();
-
-const instructionsFilePath = path.join(__dirname, 'memory', 'BabyPanda', 'BabyPanda.md');
 
 function countLines(text: string): number {
   if (text.length === 0) return 0;
@@ -239,19 +237,22 @@ export class BabyPandaAgent extends EventEmitter {
   sessionId: string;
   reasoningEffort: ReasoningEffort;
   numberOfMessages: number = 0;
+  /**
+   * Tools offered to the model for the current turn. Recomputed per turn so a
+   * key saved mid-session (via /web-api-keys) takes effect on the next one.
+   */
+  private requestTools: ModelTool[] = baseTools;
+  private webToolsConfigured = false;
 
   constructor({ url, apikey }: UrlApi, sessionId: string) {
     super();
-    console.log('agent cwd ', this.cwd);
-    console.log(sessionId, 'in agent constructor');
     this.sessionId = sessionId;
-    this.mcpClient = new MCPClient(this.sessionId);
+    this.projectDirectoryName = process.cwd().replaceAll('/', '-').replace('-', '');
+    this.mcpClient = new MCPClient(this.sessionId, this.projectDirectoryName);
     this.client = new BabyPandaClient({ url, apikey }, sessionId);
     this.provider = ProvidersEnum.Nvidia;
     this.model = 'minimaxai/minimax-m3.1-flash';
-    this.instructions = readFileSync(instructionsFilePath, {
-      encoding: 'utf-8',
-    });
+    this.instructions = babyPandaInstructions;
     this.reasoningEffort = ReasoningEffort.none;
     const defaultModel = Models.Nvidia.models[this.model];
     if (!defaultModel) {
@@ -262,7 +263,6 @@ export class BabyPandaAgent extends EventEmitter {
       mkdirSync(projectDir, { recursive: true });
       writeFileSync(memoryFile, '');
     }
-    this.projectDirectoryName = process.cwd().replaceAll('/', '-').replace('-', '');
 
     this.systemInstructions = {
       role: Role.system,
@@ -272,11 +272,9 @@ export class BabyPandaAgent extends EventEmitter {
 
   public async init() {
     await this.connectToMCP();
-    console.log('agent:init');
   }
   private async connectToMCP() {
-    await this.mcpClient.connectToServer(__dirname + '/mcp/index.ts', this.cwd);
-    console.log('agent:MCP');
+    await this.mcpClient.connectToServer(createMCPServer());
   }
   private async getNoMessages() {
     try {
@@ -285,9 +283,7 @@ export class BabyPandaAgent extends EventEmitter {
         throw new Error('Session Id no found');
       }
       this.numberOfMessages = session[0].messagesCount;
-      console.log('agent:MessageCount');
     } catch (err) {
-      console.log(`An error occured while initiating agent ${err}`);
       throw err;
     }
   }
@@ -296,7 +292,6 @@ export class BabyPandaAgent extends EventEmitter {
   }
   private async getMessageHistory(index: number = 0): Promise<MessagesArray> {
     const messageHistoryFromDb = await getMessages(this.sessionId, index);
-    console.log('agent:MessageHistory');
     // Stored rows may miss `role` (or hold MCP-shaped content), so every entry
     // is normalized before the history is used for LLM requests.
     return cleanMessages(messageHistoryFromDb);
@@ -304,6 +299,21 @@ export class BabyPandaAgent extends EventEmitter {
 
   private async createContext(): Promise<MessagesArray> {
     const context: MessagesArray = [this.systemInstructions];
+
+    // Web tools are opt-in: without a saved Exa key they are not offered to
+    // the model at all, and it is told why so it does not invent a workaround.
+    this.webToolsConfigured = await this.refreshWebTools();
+    if (!this.webToolsConfigured) {
+      context.push({
+        role: Role.system,
+        content:
+          'Web search and web page fetching are unavailable: no Exa API key has been ' +
+          'configured. Do not attempt to browse the web or claim to have searched it. ' +
+          'If the task needs current information from the internet, tell the user they ' +
+          'can enable it with the /web-api-keys command.',
+      });
+    }
+
     const memory = (await readFromMemory()) ?? null;
 
     if (memory) {
@@ -359,6 +369,30 @@ export class BabyPandaAgent extends EventEmitter {
     return context;
   }
 
+  /** Re-reads the web credential and rebuilds the tool list for this turn. */
+  private async refreshWebTools(): Promise<boolean> {
+    try {
+      const configured = await getWebApiKeys();
+      const hasExaKey = configured.some(
+        (item) => item.provider?.toLowerCase() === EXA_PROVIDER.toLowerCase() && item.hasKey,
+      );
+      this.requestTools = buildTools(hasExaKey);
+      return hasExaKey;
+    } catch (err) {
+      // A failed lookup must not break the turn: fall back to no web tools,
+      // which is the safe direction (the tools would fail anyway).
+      await logError(
+        LogType.agent,
+        this.projectDirectoryName,
+        this.sessionId,
+        'failed to load web api keys',
+        err,
+      );
+      this.requestTools = buildTools(false);
+      return false;
+    }
+  }
+
   private async waitForPermission(toolCallId: string) {
     return new Promise<boolean>((resolve) => {
       this.permissionWaiters.set(toolCallId, resolve);
@@ -392,7 +426,6 @@ export class BabyPandaAgent extends EventEmitter {
 
     let injectContinuePrompt: boolean = false;
     while (true) {
-      console.log('in the loop');
       this.isRunning = true;
 
       const userInput = this.messageQueue.at(0);
@@ -455,7 +488,12 @@ export class BabyPandaAgent extends EventEmitter {
         injectContinuePrompt = false;
       }
 
-      const response = await this.client.chatCompletion(messages, this.model, this.reasoningEffort);
+      const response = await this.client.chatCompletion(
+        messages,
+        this.model,
+        this.reasoningEffort,
+        this.requestTools,
+      );
       if (response.systemError) {
         await logError(
           LogType.agent,

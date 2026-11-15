@@ -1,6 +1,8 @@
 import app, {getServerPort} from '@baby-panda/server';
 // import type {APIProvider, Session} from '../types';
 import {ContentType, LogType, Role} from '@baby-panda/types';
+import type {ApiKeyType} from '@baby-panda/types';
+import {EXA_ENDPOINT, EXA_PROVIDER} from '@baby-panda/types';
 import type {ReasoningEffort} from '@baby-panda/types';
 import type {ChatMessage, ToolCallBatch, ToolCallEntry} from '../types';
 import {encodeToolCallBatch} from '../types';
@@ -35,12 +37,13 @@ export async function saveProviderKey(
 	provider: string,
 	endpoint: string,
 	key: string,
+	type: ApiKeyType = 'model',
 ) {
 	const response = await app.fetch(
 		new Request(`${getServerBaseUrl()}/add-provider`, {
 			method: 'POST',
 			headers: {'content-type': 'application/json'},
-			body: JSON.stringify({provider, endpoint, key}),
+			body: JSON.stringify({provider, endpoint, key, type}),
 		}),
 	);
 	if (!response.ok) {
@@ -49,6 +52,28 @@ export async function saveProviderKey(
 			`Unable to save provider key (${response.status})${details ? `: ${details}` : ''}`,
 		);
 	}
+}
+
+/** Credentials stored for web-facing tools (Exa today). */
+export interface WebApiKeyInfo {
+	provider: string;
+	endpoint: string;
+	hasKey: string;
+}
+
+export async function getWebApiKeys(): Promise<WebApiKeyInfo[]> {
+	const response = await app.fetch(
+		new Request(`${getServerBaseUrl()}/web-api-keys`),
+	);
+	if (!response.ok) {
+		throw new Error(`Unable to load web api keys (${response.status})`);
+	}
+	return (await response.json()) as WebApiKeyInfo[];
+}
+
+/** Saves the Exa credential that unlocks web_search and get_web_page. */
+export async function saveWebApiKey(key: string) {
+	await saveProviderKey(EXA_PROVIDER, EXA_ENDPOINT, key, 'web');
 }
 
 const decoder = new TextDecoder();

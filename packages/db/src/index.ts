@@ -13,6 +13,7 @@ import {
   getCompactionSummaries as getCompactionSummariesMethod,
   getMostRecentCompactionSummary as getMostRecentCompactionSummaryMethod,
   getMessagesForSummary as getMessagesForSummaryMethod,
+  getWebApiKeys as getWebApiKeysMethod,
   closeDatabase,
 } from './methods';
 import { LogType } from '@baby-panda/types';
@@ -50,4 +51,5 @@ export const getMostRecentCompactionSummary = wrapWithSQLSafeExecutor(
   getMostRecentCompactionSummaryMethod,
 );
 export const getMessagesForSummary = wrapWithSQLSafeExecutor(getMessagesForSummaryMethod);
+export const getWebApiKeys = wrapWithSQLSafeExecutor(getWebApiKeysMethod);
 export { closeDatabase };

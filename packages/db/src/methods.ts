@@ -1,12 +1,13 @@
 import { db } from './index.db';
 import { Session, Message, ApiKeys } from './db/schema';
-import { Role } from '@baby-panda/types';
+import { Role, type ApiKeyType } from '@baby-panda/types';
 import { asc, desc, eq, and, ne, gt, gte } from 'drizzle-orm';
 import { ulid } from 'ulid';
 interface APIProvider {
   provider: string;
   endpoint: string;
   key: string;
+  type: ApiKeyType;
 }
 
 type SqliteError = Error & {
@@ -120,6 +121,7 @@ export async function addProvider(details: APIProvider) {
           provider: details.provider,
           endpoint: details.endpoint,
           key: details.key,
+          type: details.type,
         })
         .where(eq(ApiKeys.provider, existing.provider));
     } else {
@@ -128,6 +130,7 @@ export async function addProvider(details: APIProvider) {
         provider: details.provider,
         endpoint: details.endpoint,
         key: details.key,
+        type: details.type,
       });
     }
     return true;
@@ -141,8 +144,21 @@ export async function getProviders() {
       provider: ApiKeys.provider,
       endpoint: ApiKeys.endpoint,
       hasKey: ApiKeys.key,
+      type: ApiKeys.type,
     })
     .from(ApiKeys);
+}
+
+/** Credentials for web-facing tools (Exa today), independent of chat providers. */
+export async function getWebApiKeys() {
+  return db
+    .select({
+      provider: ApiKeys.provider,
+      endpoint: ApiKeys.endpoint,
+      hasKey: ApiKeys.key,
+    })
+    .from(ApiKeys)
+    .where(eq(ApiKeys.type, 'web'));
 }
 export async function getMessages(sessionId: string, index: number = 0) {
   const messages = await db
