@@ -52,7 +52,13 @@ const stubReactDevtools: Bun.BunPlugin = {
 
 const result = await Bun.build({
 	entrypoints: [entrypoint],
-	compile: true,
+	// A standalone binary must not read a `.env` out of whatever directory it
+	// happens to be run from. This repository's own `.env` sets
+	// `IN_DEV_MODE=true`, which silently points the database at
+	// `~/.babypanda/db/db.test.db` instead of `db.db` — so running the binary
+	// from a checkout loses every stored key and session. Configuration comes
+	// from the real environment instead.
+	compile: {autoloadDotenv: false},
 	outdir: outDir,
 	plugins: [stubReactDevtools],
 });

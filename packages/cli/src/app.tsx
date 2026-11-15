@@ -212,9 +212,11 @@ export default function App() {
 			? 4
 			: Math.min(setupItemCount, setupLimit) + 2
 		: 0;
-	// The Exa prompt is optional, so it never blocks the prompt box: it takes
-	// the rows the provider setup would have used, and only while it is open.
-	const webKeyPromptHeight = showWebKeyPrompt ? 5 : 0;
+	// The Exa prompt is optional and comes second: while a provider key is
+	// still missing it stays hidden, so the two never compete for keystrokes
+	// and the provider is always resolved first.
+	const webKeyPromptVisible = showWebKeyPrompt && !needsProviderKey;
+	const webKeyPromptHeight = webKeyPromptVisible ? 5 : 0;
 	const menuItemCount = showProviderMenu
 		? settings.providers.providers.length
 		: showModelMenu
@@ -552,7 +554,11 @@ export default function App() {
 			}
 		}
 		if (key.escape) {
-			if (showWebKeyPrompt) {
+			// Only the visible prompt is dismissible. Testing the raw flag
+			// here would let an escape meant for the provider setup (or for
+			// blurring focus) silently cancel the Exa prompt that is still
+			// waiting its turn.
+			if (webKeyPromptVisible) {
 				setShowWebKeyPrompt(false);
 				setWebKeyPromptDismissed(true);
 				return;
@@ -627,7 +633,7 @@ export default function App() {
 						</Box>
 					)}
 
-					{showWebKeyPrompt && (
+					{webKeyPromptVisible && (
 						<Box
 							height={webKeyPromptHeight}
 							width="100%"
