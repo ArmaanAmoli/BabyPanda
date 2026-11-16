@@ -1,5 +1,9 @@
 # BabyPanda
 
+
+https://github.com/user-attachments/assets/f33d2ca2-b69f-4e02-8051-39f175446ae0
+
+
 > **Only the NVIDIA NIM provider is currently supported.** Other providers are
 > not ready for use, even though provider data is stored in the database.
 
