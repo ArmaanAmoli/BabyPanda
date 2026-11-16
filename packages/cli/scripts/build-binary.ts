@@ -19,7 +19,7 @@
  * bundler an empty module instead, which is behaviourally identical for a
  * production binary: the devtools code path never runs.
  */
-import {rename} from 'fs/promises';
+// import {rename} from 'fs/promises';
 import path from 'path';
 
 const packageRoot = path.resolve(import.meta.dir, '..');
@@ -58,9 +58,14 @@ const result = await Bun.build({
 	// `~/.babypanda/db/db.test.db` instead of `db.db` — so running the binary
 	// from a checkout loses every stored key and session. Configuration comes
 	// from the real environment instead.
-	compile: {autoloadDotenv: false},
+	compile: {outfile:outFile , autoloadDotenv:false},
+	define: {'process.env.NODE_ENV' : '"production"'},
 	outdir: outDir,
 	plugins: [stubReactDevtools],
+	target:"bun",
+	bytecode:true,
+	minify:true,
+	format: 'esm',
 });
 
 if (!result.success) {
@@ -72,6 +77,6 @@ if (!result.success) {
 }
 
 // Bun names the executable after the entrypoint (`cli`); we want `babypanda`.
-await rename(path.join(outDir, 'cli'), outFile);
+// await rename(path.join(outDir, 'cli'), outFile);
 
 console.log(`Built ${outFile}`);
