@@ -1,7 +1,9 @@
 # BabyPanda
 
-
+Sample video
 https://github.com/user-attachments/assets/f33d2ca2-b69f-4e02-8051-39f175446ae0
+
+Exit banner
 <img width="1121" height="470" alt="image" src="https://github.com/user-attachments/assets/9247088c-bb48-4e07-a329-7a19817f514d" />
 
 
