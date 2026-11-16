@@ -1,6 +1,4 @@
 import { BabyPandaClient } from './client';
-// Embedded rather than read from disk: a compiled binary has no real directory
-// to resolve `__dirname` against, so a runtime read of these files fails.
 import babyPandaInstructions from './memory/BabyPanda/BabyPanda.md' with { type: 'text' };
 import type {
   UserPermission,
@@ -19,7 +17,6 @@ import type {
 import {
   ContentType,
   LogType,
-  // MessageContentSchema,
   ReasoningEffort,
   ShellCallSchema,
   ToolError,
@@ -39,8 +36,6 @@ import {
   getMostRecentCompactionSummary,
   getWebApiKeys,
 } from '@baby-panda/db';
-import path from 'path';
-import { fileURLToPath } from 'url';
 import { Models, ProvidersEnum } from '@agent/config/models';
 import {
   appendResponse,
@@ -49,7 +44,7 @@ import {
 } from '@/packages/agent/utils/extractFromRawLLMRes';
 import { cleanMessages, normalizeToolCalls } from './utils/cleanMessages';
 import { compaction } from '@agent/memory/services/compaction';
-import { projectDir, memoryFile } from '@agent/memory/constants';
+import { projectDir, memoryFile, ensureExistanceOfRequiredFolders } from '@agent/memory/constants';
 import { readFromMemory } from '@agent/memory/utils/memory';
 import {
   logError,
@@ -68,11 +63,8 @@ import { AgentToolCallSchema, type AgentToolCall } from './config/tools';
 import { baseTools, buildTools, type ModelTool } from './config/tools';
 import { getAgentInstructions } from './memory/services/fetchAgentInstructions';
 import { createMCPServer } from './mcp/index';
-// import { getSkillsFiles, getSkillsInstructions } from './skill/skill';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
+const MAX_REQUEST_RETRY = 3;
 const cwd = process.cwd();
 
 function countLines(text: string): number {
@@ -220,7 +212,7 @@ export class BabyPandaAgent extends EventEmitter {
   private isRunning = false;
   private messageQueue: MessageQueueEvents[] = [];
   private userMessageQueue: UserMessage[] = [];
-  private messagesHistory: MessagesArray = [];
+  private messages: MessagesArray = [];
   private mcpClient: MCPClient;
   private cwd = cwd;
   public projectDirectoryName = '';
@@ -271,21 +263,19 @@ export class BabyPandaAgent extends EventEmitter {
   }
 
   public async init() {
+    await ensureExistanceOfRequiredFolders();
     await this.connectToMCP();
+    this.messages = await this.createContext();
   }
   private async connectToMCP() {
     await this.mcpClient.connectToServer(createMCPServer());
   }
   private async getNoMessages() {
-    try {
-      const session = await getSession(this.sessionId);
-      if (!session[0] || session[0].messagesCount == null) {
-        throw new Error('Session Id no found');
-      }
-      this.numberOfMessages = session[0].messagesCount;
-    } catch (err) {
-      throw err;
+    const session = await getSession(this.sessionId);
+    if (!session[0] || session[0].messagesCount == null) {
+      throw new Error('Session Id no found');
     }
+    this.numberOfMessages = session[0].messagesCount;
   }
   public setSandbox(sandbox: boolean) {
     this.sandbox = sandbox;
@@ -358,7 +348,6 @@ export class BabyPandaAgent extends EventEmitter {
 
     const messageHistory: MessagesArray = [];
     if (summary) {
-      // fetch 10 messages before the compaction summary.
       messageHistory.push(JSON.parse(summary.content));
       messageHistory.push(...(await this.getMessageHistory(summary.sequence + 1)));
     } else {
@@ -423,11 +412,21 @@ export class BabyPandaAgent extends EventEmitter {
       role: Role.user,
       content: 'Continue',
     };
-
+    let isRetrying = false;
+    let retryAttempts = 0;
     let injectContinuePrompt: boolean = false;
     while (true) {
+      let errorInThisIteration = false;
+      if (isRetrying && retryAttempts >= MAX_REQUEST_RETRY) {
+        isRetrying = false;
+        retryAttempts = 0;
+        /*
+        add an event emmiter for error that will reported to user that llm can response after sevral retrys
+        */
+        this.isRunning = false;
+        break;
+      }
       this.isRunning = true;
-
       const userInput = this.messageQueue.at(0);
 
       if (
@@ -438,6 +437,7 @@ export class BabyPandaAgent extends EventEmitter {
         if (this.userMessageQueue.length >= 1) {
           for (const msg of this.userMessageQueue) {
             await createMessage(this.sessionId, JSON.stringify(msg) ?? '', Role.user);
+            this.messages.push(msg);
           }
           this.userMessageQueue.length = 0;
           // this.messageQueue.push(MessageQueueEvents.answerMessageBreakPreventer);
@@ -462,6 +462,8 @@ export class BabyPandaAgent extends EventEmitter {
             };
 
             await createMessage(this.sessionId, JSON.stringify(compactionMessage), Role.compaction);
+            this.messages.length = 0;
+            this.messages.push(...(await this.createContext()));
             this.contextWindowUsed = 0;
           }
           continue;
@@ -481,15 +483,15 @@ export class BabyPandaAgent extends EventEmitter {
         }
       }
 
-      const messages = await this.createContext();
+      // const messages = await this.createContext();
       // some models dont validate assistant prompt at the end. They only allow role: user | tool as the last message
       if (injectContinuePrompt) {
-        messages.push(continuePrompt);
+        this.messages.push(continuePrompt);
         injectContinuePrompt = false;
       }
 
       const response = await this.client.chatCompletion(
-        messages,
+        this.messages,
         this.model,
         this.reasoningEffort,
         this.requestTools,
@@ -503,6 +505,10 @@ export class BabyPandaAgent extends EventEmitter {
           response.error,
         );
         this.messageQueue.push(MessageQueueEvents.errorInLastIteration);
+        // eslint-disable-next-line no-useless-assignment
+        errorInThisIteration = true;
+        isRetrying = isRetrying ? isRetrying : true;
+        retryAttempts = isRetrying ? retryAttempts + 1 : retryAttempts;
         continue;
       }
 
@@ -592,6 +598,7 @@ export class BabyPandaAgent extends EventEmitter {
             tool_calls: normalizeToolCalls(fullReply.tool_calls),
           };
           await createMessage(this.sessionId, JSON.stringify(assistantMessage), Role.assistant);
+          this.messages.push(assistantMessage);
 
           if (toolCall) {
             try {
@@ -611,6 +618,7 @@ export class BabyPandaAgent extends EventEmitter {
                     content: errorMessage,
                   };
                   createMessage(this.sessionId, JSON.stringify(toolErrorMessage), Role.tool);
+                  this.messages.push(toolErrorMessage);
                   throw new ToolError(errorMessage);
                 }
               });
@@ -646,6 +654,7 @@ export class BabyPandaAgent extends EventEmitter {
                   ...(pages !== undefined ? { pages } : {}),
                 };
                 await createMessage(this.sessionId, JSON.stringify(record), Role.tool);
+                this.messages.push(record);
                 const event: WsToolResultEvent = {
                   id: call.id,
                   name: call.name,
@@ -694,6 +703,7 @@ export class BabyPandaAgent extends EventEmitter {
                     content: errorMessage,
                   };
                   await createMessage(this.sessionId, JSON.stringify(toolErrorMessage), Role.tool);
+                  this.messages.push(toolErrorMessage);
                   throw new ToolError(errorMessage);
                 }
                 const permissionObject: UserPermission = {
@@ -874,13 +884,19 @@ export class BabyPandaAgent extends EventEmitter {
           err,
         );
         this.messageQueue.push(MessageQueueEvents.errorInLastIteration);
+        errorInThisIteration = true;
+        isRetrying = isRetrying ? isRetrying : true;
+        retryAttempts = isRetrying ? retryAttempts + 1 : retryAttempts;
       });
 
+      // if no errors occured and we were in retry attemp reset retry settings
+      if (!errorInThisIteration) {
+        isRetrying = false;
+        retryAttempts = 0;
+      }
       // only abort if userMessage queue is empty
       if (this.userMessageQueue.length === 0 && toBreak) {
         this.isRunning = false;
-        // this.emit('abort');
-        // finalBreak = true;
         this.emit('end');
         break;
       }
@@ -916,6 +932,7 @@ export class BabyPandaAgent extends EventEmitter {
       const wrapped = wrapSkillContent(skill.name, content);
       const stored: SkillMessage = { role: Role.user, name: skill.name, content: wrapped };
       await createMessage(this.sessionId, JSON.stringify(stored), Role.skill);
+      this.messages.push(stored);
       const payload: SkillEventPayload = { name: skill.name, ok: true };
       this.emit('skill', payload);
       if (leftover.trim().length > 0) {
