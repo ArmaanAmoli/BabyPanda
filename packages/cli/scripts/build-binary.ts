@@ -58,13 +58,13 @@ const result = await Bun.build({
 	// `~/.babypanda/db/db.test.db` instead of `db.db` — so running the binary
 	// from a checkout loses every stored key and session. Configuration comes
 	// from the real environment instead.
-	compile: {outfile:outFile , autoloadDotenv:false},
-	define: {'process.env.NODE_ENV' : '"production"'},
+	compile: {outfile: outFile, autoloadDotenv: false},
+	define: {'process.env.NODE_ENV': '"production"'},
 	outdir: outDir,
 	plugins: [stubReactDevtools],
-	target:"bun",
-	bytecode:true,
-	minify:true,
+	target: 'bun',
+	bytecode: true,
+	minify: true,
 	format: 'esm',
 });
 
