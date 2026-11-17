@@ -916,9 +916,10 @@ export class BabyPandaAgent extends EventEmitter {
    * Activates a skill on behalf of the user (`/<skill-name> [args...]` from the
    * CLI). The SKILL.md body (frontmatter stripped, `$arg` placeholders filled)
    * is wrapped in a <skill> tag and persisted as a role='skill' row, keeping
-   * its sequence position in the history. Any leftover text after the declared
-   * arguments is queued as a normal user message. Emits a 'skill' event with a
-   * SkillEventPayload so the server can notify the CLI; on failure nothing is
+   * its sequence position in the history. Emits a 'skill' event with a
+   * SkillEventPayload so the server can notify the CLI; the CLI sends any text
+   * that followed the declared arguments as a user message once it receives
+   * that confirmation, so it is never queued from here. On failure nothing is
    * persisted.
    */
   async injectSkill(name: string, args?: string) {
@@ -928,17 +929,13 @@ export class BabyPandaAgent extends EventEmitter {
         throw new Error(`unknown skill "${name}"`);
       }
       const body = await readSkillBody(skill.filePath);
-      const { content, leftover } = applySkillArguments(body, skill.arguments ?? [], args ?? '');
+      const { content } = applySkillArguments(body, skill.arguments ?? [], args ?? '');
       const wrapped = wrapSkillContent(skill.name, content);
       const stored: SkillMessage = { role: Role.user, name: skill.name, content: wrapped };
       await createMessage(this.sessionId, JSON.stringify(stored), Role.skill);
       this.messages.push(stored);
       const payload: SkillEventPayload = { name: skill.name, ok: true };
       this.emit('skill', payload);
-      if (leftover.trim().length > 0) {
-        // leftover text is the user's actual message; do not await the loop
-        void this.message({ role: Role.user, content: leftover });
-      }
     } catch (err) {
       await logError(
         LogType.agent,
