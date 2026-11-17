@@ -41,6 +41,10 @@ const app = new Hono();
 export const wsCollection = new Map<string, WSContext>(); // sessionID - ws object
 export const agentStore = new Map<string, BabyPandaAgent>(); // sessionID - agent
 const cwd = process.cwd().replaceAll('/', '-').replace('-', '');
+// `createSession` stores the raw `process.cwd()`, so session lookups have to
+// query with the raw path too. The mangled form above is only a log folder
+// name; using it here made `/get-session` match nothing.
+const projectDirectory = process.cwd();
 
 // Keep the logs tree temporary: on every startup, delete logs older than the
 // retention window. Fire-and-forget so cleanup never delays server boot.
@@ -78,7 +82,7 @@ app.post('/start-session', async () => {
 });
 
 app.post('/get-session', async () => {
-  const sessions = await getSessionsByProjectDirectory(cwd);
+  const sessions = await getSessionsByProjectDirectory(projectDirectory);
   return new Response(JSON.stringify(sessions), {
     status: 201,
     statusText: 'Created',
