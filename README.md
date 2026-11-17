@@ -6,7 +6,6 @@ https://github.com/user-attachments/assets/f33d2ca2-b69f-4e02-8051-39f175446ae0
 Exit banner
 <img width="1121" height="470" alt="image" src="https://github.com/user-attachments/assets/9247088c-bb48-4e07-a329-7a19817f514d" />
 
-
 > **Only the NVIDIA NIM provider is currently supported.** Other providers are
 > not ready for use, even though provider data is stored in the database.
 
@@ -297,6 +296,7 @@ development data.
 | [`packages/db`](./packages/db)         | Drizzle schema, SQLite connection, migrations, and persistence methods.                                          |
 | [`packages/types`](./packages/types)   | Shared TypeScript types, enums, and Zod validation schemas.                                                      |
 | [`packages/utils`](./packages/utils)   | Cross-package helpers such as project naming and log writing.                                                    |
+| [`packages/web`](./packages/web)       | Landing page: React + Vite + Tailwind CSS single-page app (package name `web`).                                  |
 
 ## HTTP and WebSocket endpoints
 
@@ -347,6 +347,11 @@ bun run --filter @baby-panda/agent type-check
 bun run --filter @baby-panda/server type-check
 bun run --filter @baby-panda/cli type-check
 bun run --filter @baby-panda/db type-check
+
+# Landing page (packages/web)
+bun run --filter web dev
+bun run --filter web build
+bun run --filter web preview
 ```
 
 ## Known limitations

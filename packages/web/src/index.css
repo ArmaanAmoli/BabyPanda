@@ -1,0 +1,71 @@
+@import 'tailwindcss';
+
+@theme {
+  /* Brand palette: panda black/white with one bamboo-green accent. */
+  --color-bg: #0b0b0a;
+  --color-ink: #f1efe8;
+  --color-accent: #8fd16a;
+
+  /* System font stacks only — no remote fonts. */
+  --font-sans:
+    ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --font-mono:
+    ui-monospace, 'SF Mono', 'Cascadia Mono', Menlo, Consolas, 'Liberation Mono', monospace;
+}
+
+html {
+  scroll-behavior: smooth;
+  color-scheme: dark;
+}
+
+body {
+  margin: 0;
+  background-color: var(--color-bg);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+
+::selection {
+  background: var(--color-accent);
+  color: var(--color-bg);
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 3px;
+  border-radius: 2px;
+}
+
+/* Terminal demo: CSS-only staggered line reveal (delay set inline per line). */
+@keyframes td-line-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.td-line {
+  animation: td-line-in 0.45s ease-out both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  .td-line {
+    animation: none;
+  }
+}
+
+/* The halftone banner sets its height inline; shrink it on narrow screens.
+   !important is required to override the component's inline style. */
+@media (max-width: 640px) {
+  .hwf-root {
+    height: 460px !important;
+  }
+}
