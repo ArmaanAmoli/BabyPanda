@@ -19,6 +19,7 @@ It is organized as a Bun workspace monorepo written in TypeScript.
   - [Running the project](#running-the-project)
     - [Terminal application (recommended)](#terminal-application-recommended)
     - [Server only](#server-only)
+  - [System commands](#system-commands)
   - [How a request flows](#how-a-request-flows)
   - [Architecture](#architecture)
     - [System overview](#system-overview)
@@ -72,6 +73,10 @@ existing session, pass its session ID as the first CLI argument:
 ```bash
 bun run --filter @baby-panda/cli dev -- SESSION_ID
 ```
+
+Once the command is registered (see [System commands](#system-commands)),
+`babypanda list` shows the sessions belonging to a directory and
+`babypanda open <session-id>` resumes one.
 
 Provider API keys are stored in the local BabyPanda database. Configure a
 provider from the setup prompt when the CLI starts, or use `/provider` later.
@@ -137,6 +142,34 @@ bun run --filter @baby-panda/server dev
 
 The standalone server exposes the HTTP and WebSocket interfaces, but the CLI
 is still required for the intended interactive experience.
+
+## System commands
+
+BabyPanda also installs a set of commands that run outside the terminal UI and
+talk to the same local database:
+
+| Command                            | What it does                                 |
+| ---------------------------------- | -------------------------------------------- |
+| `babypanda`                        | Start a new session in the current directory |
+| `babypanda <session-id>`           | Open an existing session                     |
+| `babypanda open <session-id>`      | Open an existing session (explicit form)     |
+| `babypanda list`                   | List the sessions in the current directory   |
+| `babypanda delete <session-id>...` | Delete sessions in the current directory     |
+| `babypanda install`                | Register `babypanda` on this computer        |
+| `babypanda uninstall`              | Remove that registration                     |
+| `babypanda help`                   | Show the usage summary                       |
+
+Register the command once, then use it from any directory:
+
+```bash
+babypanda install          # put `babypanda` on PATH
+babypanda list             # sessions belonging to this directory
+babypanda open 01M77HW     # resume one (a unique prefix is enough)
+babypanda delete 01M77HW   # remove one, after confirmation
+```
+
+See [docs/commands.md](./docs/commands.md) for the full reference, including
+install-directory selection, `--json` output, and the confirmation rules.
 
 ## How a request flows
 
