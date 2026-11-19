@@ -45,6 +45,8 @@ import {copyToClipboard} from './utils/copyToClipboard';
 import {executeCommand} from './utils/commands/executeCommands';
 import {getSkillsFiles} from '@baby-panda/utils';
 import type {SkillFile} from '@baby-panda/utils';
+import {splitSkillInvocation} from './utils/skillInvocation';
+import {enqueuePendingSkillMessage} from './utils/pendingSkillMessages';
 import {useSettings} from './hooks/useSettings';
 import {SPINNER_FRAMES, useSpinnerFrame} from './components/spinner';
 import {activityLabel} from './utils/activityLabel';
@@ -364,35 +366,27 @@ export default function App() {
 			if (showProviderMenu || showModelMenu || showEffortMenu) return;
 			const parts = promptText(prompt).trim().split(/\s+/);
 			const token = (parts[0] ?? '').substring(1);
-			const rest = parts.slice(1).join(' ');
 			// commands win collisions; otherwise a matching skill name activates the skill
 			const skill = skills.find(item => item.name === token);
 			if (skill) {
 				setSlashMenuOpen(false);
+				// only the declared positional arguments belong to the skill; the
+				// leftover text is the user's message and waits for the skill to load
+				const {args, message} = splitSkillInvocation(
+					parts.slice(1),
+					skill.arguments?.length ?? 0,
+				);
+				if (message) {
+					enqueuePendingSkillMessage(skill.name, message);
+				}
 				const skillMessage: WsEventMessage = {
 					eventType: WsEventTypes.skill,
 					name: skill.name,
-					...(rest ? {args: rest} : {}),
+					...(args ? {args} : {}),
 				};
 				socket?.send(JSON.stringify(skillMessage));
 				setPrompt(textValue(''));
 				setIsCommand(false);
-				if (rest) {
-					// leftover text after the skill arguments is a normal user message
-					setMessageHistory(prev => [
-						...prev,
-						{role: Role.user, content: rest, createdAt: Date.now()},
-					]);
-					lastRole.current = Role.user;
-					settings.responding.setResponding(true);
-					clearToolCalls();
-					const wsMessage: WsEventMessage = {
-						eventType: WsEventTypes.message,
-						role: Role.user,
-						content: rest,
-					};
-					socket?.send(JSON.stringify(wsMessage));
-				}
 				return;
 			}
 			// execute command

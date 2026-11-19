@@ -18,6 +18,8 @@ import {
 	WsToolResultEventSchema,
 } from '@baby-panda/types';
 import usePendingPermissionMessages from '../hooks/usePendingPermissionMessages';
+import {useToolCalls} from '../hooks/useToolCalls';
+import {takePendingSkillMessage} from '../utils/pendingSkillMessages';
 import {setTimeout} from 'node:timers';
 import {useMessageHistory} from '../hooks/useMessageHistroy';
 import {appendMessageHistory} from '../utils/appendMessageHistory';
@@ -42,6 +44,7 @@ export function SocketProvider({children}: ReactChildPropInterface) {
 	const reconnectDelayRef = useRef(1000);
 	const setting = useSettings();
 	const permissions = usePendingPermissionMessages();
+	const {clearToolCalls} = useToolCalls();
 	useEffect(() => {
 		let isMounted = true;
 		const url = new URL(`ws://localhost:${getServerPort()}/ws`);
@@ -133,6 +136,30 @@ export function SocketProvider({children}: ReactChildPropInterface) {
 								...prev,
 								{role: Role.skill, content, createdAt: Date.now()},
 							]);
+							// the message typed after the skill's arguments was parked
+							// until this confirmation: a successful load sends it, a
+							// failed one discards it
+							const pendingMessage = takePendingSkillMessage(skillPayload.name);
+							if (skillPayload.ok && pendingMessage) {
+								messageContext.lastRole.current = Role.user;
+								messageContext.setMessageHistory(prev => [
+									...prev,
+									{
+										role: Role.user,
+										content: pendingMessage,
+										createdAt: Date.now(),
+									},
+								]);
+								setting.responding.setResponding(true);
+								clearToolCalls();
+								socketInstance.send(
+									JSON.stringify({
+										eventType: WsEventTypes.message,
+										role: Role.user,
+										content: pendingMessage,
+									}),
+								);
+							}
 							break;
 						}
 						case WsEventTypes.compaction: {
