@@ -33,6 +33,22 @@ import {ScrollProvider} from './context/Scroll';
 import {ReasoningUiProvider} from './context/ReasoningUi';
 import {pandaBannerRows} from './utils/pandaBanner';
 import {closeDatabase} from '@baby-panda/db';
+import {dispatchSystemCommand} from './commands';
+
+/*
+	System commands (`babypanda list`, `babypanda delete`, `babypanda install`)
+	are plain reads and writes against the database, so they are routed before
+	the terminal is reconfigured and before the server starts: they must never
+	inherit the alternate screen buffer, raw mode, or a WebSocket.
+*/
+const dispatch = await dispatchSystemCommand(process.argv.slice(2));
+if (dispatch.kind === 'exit') {
+	// The handle opened while importing the command modules is closed here
+	// rather than by the exit handler below, which is only registered once the
+	// terminal UI is really starting.
+	closeDatabase();
+	process.exit(dispatch.code);
+}
 
 const filteredStdin = new FilteredStdin(process.stdin);
 
@@ -146,13 +162,9 @@ process.on('SIGINT', () => shutdown(0));
 process.on('SIGHUP', () => shutdown(0));
 process.on('uncaughtException', error => shutdown(1, error));
 process.on('unhandledRejection', reason => shutdown(1, reason));
-const getInitialSessionId = () => {
-	if (typeof process !== 'undefined' && process.argv && process.argv[2]) {
-		return process.argv[2];
-	}
-	return null;
-};
-let initialSessionId = getInitialSessionId();
+// The dispatch already resolved the session to open, if any; a bare `babypanda`
+// still has to create one.
+let initialSessionId = dispatch.kind === 'session' ? dispatch.sessionId : null;
 if (initialSessionId === null) {
 	initialSessionId = await startSession();
 }

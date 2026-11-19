@@ -57,12 +57,12 @@ export const Models: ModelsType = {
         contextLength: 262000,
         reasoningEfforts: Object.values(ReasoningEffort),
       },
-      'deepseek-ai/deepseek-v4.1-flash': {
-        contextLength: 1000000,
-        reasoningEfforts: Object.values(ReasoningEffort),
-      },
       'meta/muse-glimmer-30b': {
         contextLength: 131000,
+        reasoningEfforts: Object.values(ReasoningEffort),
+      },
+      'moonshotai/kimi-k3.1-pro': {
+        contextLength: 1_000_000,
         reasoningEfforts: Object.values(ReasoningEffort),
       },
     },
