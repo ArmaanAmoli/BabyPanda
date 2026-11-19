@@ -14,6 +14,12 @@ export default defineConfig([
   },
   tseslint.configs.recommended,
   pluginReact.configs.flat.recommended,
+  {
+    // packages/web uses the automatic JSX runtime ("jsx": "react-jsx"), so
+    // components do not import React just to use JSX.
+    files: ['packages/web/**/*.{js,mjs,cjs,ts,mts,cts,jsx,tsx}'],
+    rules: { 'react/react-in-jsx-scope': 'off' },
+  },
   { ignores: ['**/dist/**', '**/node_modules/**'] },
   eslintConfigPrettier,
 ]);
