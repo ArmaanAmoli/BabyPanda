@@ -24,6 +24,7 @@ export enum ReasoningEffort {
   low = 'low',
   medium = 'medium',
   high = 'high',
+  max = 'max',
 }
 
 // export interface MessageRegular {

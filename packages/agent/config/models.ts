@@ -42,6 +42,21 @@ const ProviderDetailsSchema = z.object({
 
 export const ModelsSchema = z.record(ProvidersEnumSchema, ProviderDetailsSchema);
 
+/**
+ * Efforts offered on a model whose own enum has not been pinned down yet.
+ *
+ * Deliberately an explicit list rather than `Object.values(ReasoningEffort)`:
+ * the accepted vocabulary is per-model on NVIDIA NIM (Nemotron answers `max`
+ * with a 400), so a new effort must be opted into per model instead of
+ * appearing everywhere the moment it is added to the enum.
+ */
+const DEFAULT_EFFORTS = [
+  ReasoningEffort.none,
+  ReasoningEffort.low,
+  ReasoningEffort.medium,
+  ReasoningEffort.high,
+];
+
 // Input rather than output type: the two new model fields carry defaults, so a
 // model entry may omit them and still satisfy the schema.
 type ModelsType = z.input<typeof ModelsSchema>;
@@ -52,43 +67,43 @@ export const Models: ModelsType = {
     models: {
       'z-ai/glm-5.3-flash': {
         contextLength: 1_000_000,
-        reasoningEfforts: Object.values(ReasoningEffort),
+        reasoningEfforts: DEFAULT_EFFORTS,
       },
       'stepfun-ai/step-5-preview': {
         contextLength: 1_000_000,
-        reasoningEfforts: Object.values(ReasoningEffort),
+        reasoningEfforts: DEFAULT_EFFORTS,
       },
 
       'nvidia/nemotron-3-ultra-550b-a55b': {
         contextLength: 1_000_000,
-        reasoningEfforts: Object.values(ReasoningEffort),
+        reasoningEfforts: DEFAULT_EFFORTS,
       },
 
       'nvidia/nemotron-3.5-lightning-30b-a3b': {
         contextLength: 1000000,
-        reasoningEfforts: Object.values(ReasoningEffort),
+        reasoningEfforts: DEFAULT_EFFORTS,
       },
       'nvidia/nemotron-3.5-super-vl-120b-a12b': {
         contextLength: 262000,
-        reasoningEfforts: Object.values(ReasoningEffort),
+        reasoningEfforts: DEFAULT_EFFORTS,
       },
       'mistralai/mistral-large-4-1t-a52b': {
         contextLength: 262000,
-        reasoningEfforts: Object.values(ReasoningEffort),
+        reasoningEfforts: DEFAULT_EFFORTS,
       },
       'minimaxai/minimax-m3.1-flash': {
         contextLength: 262000,
-        reasoningEfforts: Object.values(ReasoningEffort),
+        reasoningEfforts: DEFAULT_EFFORTS,
       },
       'meta/muse-glimmer-30b': {
         contextLength: 131000,
-        reasoningEfforts: Object.values(ReasoningEffort),
+        reasoningEfforts: DEFAULT_EFFORTS,
       },
       'moonshotai/kimi-k3.1-pro': {
         contextLength: 1_000_000,
-        // NVIDIA documents only `low` and `high` for this model; `none` and
+        // NVIDIA documents `low | high | max` for this model; `none` and
         // `medium` are outside its enum and would be rejected.
-        reasoningEfforts: [ReasoningEffort.low, ReasoningEffort.high],
+        reasoningEfforts: [ReasoningEffort.low, ReasoningEffort.high, ReasoningEffort.max],
         supportsOpenAiExtensions: false,
         contentFormat: ContentFormat.parts,
       },
