@@ -493,6 +493,7 @@ export class BabyPandaAgent extends EventEmitter {
       const response = await this.client.chatCompletion(
         this.messages,
         this.model,
+        this.provider,
         this.reasoningEffort,
         this.requestTools,
       );

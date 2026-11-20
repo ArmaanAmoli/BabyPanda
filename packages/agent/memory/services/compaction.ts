@@ -83,6 +83,7 @@ export async function compaction(agent: BabyPandaAgent) {
       const response = await agent.client.chatCompletion(
         context,
         agent.model,
+        agent.provider,
         agent.reasoningEffort,
       );
 
