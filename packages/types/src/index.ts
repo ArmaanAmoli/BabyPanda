@@ -21,9 +21,11 @@ export enum Role {
 
 export enum ReasoningEffort {
   none = 'none',
+  minimal = 'minimal',
   low = 'low',
   medium = 'medium',
   high = 'high',
+  xhigh = 'xhigh',
   max = 'max',
 }
 

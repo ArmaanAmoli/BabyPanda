@@ -251,6 +251,12 @@ export class BabyPandaAgent extends EventEmitter {
       throw new Error(`Unknown default model: ${this.model}`);
     }
     this.contextWindow = defaultModel.contextLength;
+    // The default effort is `none`, which not every model accepts (MiniMax
+    // answers it with a 400), so it has to be validated here exactly as
+    // `setModel` does -- otherwise the very first request is rejected.
+    if (!defaultModel.reasoningEfforts.includes(this.reasoningEffort)) {
+      this.reasoningEffort = defaultModel.reasoningEfforts[0] ?? ReasoningEffort.none;
+    }
     if (!(existsSync(projectDir) && lstatSync(projectDir).isDirectory())) {
       mkdirSync(projectDir, { recursive: true });
       writeFileSync(memoryFile, '');

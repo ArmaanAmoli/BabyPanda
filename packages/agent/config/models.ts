@@ -67,37 +67,67 @@ export const Models: ModelsType = {
     models: {
       'z-ai/glm-5.3-flash': {
         contextLength: 1_000_000,
-        reasoningEfforts: DEFAULT_EFFORTS,
+        // NVIDIA documents `low | high | max`; the endpoint also accepts
+        // `none`/`minimal`/`medium`/`xhigh` but runs them at `max`.
+        reasoningEfforts: [ReasoningEffort.low, ReasoningEffort.high, ReasoningEffort.max],
       },
       'stepfun-ai/step-5-preview': {
         contextLength: 1_000_000,
-        reasoningEfforts: DEFAULT_EFFORTS,
+        reasoningEfforts: [ReasoningEffort.low, ReasoningEffort.medium, ReasoningEffort.high],
       },
 
       'nvidia/nemotron-3-ultra-550b-a55b': {
         contextLength: 1_000_000,
-        reasoningEfforts: DEFAULT_EFFORTS,
+        reasoningEfforts: [ReasoningEffort.none, ReasoningEffort.medium, ReasoningEffort.high],
       },
 
       'nvidia/nemotron-3.5-lightning-30b-a3b': {
         contextLength: 1000000,
+        // Unverified on purpose: this endpoint's schema documents no
+        // `reasoning_effort` field at all (it exposes `reasoning_budget` and
+        // `chat_template_kwargs.enable_thinking` instead), so no list here is
+        // correct. It also has no `tools` field and no `tool` role, so the
+        // agent cannot drive it until the client stops sending those.
         reasoningEfforts: DEFAULT_EFFORTS,
       },
       'nvidia/nemotron-3.5-super-vl-120b-a12b': {
         contextLength: 262000,
-        reasoningEfforts: DEFAULT_EFFORTS,
+        // Taken from the endpoint's OpenAPI enum. Its get-started prose
+        // instead says `low | medium | high`, which conflicts; the schema is
+        // the contract our request is validated against.
+        reasoningEfforts: [ReasoningEffort.none, ReasoningEffort.low, ReasoningEffort.high],
       },
       'mistralai/mistral-large-4-1t-a52b': {
         contextLength: 262000,
-        reasoningEfforts: DEFAULT_EFFORTS,
+        // Mistral documents `low | medium | high` and rejects `none` with a
+        // 400. NVIDIA's API-reference enum for this model still lists the
+        // Large 4 *preview* pair `none | high` and is stale -- it even claims
+        // an omitted field is "served as none", which the current docs
+        // contradict. Trust the vendor docs, not that enum.
+        reasoningEfforts: [ReasoningEffort.low, ReasoningEffort.medium, ReasoningEffort.high],
       },
       'minimaxai/minimax-m3.1-flash': {
         contextLength: 262000,
-        reasoningEfforts: DEFAULT_EFFORTS,
+        // MiniMax documents `low | medium | high | xhigh | max` and rejects
+        // `none` with a 400, so `none` must not be offered here.
+        reasoningEfforts: [
+          ReasoningEffort.low,
+          ReasoningEffort.medium,
+          ReasoningEffort.high,
+          ReasoningEffort.xhigh,
+          ReasoningEffort.max,
+        ],
       },
       'meta/muse-glimmer-30b': {
         contextLength: 131000,
-        reasoningEfforts: DEFAULT_EFFORTS,
+        reasoningEfforts: [
+          ReasoningEffort.none,
+          ReasoningEffort.minimal,
+          ReasoningEffort.low,
+          ReasoningEffort.medium,
+          ReasoningEffort.high,
+          ReasoningEffort.max,
+        ],
       },
       'moonshotai/kimi-k3.1-pro': {
         contextLength: 1_000_000,
