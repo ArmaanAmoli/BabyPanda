@@ -1,9 +1,69 @@
 import axios, { type AxiosResponse } from 'axios';
 import { setTimeout } from 'node:timers/promises';
 // import type { Message } from '@baby-panda/types';
-import type { MessagesArray, ReasoningEffort } from '@baby-panda/types';
+import { Role, type MessagesArray, type ReasoningEffort } from '@baby-panda/types';
 import type { UrlApi } from './types'; // verbatimModuleSyntax
 import { baseTools, type ModelTool } from './config/tools';
+import { ContentFormat, type ProvidersEnum } from './config/models';
+import getModelDetails from './services/getModelDetails';
+
+/** One text part of a multimodal `content` array. */
+type TextPart = { type: 'text'; text: string };
+
+/** A user message whose `content` is the parts array kimi-k3.1-pro expects. */
+type TextPartMessage = { role: Role.user; content: TextPart[] };
+
+/**
+ * Rewrites user messages into the `[{ type: 'text', text }]` parts form.
+ *
+ * Only `user` messages are converted: NVIDIA's kimi-k3.1-pro schema states the
+ * object list format is not supported for `system` and `assistant` roles, and
+ * tool results stay plain text. Image parts are deliberately not produced --
+ * image support is not wired up yet.
+ */
+function toTextPartMessages(messages: MessagesArray): (MessagesArray[number] | TextPartMessage)[] {
+  return messages.map((message) => {
+    if (message.role !== Role.user) return message;
+    const parts: TextPart[] = [{ type: 'text', text: message.content }];
+    return { role: Role.user, content: parts };
+  });
+}
+
+/**
+ * Builds the body of one chat-completion request.
+ *
+ * Every model here shares the OpenAI-compatible shape except kimi-k3.1-pro:
+ * NVIDIA pins its temperature at 0.95 and its schema rejects any field it does
+ * not document, so the sampling fields are dropped for it and its user
+ * messages carry `content` as text parts instead of a plain string.
+ */
+function buildRequestBody(
+  messages: MessagesArray,
+  model: string,
+  provider: ProvidersEnum,
+  reasoningEffort: ReasoningEffort,
+  requestTools: ModelTool[],
+): Record<string, unknown> {
+  const modelDetails = getModelDetails(provider, model);
+  const data: Record<string, unknown> = {
+    model,
+    messages:
+      modelDetails.contentFormat === ContentFormat.parts ? toTextPartMessages(messages) : messages,
+    tools: requestTools,
+    max_tokens: 8192,
+    stream: true,
+    stream_options: { include_usage: true },
+    reasoning_effort: reasoningEffort,
+  };
+  if (modelDetails.supportsOpenAiExtensions) {
+    data.temperature = 0.5;
+    data.top_p = 1;
+    data.frequency_penalty = 0;
+    data.presence_penalty = 0;
+    data.tool_choice = 'auto';
+  }
+  return data;
+}
 
 interface ChatCompletionArgs {
   response?: AxiosResponse;
@@ -34,6 +94,7 @@ class BabyPandaClient {
   private async _attempt(
     messages: MessagesArray,
     model: string,
+    provider: ProvidersEnum,
     reasoningEffort: ReasoningEffort,
     isRetrying: boolean,
     retrysDone: number,
@@ -53,20 +114,7 @@ class BabyPandaClient {
       // exactly what busy inference queues hold for minutes. Once the stream
       // starts flowing, inactivity is guarded separately in the agent loop.
       timeout: 600_000,
-      data: {
-        model,
-        messages,
-        tools: requestTools,
-        temperature: 0.5,
-        top_p: 1,
-        max_tokens: 8192,
-        frequency_penalty: 0,
-        presence_penalty: 0,
-        reasoning_effort: reasoningEffort,
-        stream: true,
-        stream_options: { include_usage: true },
-        tool_choice: 'auto',
-      },
+      data: buildRequestBody(messages, model, provider, reasoningEffort, requestTools),
     };
     try {
       if (isRetrying) retrysDone += 1;
@@ -104,6 +152,7 @@ class BabyPandaClient {
         return await this._attempt(
           messages,
           model,
+          provider,
           reasoningEffort,
           true,
           retrysDone,
@@ -117,10 +166,11 @@ class BabyPandaClient {
   async chatCompletion(
     messages: MessagesArray,
     model: string,
+    provider: ProvidersEnum,
     reasoningEffort: ReasoningEffort,
     requestTools: ModelTool[] = baseTools,
   ): Promise<ChatCompletionArgs> {
-    return await this._attempt(messages, model, reasoningEffort, false, 0, requestTools);
+    return await this._attempt(messages, model, provider, reasoningEffort, false, 0, requestTools);
   }
 }
 
