@@ -3,7 +3,7 @@ name: Release BabyPanda
 on:
   push:
     tags:
-      - "v*.*.*"
+      - 'v*.*.*'
 
 permissions:
   contents: write

@@ -59,4 +59,4 @@ export async function runMigrations(): Promise<void> {
   migrationsRun = true;
 }
 
-export { db, dbFile, runMigrations };
+export { db, dbFile };

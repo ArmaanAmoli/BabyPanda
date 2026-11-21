@@ -257,8 +257,6 @@ export const migrations: Migration[] = [
   },
   {
     name: '20261115013904_add_api_key_type',
-    statements: [
-      `ALTER TABLE \`api_keys\` ADD \`type\` text DEFAULT 'model' NOT NULL;`,
-    ],
+    statements: [`ALTER TABLE \`api_keys\` ADD \`type\` text DEFAULT 'model' NOT NULL;`],
   },
 ];
