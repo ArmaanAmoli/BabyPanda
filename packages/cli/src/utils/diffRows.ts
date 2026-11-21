@@ -41,7 +41,12 @@ interface Part {
 
 function splitLines(value: string): string[] {
 	if (value.length === 0) return [];
-	const lines = value.split('\n');
+	// A carriage return is a terminal command, not displayable source text.
+	// Treat CRLF (and lone CR) as a line boundary before rows reach Ink.
+	const lines = value
+		.replaceAll('\r\n', '\n')
+		.replaceAll('\r', '\n')
+		.split('\n');
 	// diffLines keeps a trailing newline on the last line; drop the phantom
 	// empty line it would otherwise produce.
 	if (lines.length > 0 && lines[lines.length - 1] === '') lines.pop();
