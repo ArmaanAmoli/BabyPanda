@@ -6,7 +6,7 @@ import {
 	type BulletView,
 } from './toolCallBullets';
 import type {UnifiedDiff} from './diffRows';
-import {buildCallDiff, buildDiffSummary} from './toolCallDiff';
+import {buildCallDiff} from './toolCallDiff';
 import {splitTruncated, wrapText} from './formatLink';
 
 export type LayoutRow =
@@ -69,12 +69,11 @@ export type RowClickAction =
 	| {type: 'ignore'};
 
 /**
- * Resolves a left-click on content line `line` of a tool-call block.
+ * Resolves a left-click within a tool-call block.
  *
- * Only a row's own interactive line acts on it. A diff viewer toggles from its
- * header line alone, so clicking the diff text — which is most of the viewer —
- * never collapses it; the user has to click the bullet or the `± path` header
- * again.
+ * Only a row's own interactive line acts on it. Diff bodies are inert: the
+ * grey write/edit bullet is the sole expand/collapse handle. Collapsed diffs
+ * have no additional path or summary row.
  *
  * `hasRoot` tells a root-level bullet (a single-call batch, which has no root
  * to click) apart from a child bullet inside a batch: the former toggles its
@@ -82,7 +81,7 @@ export type RowClickAction =
  */
 export function resolveRowClick(
 	span: LayoutRowSpan | undefined,
-	line: number,
+	_line: number,
 	hasRoot: boolean,
 ): RowClickAction {
 	if (!span) return {type: 'ignore'};
@@ -100,9 +99,7 @@ export function resolveRowClick(
 		return hasRoot ? {type: 'ignore'} : {type: 'toggleGroup'};
 	}
 	if (row.type === 'diff') {
-		return line === span.start
-			? {type: 'toggleDiff', callId: row.call.id}
-			: {type: 'ignore'};
+		return {type: 'ignore'};
 	}
 	if (row.type === 'command') {
 		return {type: 'toggleCommand', key: row.bullet.key};
@@ -125,18 +122,22 @@ export interface ToolCallLayoutOptions {
 	width: number;
 }
 
-/** Cap for one expanded diff viewer (header + body), per design. */
+/** Height budget for an expanded diff and its surrounding tool row. */
 export function maxDiffHeight(chatHeight: number): number {
 	return Math.max(3, chatHeight - 8);
 }
 
+/**
+ * Height of one diff viewer. Collapsed diffs own no rows; expanded diffs own
+ * only source rows because the grey bullet shows the path and counts.
+ */
 export function diffHeight(
 	diff: UnifiedDiff,
 	expanded: boolean,
 	chatHeight: number,
 ): number {
-	if (!expanded) return 1;
-	return Math.min(diff.rows.length + 1, maxDiffHeight(chatHeight));
+	if (!expanded) return 0;
+	return Math.max(1, Math.min(diff.rows.length, maxDiffHeight(chatHeight) - 1));
 }
 
 /** Content lines one layout row occupies (only diff rows are ever taller). */
@@ -154,9 +155,9 @@ function rowLineCount(
 /**
  * Computes the row layout of a ToolCallMessage. The same layout drives both
  * the rendered component and the ChatBox item height, so they can never
- * disagree. Side-by-side rows are only built for expanded diffs (a collapsed
- * one still carries its real added/removed counts for the header); expanded
- * shell commands add one row per wrapped continuation line of the command
+ * disagree. Diff rows are built only while expanded; collapsed calls leave
+ * just their grey bullet. Expanded shell commands add one row per wrapped
+ * continuation line of the command
  * that was cut off by the bullet's '…'.
  *
  * A batch of one call renders as a lone bullet with no root; a batch of
@@ -194,12 +195,12 @@ export function buildToolCallLayout(
 			for (const callId of bullet.diffCallIds) {
 				const call = batch.calls.find(item => item.id === callId);
 				if (!call) continue;
-				const diffExpanded = isDiffExpanded(callId);
+				if (!isDiffExpanded(callId)) continue;
 				rows.push({
 					type: 'diff',
 					call,
 					indent: bullet.indent,
-					diff: diffExpanded ? buildCallDiff(call) : buildDiffSummary(call),
+					diff: buildCallDiff(call),
 				});
 			}
 		}
