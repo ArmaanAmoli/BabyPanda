@@ -1,8 +1,7 @@
 import { useEffect } from 'react';
 import Hero from '@/components/Hero';
-import TerminalDemo from '@/components/TerminalDemo';
-import Features from '@/components/Features';
-import Stack from '@/components/Stack';
+import Demo from '@/components/Demo';
+import Showcase from '@/components/Showcase';
 import Install from '@/components/Install';
 import HalftoneWordmarkFooter from '@/components/ui/halftone-wordmark-footer';
 import { content } from '@/content';
@@ -36,9 +35,8 @@ export default function App() {
       </div>
       <main>
         <Hero />
-        <TerminalDemo />
-        <Features />
-        <Stack />
+        <Demo />
+        <Showcase />
         <Install />
       </main>
       {/* Copyright and licence line at the very end of the page. */}

@@ -29,6 +29,14 @@ export interface Cta {
   href: string;
 }
 
+/** One image shown beside section copy. */
+export interface SectionImage {
+  /** Root-relative URL of the image in the public folder. */
+  src: string;
+  /** Alt text for the image. */
+  alt: string;
+}
+
 /** Hero section copy. */
 export interface HeroContent {
   /** Big headline. */
@@ -39,31 +47,36 @@ export interface HeroContent {
   primaryCta: Cta;
   /** Secondary button (outlined). */
   secondaryCta: Cta;
+  /** Screenshot shown beside the hero copy. */
+  image?: SectionImage;
 }
 
-/** How a terminal-demo line is styled. */
-export type TerminalLineKind = 'user' | 'thought' | 'tool' | 'answer';
-
-export interface TerminalLine {
-  /** Rendering treatment: user prompt, dim thought, tool call, or answer. */
-  kind: TerminalLineKind;
-  /** The line's text. */
-  text: string;
-}
-
-export interface TerminalDemoContent {
-  /** Title shown in the terminal window's title bar. */
+/** Video demo shown in the "Watch it work" section. */
+export interface DemoContent {
+  /** Section heading. */
   title: string;
-  /** Lines rendered top to bottom inside the terminal window. */
-  lines: TerminalLine[];
-}
-
-/** One feature card. There must be exactly 6. */
-export interface Feature {
-  /** Card heading. */
-  title: string;
-  /** Card body text. */
+  /** Supporting line under the heading. */
   description: string;
+  /** MP4 video in the public folder, autoplayed muted and looped. */
+  video: { src: string };
+}
+
+/** One product screenshot shown outside of cards. */
+export interface ShowcaseItem {
+  /** Root-relative URL of the image in the public folder. */
+  src: string;
+  /** Alt text for the image. */
+  alt: string;
+}
+
+/** Product-in-action showcase section. */
+export interface ShowcaseContent {
+  /** Section heading. */
+  title: string;
+  /** Supporting line under the heading. */
+  description: string;
+  /** Screenshots displayed prominently, not inside cards. */
+  items: ShowcaseItem[];
 }
 
 export interface InstallStep {
@@ -109,133 +122,82 @@ export interface FooterContent {
 export interface Content {
   site: SiteContent;
   hero: HeroContent;
-  terminalDemo: TerminalDemoContent;
-  features: Feature[];
-  stack: string[];
+  demo: DemoContent;
+  showcase: ShowcaseContent;
   install: InstallContent;
   footer: FooterContent;
 }
 
 export const content: Content = {
   site: {
-    name: 'BabyPanda', // SAMPLE
-    tagline: 'An autonomous coding agent that lives in your terminal', // SAMPLE
+    name: 'BabyPanda',
+    tagline: 'Autonomous coding agent for your terminal',
     description:
-      'BabyPanda is a terminal-based autonomous coding agent. Point it at a task, approve its plan, and it edits files, runs tools and tests for you.', // SAMPLE
-    githubUrl: 'https://github.com/your-username/babypanda', // SAMPLE
-    authorName: 'Your Name', // SAMPLE
-    authorGithubUrl: 'https://github.com/your-username', // SAMPLE
-    year: 2026, // SAMPLE
+      'BabyPanda is a terminal-based autonomous coding agent. Point it at a task, approve its plan, and it edits files, runs tools and tests for you.',
+    githubUrl: 'https://github.com/ArmaanAmoli/BabyPanda',
+    authorName: 'Armaan Amoli',
+    authorGithubUrl: 'https://github.com/ArmaanAmoli',
+    year: 2026,
   },
   hero: {
-    headline: 'Point it at a task. Get back a diff.', // SAMPLE
+    headline: 'Ship faster with an autonomous coding agent',
     subhead:
-      'BabyPanda reads your repo, plans the change, then edits files and runs your tests from the command line — every step streamed, every tool call visible.', // SAMPLE
-    primaryCta: { label: 'Install in one line', href: '#install' }, // SAMPLE
-    secondaryCta: { label: 'Watch it work', href: '#demo' }, // SAMPLE
+      'BabyPanda reads your repo, plans the change, then edits files and runs your tests from the command line — every diff streamed, every tool call visible before you approve.',
+    primaryCta: { label: 'Install in one line', href: '#install' },
+    secondaryCta: { label: 'Watch it work', href: '#demo' },
+    image: {
+      src: '/images/start-screen.png',
+      alt: 'BabyPanda start screen in the terminal',
+    },
   },
-  terminalDemo: {
-    title: 'babypanda — zsh — 80×24', // SAMPLE
-    lines: [
-      { kind: 'user', text: 'babypanda "fix the flaky retry test in src/api/client.ts"' }, // SAMPLE
+  demo: {
+    title: 'See it in action',
+    description:
+      'BabyPanda summarizing a repository — every tool call and answer streamed live into the terminal.',
+    video: {
+      src: '/videos/babypanda-summarize-repo-sample.mp4',
+    },
+  },
+  showcase: {
+    title: 'Built for review, not just automation',
+    description:
+      'The terminal interface shows diffs and permission prompts — every action is visible before you approve it.',
+    items: [
       {
-        kind: 'thought',
-        text: 'Reading src/api/client.ts — the retry sleeps a fixed 100ms, so the test races the clock.',
-      }, // SAMPLE
-      { kind: 'tool', text: 'read_file src/api/client.ts' }, // SAMPLE
-      { kind: 'tool', text: 'run_tests tests/api/client.test.ts' }, // SAMPLE
+        src: '/images/diffViewer-screenshot.png',
+        alt: 'Inline diff viewer in the terminal',
+      },
       {
-        kind: 'thought',
-        text: 'Fails 1 in 5 runs. Replacing the fixed sleep with exponential backoff keyed to the attempt number.',
-      }, // SAMPLE
-      { kind: 'tool', text: 'edit src/api/client.ts (+3 −2)' }, // SAMPLE
-      { kind: 'tool', text: 'run_tests tests/api/client.test.ts — 20/20 passed' }, // SAMPLE
-      {
-        kind: 'answer',
-        text: 'Done. Retries now back off exponentially; 20 consecutive green runs.',
-      }, // SAMPLE
+        src: '/images/command-permission-screenshot.png',
+        alt: 'Command permission prompt in the terminal',
+      },
     ],
   },
-  features: [
-    {
-      title: 'Streamed agent loop', // SAMPLE
-      description:
-        'Thoughts, tool calls and answers stream into your terminal as they happen — no spinner, no waiting for a final blob.', // SAMPLE
-    },
-    {
-      title: 'Tool use over MCP', // SAMPLE
-      description:
-        'File edits, shell commands and tests run through MCP servers, so every action the agent takes is inspectable and revocable.', // SAMPLE
-    },
-    {
-      title: 'Interactive terminal UI', // SAMPLE
-      description:
-        'A React Ink interface with prompts, diffs and approvals inline. Approve, redirect or interrupt without leaving the keyboard.', // SAMPLE
-    },
-    {
-      title: 'Persistent sessions', // SAMPLE
-      description:
-        'Sessions are stored in SQLite and resume where they left off — reconnect after a reboot and the agent still knows the task.', // SAMPLE
-    },
-    {
-      title: 'Automatic context compaction', // SAMPLE
-      description:
-        'Long tasks are summarized and compacted automatically, so the context window survives multi-hour jobs.', // SAMPLE
-    },
-    {
-      title: 'Project-scoped memory', // SAMPLE
-      description:
-        'Decisions and conventions are remembered per repo in a local memory file, so the agent stops re-asking the same questions.', // SAMPLE
-    },
-  ],
-  stack: [
-    'TypeScript', // SAMPLE
-    'Bun', // SAMPLE
-    'React Ink', // SAMPLE
-    'Hono', // SAMPLE
-    'SQLite', // SAMPLE
-    'Drizzle', // SAMPLE
-    'MCP', // SAMPLE
-    'Zod', // SAMPLE
-  ],
   install: {
-    title: 'Install', // SAMPLE
+    title: 'Get started',
     steps: [
-      { label: 'Install globally with npm', command: 'npm install -g babypanda' }, // SAMPLE
-      { label: 'Or with Bun', command: 'bun add -g babypanda' }, // SAMPLE
-      { label: 'Start a session in any repo', command: 'cd your-project && babypanda' }, // SAMPLE
+      {
+        label: 'Install with one command',
+        command:
+          'curl -fsSL https://raw.githubusercontent.com/ArmaanAmoli/BabyPanda/main/install.sh | bash',
+      },
     ],
   },
   footer: {
-    wordmark: 'babypanda', // SAMPLE
-    label: 'BabyPanda — autonomous coding agent', // SAMPLE
-    meta: '© 2026 Your Name · MIT License', // SAMPLE
+    wordmark: 'babypanda',
+    label: 'BabyPanda — autonomous coding agent',
+    meta: '© 2026 Armaan Amoli · MIT License',
     columns: [
       {
-        title: 'Project', // SAMPLE
+        title: 'Project',
         links: [
-          { label: 'GitHub', href: 'https://github.com/your-username/babypanda' }, // SAMPLE
-          { label: 'Releases', href: 'https://github.com/your-username/babypanda/releases' }, // SAMPLE
-          {
-            label: 'Changelog',
-            href: 'https://github.com/your-username/babypanda/blob/main/CHANGELOG.md',
-          }, // SAMPLE
+          { label: 'GitHub', href: 'https://github.com/ArmaanAmoli/BabyPanda' },
+          { label: 'Releases', href: 'https://github.com/ArmaanAmoli/BabyPanda/releases' },
         ],
       },
       {
-        title: 'Docs', // SAMPLE
-        links: [
-          { label: 'Quickstart', href: '#install' }, // SAMPLE
-          { label: 'Terminal demo', href: '#demo' }, // SAMPLE
-          { label: 'MCP servers', href: '#features' }, // SAMPLE
-        ],
-      },
-      {
-        title: 'Author', // SAMPLE
-        links: [
-          { label: 'your-username', href: 'https://github.com/your-username' }, // SAMPLE
-          { label: 'Email', href: 'mailto:you@example.com' }, // SAMPLE
-        ],
+        title: 'Author',
+        links: [{ label: 'Armaan Amoli', href: 'https://github.com/ArmaanAmoli' }],
       },
     ],
   },
