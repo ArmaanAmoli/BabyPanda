@@ -17,6 +17,7 @@ import {
   deleteSession as deleteSessionMethod,
   closeDatabase,
 } from './methods';
+import { runMigrations } from './index.db';
 import { LogType } from '@baby-panda/types';
 
 function wrapWithSQLSafeExecutor<TArgs extends readonly unknown[], TResult>(
@@ -35,7 +36,7 @@ function wrapWithSQLSafeExecutor<TArgs extends readonly unknown[], TResult>(
   };
 }
 
-export { SQLSafeExecutor };
+export { SQLSafeExecutor, runMigrations };
 export const createSession = wrapWithSQLSafeExecutor(createSessionMethod);
 export const createMessage = wrapWithSQLSafeExecutor(createMessageMethod);
 export const getMessages = wrapWithSQLSafeExecutor(getMessagesMethod);

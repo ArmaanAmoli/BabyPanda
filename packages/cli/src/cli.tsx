@@ -32,7 +32,7 @@ import {ToolCallUiProvider} from './context/ToolCallUi';
 import {ScrollProvider} from './context/Scroll';
 import {ReasoningUiProvider} from './context/ReasoningUi';
 import {pandaBannerRows} from './utils/pandaBanner';
-import {closeDatabase} from '@baby-panda/db';
+import {closeDatabase, runMigrations} from '@baby-panda/db';
 import {dispatchSystemCommand} from './commands';
 
 /*
@@ -41,6 +41,7 @@ import {dispatchSystemCommand} from './commands';
 	the terminal is reconfigured and before the server starts: they must never
 	inherit the alternate screen buffer, raw mode, or a WebSocket.
 */
+await runMigrations();
 const dispatch = await dispatchSystemCommand(process.argv.slice(2));
 if (dispatch.kind === 'exit') {
 	// The handle opened while importing the command modules is closed here

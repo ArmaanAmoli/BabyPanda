@@ -3,6 +3,7 @@ import { drizzle } from 'drizzle-orm/bun-sqlite';
 import os from 'os';
 import { existsSync, mkdirSync, writeFileSync } from 'fs';
 import { Database } from 'bun:sqlite';
+import { migrations } from './migrations';
 
 const dbFilePath = path.join(os.homedir(), '.babypanda', 'db', 'db.db');
 const testDbFilePath = path.join(os.homedir(), '.babypanda', 'db', 'db.test.db');
@@ -31,4 +32,31 @@ const db = drizzle({ client: new Database(sqliteFilePath) });
 db.run('PRAGMA journal_mode = WAL;');
 db.run('PRAGMA synchronous = FULL;');
 db.run('PRAGMA foreign_keys = ON;');
-export { db, dbFile };
+
+let migrationsRun = false;
+
+/**
+ * Runs all pending embedded database migrations. Safe to call multiple times;
+ * migrations are idempotent (CREATE TABLE IF NOT EXISTS, ALTER TABLE ADD
+ * columns that may already exist may error on re-run, so we guard with a
+ * module-level flag).
+ */
+export async function runMigrations(): Promise<void> {
+  if (migrationsRun) return;
+  for (const migration of migrations) {
+    for (const statement of migration.statements) {
+      try {
+        db.run(statement);
+      } catch (err) {
+        // Some statements (like ALTER TABLE ADD column) may fail if already
+        // applied. Log and continue rather than failing the whole migration.
+        console.warn(
+          `Migration ${migration.name} statement failed (may already be applied): ${String(err)}`,
+        );
+      }
+    }
+  }
+  migrationsRun = true;
+}
+
+export { db, dbFile, runMigrations };
