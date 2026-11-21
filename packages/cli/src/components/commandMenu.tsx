@@ -1,6 +1,6 @@
 import React from 'react';
 import {Box, Text} from 'ink';
-import SelectInput from 'ink-select-input';
+import {CustomSelect} from './customSelect';
 import type {ProviderInfo} from '../services/requests';
 import {InlineInput} from './promptBox';
 
@@ -21,11 +21,11 @@ export function CommandMenu({
 	return (
 		<Box flexDirection="column" paddingX={1} paddingTop={1}>
 			<Text color="#ffffff">{title}</Text>
-			<SelectInput
+			<CustomSelect
 				items={items}
 				limit={limit}
 				isFocused={isFocused}
-				onSelect={item => onSelect(item.value)}
+				onSelect={onSelect}
 			/>
 		</Box>
 	);
