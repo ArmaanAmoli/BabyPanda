@@ -89,6 +89,22 @@ Do not paste provider keys into source code, logs, issues, or pull requests.
 Use `/model` to select a model and `/efforts` to select its reasoning effort.
 The portable reasoning levels are `none`, `low`, `medium`, and `high`.
 
+## Install the binary (Ubuntu / WSL)
+
+For a pre-built binary on Ubuntu or WSL (x86_64):
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/ArmaanAmoli/BabyPanda/main/install.sh | bash
+```
+
+This downloads and runs [`install.sh`](./install.sh), which verifies the checksum and installs `babypanda` to `~/.local/bin`. Pin a version with:
+
+```bash
+BABY_PANDA_VERSION=v0.1.0 bash install.sh
+```
+
+Then add `~/.local/bin` to your PATH and run `babypanda help`.
+
 ## Environment variables
 
 Copy `.env.example` to `.env` before running the application if you need to
