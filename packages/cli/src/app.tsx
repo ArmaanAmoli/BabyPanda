@@ -217,7 +217,7 @@ export default function App() {
 	// The Exa prompt is optional and comes second: while a provider key is
 	// still missing it stays hidden, so the two never compete for keystrokes
 	// and the provider is always resolved first.
-	const webKeyPromptVisible = showWebKeyPrompt && !needsProviderKey;
+	const webKeyPromptVisible = showWebKeyPrompt && providersLoaded && !needsProviderKey;
 	const webKeyPromptHeight = webKeyPromptVisible ? 5 : 0;
 	const menuItemCount = showProviderMenu
 		? settings.providers.providers.length
