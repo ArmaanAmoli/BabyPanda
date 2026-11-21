@@ -21,6 +21,8 @@ export interface BulletView {
 	link?: string;
 	/** Preformatted stats suffix, e.g. '· 10 lines', '· +12 −3', '· 8 results'. */
 	stats?: string;
+	/** Structured edit counts, rendered with the diff added/removed colours. */
+	diffStats?: {added: number; removed: number};
 	/** True when the call has a diff (write/edit). */
 	hasDiff: boolean;
 	/** Call ids rendered as diff viewers under this bullet. */
@@ -119,12 +121,33 @@ export function bulletTarget(args: Record<string, unknown>): string {
 }
 
 /**
+ * Real edit counts for the coloured bullet suffix. `before` only arrives with
+ * the result, and a failed edit may not have changed the file at all.
+ */
+function bulletDiffStats(
+	call: ToolCallEntry,
+): {added: number; removed: number} | undefined {
+	if (
+		call.name !== 'edit' ||
+		call.status !== 'done' ||
+		call.before === undefined
+	) {
+		return undefined;
+	}
+	return diffCountsFor(call);
+}
+
+/**
  * Stats suffix for one call. `edit` uses the real added/removed from the
  * before/after diff rather than `call.stats`, which counts the lines of the
  * raw old_str/new_str and over-reports whenever the model includes context
  * lines to pin the match.
  */
-function formatStats(name: string, call: ToolCallEntry): string | undefined {
+function formatStats(
+	name: string,
+	call: ToolCallEntry,
+	diffStats?: {added: number; removed: number},
+): string | undefined {
 	if (name === 'write') {
 		const lines = call.stats?.lines;
 		return lines !== undefined
@@ -132,11 +155,9 @@ function formatStats(name: string, call: ToolCallEntry): string | undefined {
 			: undefined;
 	}
 	if (name === 'edit') {
-		// `before` only arrives with the result, and a failed edit may not have
-		// changed the file at all, so only settled calls are counted.
-		if (call.status !== 'done' || call.before === undefined) return undefined;
-		const counts = diffCountsFor(call);
-		return `· +${counts.added} −${counts.removed}`;
+		return diffStats === undefined
+			? undefined
+			: `· +${diffStats.added} −${diffStats.removed}`;
 	}
 	const stats = call.stats;
 	if (stats == null) return undefined;
@@ -200,6 +221,7 @@ export function buildBullets(calls: ToolCallEntry[]): BulletView[] {
 			continue;
 		}
 
+		const diffStats = bulletDiffStats(call);
 		bullets.push({
 			key: call.id,
 			callIds: [call.id],
@@ -209,7 +231,8 @@ export function buildBullets(calls: ToolCallEntry[]): BulletView[] {
 				call.name === 'web_search'
 					? `"${bulletTarget(call.arguments)}"`
 					: bulletTarget(call.arguments),
-			stats: formatStats(call.name, call),
+			stats: formatStats(call.name, call, diffStats),
+			diffStats,
 			hasDiff: isFileMutation(call.name),
 			diffCallIds: isFileMutation(call.name) ? [call.id] : [],
 			expandable: call.name === 'shell',

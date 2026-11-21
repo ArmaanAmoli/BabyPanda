@@ -31,7 +31,7 @@ function diffCounts(call: ToolCallEntry): {added: number; removed: number} {
 	const batch: ToolCallBatch = {id: 'b', createdAt: 0, calls: [call]};
 	const layout = buildToolCallLayout(batch, {
 		expanded: true,
-		isDiffExpanded: () => false,
+		isDiffExpanded: () => true,
 		isCommandExpanded: () => false,
 		chatHeight: 30,
 		width: 80,
@@ -52,6 +52,7 @@ describe('edit bullet stats', () => {
 		const {added, removed} = diffCounts(call);
 		expect({added, removed}).toEqual({added: 2, removed: 0});
 		expect(bulletStats([call])).toBe('· +2 −0');
+		expect(buildBullets([call])[0]?.diffStats).toEqual({added: 2, removed: 0});
 	});
 
 	test('agree with the diff viewer for every kind of edit', () => {
