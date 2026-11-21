@@ -4,6 +4,8 @@ import os from 'os';
 import { existsSync, mkdirSync, writeFileSync } from 'fs';
 import { Database } from 'bun:sqlite';
 import { migrations } from './migrations';
+import { getProjectName, logError } from '@baby-panda/utils';
+import { LogType } from '@baby-panda/types';
 
 const dbFilePath = path.join(os.homedir(), '.babypanda', 'db', 'db.db');
 const testDbFilePath = path.join(os.homedir(), '.babypanda', 'db', 'db.test.db');
@@ -50,8 +52,12 @@ export async function runMigrations(): Promise<void> {
       } catch (err) {
         // Some statements (like ALTER TABLE ADD column) may fail if already
         // applied. Log and continue rather than failing the whole migration.
-        console.warn(
-          `Migration ${migration.name} statement failed (may already be applied): ${String(err)}`,
+        void logError(
+          LogType.db,
+          getProjectName(),
+          'migrations',
+          `Migration ${migration.name} statement failed (may already be applied)`,
+          err,
         );
       }
     }
