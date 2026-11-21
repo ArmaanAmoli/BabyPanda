@@ -24,15 +24,6 @@ export function buildCallDiff(call: ToolCallEntry): UnifiedDiff {
 }
 
 /**
- * Header-only diff: the real added/removed counts without the rows, which a
- * collapsed viewer does not render.
- */
-export function buildDiffSummary(call: ToolCallEntry): UnifiedDiff {
-	const {added, removed} = diffCountsFor(call);
-	return {rows: [], firstChangeIndex: 0, added, removed};
-}
-
-/**
  * Added/removed line counts for a write/edit call, cached by call id.
  *
  * `buildToolCallLayout` runs for every chat item on every stream chunk (the

@@ -45,34 +45,39 @@ const editCall: ToolCallEntry = {
 };
 
 describe('collapsed diff viewers', () => {
-	test('report the real added/removed counts, not zeros', () => {
-		const rows = diffRows(
-			layoutFor([editCall], {expanded: true, diffExpanded: false}),
-		);
-		expect(rows).toHaveLength(1);
-		expect(rows[0]!.diff.added).toBe(1);
-		expect(rows[0]!.diff.removed).toBe(1);
+	test('render only the grey bullet with the real added/removed counts', () => {
+		const layout = layoutFor([editCall], {
+			expanded: true,
+			diffExpanded: false,
+		});
+		expect(diffRows(layout)).toHaveLength(0);
+		expect(layout.rows.map(row => row.type)).toEqual(['bullet']);
+		expect(layout.bullets[0]?.diffStats).toEqual({added: 1, removed: 1});
 	});
 
-	test('match the counts of the expanded viewer', () => {
-		const collapsed = diffRows(
-			layoutFor([editCall], {expanded: true, diffExpanded: false}),
-		)[0]!.diff;
+	test('bullet counts match the expanded viewer', () => {
+		const collapsed = layoutFor([editCall], {
+			expanded: true,
+			diffExpanded: false,
+		});
 		const expanded = diffRows(
 			layoutFor([editCall], {expanded: true, diffExpanded: true}),
 		)[0]!.diff;
-		expect(collapsed.added).toBe(expanded.added);
-		expect(collapsed.removed).toBe(expanded.removed);
+		expect(collapsed.bullets[0]?.diffStats).toEqual({
+			added: expanded.added,
+			removed: expanded.removed,
+		});
 	});
 
-	test('build no rows until the viewer is expanded', () => {
-		const collapsed = diffRows(
-			layoutFor([editCall], {expanded: true, diffExpanded: false}),
-		)[0]!.diff;
+	test('build no diff row until the viewer is expanded', () => {
+		const collapsed = layoutFor([editCall], {
+			expanded: true,
+			diffExpanded: false,
+		});
 		const expanded = diffRows(
 			layoutFor([editCall], {expanded: true, diffExpanded: true}),
 		)[0]!.diff;
-		expect(collapsed.rows).toHaveLength(0);
+		expect(diffRows(collapsed)).toHaveLength(0);
 		expect(expanded.rows.length).toBeGreaterThan(0);
 	});
 
@@ -129,14 +134,11 @@ describe('batch root', () => {
 		const layout = layoutFor(calls, {expanded: true, diffExpanded: false});
 		expect(layout.hasRoot).toBe(true);
 		expect(layout.rows[0]!.type).toBe('root');
-		// each edit bullet is followed by its (collapsed) diff summary row
+		// Collapsed edit bullets have no secondary path/summary rows.
 		expect(layout.rows.slice(1).map(row => row.type)).toEqual([
 			'bullet',
-			'diff',
 			'bullet',
-			'diff',
 			'bullet',
-			'diff',
 		]);
 	});
 });
@@ -164,10 +166,10 @@ describe('clicking diff viewers', () => {
 		);
 	}
 
-	test('every diff header still maps to its own row once one is expanded', () => {
+	test('every diff span still maps to its own row once one is expanded', () => {
 		const layout = layoutFor(threeEdits, {
 			expanded: true,
-			diffExpanded: id => id === 'call-a',
+			diffExpanded: true,
 		});
 		// the expanded viewer really does push the rows below it down
 		expect(layout.expandedFullHeight).toBeGreaterThan(layout.rows.length);
@@ -186,7 +188,7 @@ describe('clicking diff viewers', () => {
 	test('the naive line-as-index mapping is what broke', () => {
 		const layout = layoutFor(threeEdits, {
 			expanded: true,
-			diffExpanded: id => id === 'call-a',
+			diffExpanded: true,
 		});
 		const indexB = diffRowIndex(layout, 'call-b');
 		const startB = layout.rowSpans[indexB]!.start;
@@ -200,13 +202,12 @@ describe('clicking diff viewers', () => {
 			expanded: true,
 			diffExpanded: id => id === 'call-c',
 		});
-		// rows above the expanded viewer keep their original line offsets,
-		// which is why clicking upwards from the bottom used to work
-		for (const callId of ['call-a', 'call-b', 'call-c']) {
-			const index = diffRowIndex(layout, callId);
-			expect(layout.rowSpans[index]!.start).toBe(index);
+		// Bullets above the expanded viewer keep their original line offsets.
+		for (const span of layout.rowSpans) {
+			if (span.row.type === 'bullet') expect(span.start).toBe(span.index);
 		}
 		const indexC = diffRowIndex(layout, 'call-c');
+		expect(indexC).toBeGreaterThanOrEqual(0);
 		expect(layout.rowSpans[indexC]!.lines).toBeGreaterThan(1);
 	});
 
@@ -269,7 +270,7 @@ describe('resolveRowClick', () => {
 		);
 	}
 
-	test('only a diff viewer header line toggles it', () => {
+	test('expanded diff body rows are inert without a duplicate header', () => {
 		const layout = layoutFor(threeEdits, {
 			expanded: true,
 			diffExpanded: id => id === 'call-a',
@@ -283,24 +284,25 @@ describe('resolveRowClick', () => {
 		const clicks = clickEveryLine(layout).filter(
 			click => click.line >= span.start && click.line < span.start + span.lines,
 		);
-		expect(clicks[0]!.action).toEqual({type: 'toggleDiff', callId: 'call-a'});
-		// every other line of the viewer is inert
-		for (const click of clicks.slice(1)) {
+		// The bullet toggles the expanded diff; every source row is inert.
+		for (const click of clicks) {
 			expect(click.action).toEqual({type: 'ignore'});
 		}
 	});
 
-	test('a collapsed viewer is a single line that toggles', () => {
+	test('a collapsed viewer has no row; its grey bullet is the only toggle', () => {
 		const layout = layoutFor(threeEdits, {
 			expanded: true,
 			diffExpanded: false,
 		});
-		const span = spanOf(
+		expect(
+			spanOf(layout, row => row.type === 'diff' && row.call.id === 'call-b'),
+		).toBeUndefined();
+		const bullet = spanOf(
 			layout,
-			row => row.type === 'diff' && row.call.id === 'call-b',
+			row => row.type === 'bullet' && row.bullet.key === 'call-b',
 		)!;
-		expect(span.lines).toBe(1);
-		expect(resolveRowClick(span, span.start, layout.hasRoot)).toEqual({
+		expect(resolveRowClick(bullet, bullet.start, layout.hasRoot)).toEqual({
 			type: 'toggleDiff',
 			callId: 'call-b',
 		});
