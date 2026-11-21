@@ -401,3 +401,21 @@ bun run --filter web preview
 If you report a bug, include the command you ran, operating system, Bun
 version, whether `IN_DEV_MODE` was enabled, and a redacted error log. Never
 include provider API keys.
+
+## Disclaimer
+
+BabyPanda is an AI coding agent that can read and modify files and run shell
+commands on your machine. Its actions are driven by language-model output,
+which can be wrong or unpredictable.
+
+- Use it at your own risk, and review what it does before approving actions.
+- Work inside a git repository or keep backups of important files.
+- Do not run it on systems or data you can't afford to lose.
+- You are responsible for how you use this software and for complying with
+  all applicable laws. Do not use it for unlawful or harmful purposes.
+- Your API keys stay on your machine. Use only keys and model providers
+  you are permitted to use, and follow their terms.
+
+This software is provided "as is" without warranty of any kind. See the
+LICENSE file for full terms. The author is not liable for any damage or
+loss arising from its use.
