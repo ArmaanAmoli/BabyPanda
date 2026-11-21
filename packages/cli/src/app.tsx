@@ -76,7 +76,9 @@ export default function App() {
 	const [skills, setSkills] = useState<SkillFile[]>([]);
 	const [slashMenuOpen, setSlashMenuOpen] = useState(false);
 	const [providersLoaded, setProvidersLoaded] = useState(false);
-	const [providerLoadError, setProviderLoadError] = useState<string | null>(null);
+	const [providerLoadError, setProviderLoadError] = useState<string | null>(
+		null,
+	);
 	const [setupProviderName, setSetupProviderName] = useState<string>();
 	// Web tools are opt-in. `null` = still loading, `true` = a key is saved,
 	// `false` = none saved (the prompt shows once, then the notice stays).
@@ -219,7 +221,10 @@ export default function App() {
 	// still missing it stays hidden, so the two never compete for keystrokes
 	// and the provider is always resolved first.
 	const webKeyPromptVisible =
-		showWebKeyPrompt && providersLoaded && !needsProviderKey && !providerLoadError;
+		showWebKeyPrompt &&
+		providersLoaded &&
+		!needsProviderKey &&
+		!providerLoadError;
 	const webKeyPromptHeight = webKeyPromptVisible ? 5 : 0;
 	const menuItemCount = showProviderMenu
 		? settings.providers.providers.length
