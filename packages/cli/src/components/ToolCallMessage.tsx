@@ -24,7 +24,13 @@ import {
 	truncateEnd,
 } from '../utils/formatLink';
 import {DiffViewer} from './DiffViewer';
-import {APP_BACKGROUND_COLOR, HIGHLIGHT_BACKGROUND, TEXT_WHITE} from '../theme';
+import {
+	APP_BACKGROUND_COLOR,
+	DIFF_ADDED_TEXT,
+	DIFF_REMOVED_TEXT,
+	HIGHLIGHT_BACKGROUND,
+	TEXT_WHITE,
+} from '../theme';
 
 /** Muted grey for secondary text: hints, command continuation, error detail. */
 const MUTED_TEXT = '#8a7f7f';
@@ -88,12 +94,14 @@ export function ToolCallMessage({
 	const [groupScrollTop, setGroupScrollTop] = useState(0);
 	const [hoveredRow, setHoveredRow] = useState<number | null>(null);
 	const rootRef = useRef<DOMElement>(null);
+	// Content can shrink when a diff collapses; never leave the window past its end.
+	const scrollTop = Math.min(groupScrollTop, maxGroupScroll);
 
 	useScroll(
 		{
 			ref: rootRef,
 			getScrollState: () => ({
-				scrollTop: groupScrollTop,
+				scrollTop,
 				scrollHeight: layout.expandedFullHeight,
 				innerHeight: height,
 			}),
@@ -113,7 +121,7 @@ export function ToolCallMessage({
 		if (event.row < startRow || event.row >= startRow + visibleRows) return;
 		// map the terminal row to a content line of the (possibly internally
 		// scrolled) content, then to the row that occupies that line
-		const logicalRow = clipTop + (event.row - startRow) + groupScrollTop;
+		const logicalRow = clipTop + (event.row - startRow) + scrollTop;
 		if (event.name === 'left-press') {
 			const span = spanAt(logicalRow);
 			const action = resolveRowClick(span, logicalRow, layout.hasRoot);
@@ -158,7 +166,6 @@ export function ToolCallMessage({
 				key={index}
 				height={1}
 				flexShrink={0}
-				overflow="hidden"
 				backgroundColor={
 					highlighted ? HIGHLIGHT_BACKGROUND : APP_BACKGROUND_COLOR
 				}
@@ -169,7 +176,10 @@ export function ToolCallMessage({
 					{row.callCount} tool{row.callCount === 1 ? '' : 's'}
 				</Text>
 				{!expanded && canExpand && (
-					<Text color={MUTED_TEXT}> · click to expand</Text>
+					<Text color={MUTED_TEXT} wrap="truncate">
+						{' '}
+						· click to expand
+					</Text>
 				)}
 			</Box>
 		);
@@ -198,7 +208,6 @@ export function ToolCallMessage({
 				height={1}
 				flexShrink={0}
 				paddingLeft={bullet.indent}
-				overflow="hidden"
 				backgroundColor={
 					highlighted ? HIGHLIGHT_BACKGROUND : APP_BACKGROUND_COLOR
 				}
@@ -213,14 +222,31 @@ export function ToolCallMessage({
 				<Text dimColor wrap="truncate">
 					{targetText}
 				</Text>
-				{bullet.stats !== undefined && bullet.stats.length > 0 && (
-					<Text dimColor> {bullet.stats}</Text>
+				{bullet.diffStats !== undefined ? (
+					<Text wrap="truncate">
+						<Text dimColor> · </Text>
+						<Text color={DIFF_ADDED_TEXT}>+{bullet.diffStats.added}</Text>{' '}
+						<Text color={DIFF_REMOVED_TEXT}>−{bullet.diffStats.removed}</Text>
+					</Text>
+				) : (
+					bullet.stats !== undefined &&
+					bullet.stats.length > 0 && (
+						<Text dimColor wrap="truncate">
+							{' '}
+							{bullet.stats}
+						</Text>
+					)
 				)}
 			</Box>
 		);
 	};
 
-	const renderRow = (row: LayoutRow, index: number) => {
+	const renderRow = (
+		row: LayoutRow,
+		index: number,
+		clipTop = 0,
+		visibleRows = 1,
+	) => {
 		const rowHighlighted = (focused && !expanded) || hoveredRow === index;
 		switch (row.type) {
 			case 'root':
@@ -234,7 +260,6 @@ export function ToolCallMessage({
 						height={1}
 						flexShrink={0}
 						paddingLeft={row.bullet.indent + 2}
-						overflow="hidden"
 					>
 						<Text color={TEXT_WHITE} wrap="truncate">
 							{row.bullet.error ?? 'failed'}
@@ -250,7 +275,6 @@ export function ToolCallMessage({
 						height={1}
 						flexShrink={0}
 						paddingLeft={row.bullet.indent + COMMAND_GAP}
-						overflow="hidden"
 					>
 						<Text dimColor wrap="truncate">
 							{row.line}
@@ -261,11 +285,12 @@ export function ToolCallMessage({
 				return (
 					<Box key={index} flexShrink={0} paddingLeft={row.indent}>
 						<DiffViewer
-							call={row.call}
 							diff={row.diff}
 							expanded={isDiffExpanded(row.call.id)}
 							width={width - row.indent}
 							chatHeight={chatHeight}
+							clipTop={clipTop}
+							visibleRows={visibleRows}
 						/>
 					</Box>
 				);
@@ -276,14 +301,23 @@ export function ToolCallMessage({
 		<Box
 			ref={rootRef}
 			height={height}
-			overflow="hidden"
 			flexShrink={0}
 			flexDirection="column"
 			width={width}
 			backgroundColor={APP_BACKGROUND_COLOR}
 		>
-			<Box marginTop={-groupScrollTop} flexShrink={0} flexDirection="column">
-				{layout.rows.map((row, index) => renderRow(row, index))}
+			<Box flexShrink={0} flexDirection="column">
+				{/* Render only the visible window. Nested overflow clips do not
+				    compose in Ink: an inner clip replaces the ancestor's clip,
+				    which used to let diff rows paint over neighbouring messages. */}
+				{layout.rowSpans.flatMap(span => {
+					const start = Math.max(span.start, scrollTop);
+					const end = Math.min(span.start + span.lines, scrollTop + height);
+					if (end <= start) return [];
+					return [
+						renderRow(span.row, span.index, start - span.start, end - start),
+					];
+				})}
 			</Box>
 		</Box>
 	);

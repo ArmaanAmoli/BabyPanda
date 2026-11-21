@@ -1,12 +1,11 @@
 import React, {useEffect, useRef, useState} from 'react';
 import {Box, Text, type DOMElement} from 'ink';
-import type {ToolCallEntry} from '../types';
 import {
 	DIFF_CONTEXT_LINES,
 	type DiffRow,
 	type UnifiedDiff,
 } from '../utils/diffRows';
-import {maxDiffHeight} from '../utils/toolCallLayout';
+import {diffHeight} from '../utils/toolCallLayout';
 import {useScroll} from '../hooks/useScroll';
 import {
 	APP_BACKGROUND_COLOR,
@@ -17,6 +16,22 @@ import {
 } from '../theme';
 
 const LINE_NO_WIDTH = 4;
+const TAB_REPLACEMENT = '    ';
+
+/**
+ * Make one source line safe for Ink's character grid. Ink measures a tab as
+ * zero columns while terminals advance it to a tab stop, which lets the real
+ * output wrap over neighbouring rows. Other C0 controls can similarly move
+ * the cursor or inject escape sequences, so render a visible replacement.
+ */
+function terminalSafeLine(text: string): string {
+	return [...text.replaceAll('\t', TAB_REPLACEMENT)]
+		.map(character => {
+			const code = character.charCodeAt(0);
+			return code <= 0x1f || code === 0x7f ? '�' : character;
+		})
+		.join('');
+}
 
 /** Diff line text and the line-number gutter. */
 const DIFF_TEXT = '#FFFFFF';
@@ -61,26 +76,29 @@ function DiffLineView({row, width}: {row: DiffRow; width: number}) {
 			flexShrink={0}
 			backgroundColor={rowBackground(row.type) ?? APP_BACKGROUND_COLOR}
 		>
-			<Text color={LINE_NO_COLOR} wrap="truncate">
-				{lineNumber(row.oldNo)} {lineNumber(row.newNo)}{' '}
-			</Text>
-			<Text wrap="truncate" color={rowColor(row.type)}>
-				{prefix}
-			</Text>
-			<Text wrap="truncate" color={DIFF_TEXT}>
-				{row.text}
+			{/* One text node is measured and truncated as a unit. Separate flex
+			    children let a long source line squeeze the gutter out of view. */}
+			<Text wrap="truncate">
+				<Text color={LINE_NO_COLOR}>
+					{lineNumber(row.oldNo)} {lineNumber(row.newNo)}{' '}
+				</Text>
+				<Text color={rowColor(row.type)}>{prefix}</Text>
+				<Text color={DIFF_TEXT}>{terminalSafeLine(row.text)}</Text>
 			</Text>
 		</Box>
 	);
 }
 
 export interface DiffViewerProps {
-	call: ToolCallEntry;
 	/** Precomputed diff rows (shared with the layout/height calculation). */
 	diff: UnifiedDiff;
 	expanded: boolean;
 	width: number;
 	chatHeight: number;
+	/** Viewer rows clipped above the visible window (used by ToolCallMessage). */
+	clipTop?: number;
+	/** Viewer rows visible in the window; defaults to the full viewer height. */
+	visibleRows?: number;
 }
 
 /**
@@ -88,22 +106,22 @@ export interface DiffViewerProps {
  * gutter, a coloured +/− prefix, and the line text, with changed rows tinted
  * full width. `diff.rows` already contains only the changed hunks plus a few
  * context lines (unchanged runs are collapsed into gap rows), so the whole
- * file is never shown. Collapsed to a one-line header; expanded shows the
- * rows capped at maxDiffHeight(chatHeight) with internal wheel scrolling on
- * hover, initially scrolled to the first changed hunk.
+ * file is never shown. Only expanded diff rows render here; the grey tool
+ * bullet exclusively owns the path, counts, and expand/collapse interaction.
+ * The body is capped at maxDiffHeight(chatHeight) with internal wheel
+ * scrolling on hover, initially scrolled to the first changed hunk.
  */
 export function DiffViewer({
-	call,
 	diff,
 	expanded,
 	width,
 	chatHeight,
+	clipTop = 0,
+	visibleRows,
 }: DiffViewerProps) {
-	const bodyCap = maxDiffHeight(chatHeight) - 1;
-	const visibleRows = expanded
-		? Math.max(1, Math.min(diff.rows.length, bodyCap))
-		: 0;
-	const maxScrollTop = Math.max(0, diff.rows.length - visibleRows);
+	const fullHeight = diffHeight(diff, expanded, chatHeight);
+	const bodyHeight = expanded ? fullHeight : 0;
+	const maxScrollTop = Math.max(0, diff.rows.length - bodyHeight);
 	const [scrollTop, setScrollTop] = useState(0);
 	const bodyRef = useRef<DOMElement>(null);
 
@@ -113,7 +131,7 @@ export function DiffViewer({
 			getScrollState: () => ({
 				scrollTop,
 				scrollHeight: diff.rows.length,
-				innerHeight: visibleRows,
+				innerHeight: bodyHeight,
 			}),
 			scrollBy: delta => {
 				setScrollTop(current =>
@@ -139,32 +157,37 @@ export function DiffViewer({
 		}
 	}, [expanded, diff.firstChangeIndex, maxScrollTop]);
 
-	const path =
-		typeof call.arguments['path'] === 'string'
-			? (call.arguments['path'] as string)
-			: '';
+	// Render only the visible source-row slice: Ink applies just the innermost
+	// overflow clip, so a scrolled/capped viewer must not depend on an
+	// ancestor's clip to hide the rest of its rows.
+	const clipStart = Math.max(0, Math.min(clipTop, fullHeight));
+	const clipEnd = Math.max(
+		clipStart,
+		Math.min(clipTop + (visibleRows ?? fullHeight), fullHeight),
+	);
+	const visibleBodyRows = expanded ? Math.max(0, clipEnd - clipStart) : 0;
+	const bodyOffset = clipStart;
+	const bodyRows = diff.rows.slice(
+		scrollTop + bodyOffset,
+		scrollTop + bodyOffset + visibleBodyRows,
+	);
 
 	return (
 		<Box flexDirection="column" flexShrink={0} width={width}>
-			<Box height={1} flexShrink={0}>
-				<Text color="#8a7f7f" wrap="truncate">
-					{'  '}± {path} <Text color={DIFF_ADDED_TEXT}>+{diff.added}</Text>{' '}
-					<Text color={DIFF_REMOVED_TEXT}>−{diff.removed}</Text>
-				</Text>
-			</Box>
-			{expanded && (
+			{visibleBodyRows > 0 && (
 				<Box
 					ref={bodyRef}
-					height={visibleRows}
-					overflow="hidden"
+					height={visibleBodyRows}
 					flexShrink={0}
 					flexDirection="column"
 				>
-					<Box marginTop={-scrollTop} flexShrink={0} flexDirection="column">
-						{diff.rows.map((row, index) => (
-							<DiffLineView key={index} row={row} width={width} />
-						))}
-					</Box>
+					{bodyRows.map((row, index) => (
+						<DiffLineView
+							key={scrollTop + bodyOffset + index}
+							row={row}
+							width={width}
+						/>
+					))}
 				</Box>
 			)}
 		</Box>

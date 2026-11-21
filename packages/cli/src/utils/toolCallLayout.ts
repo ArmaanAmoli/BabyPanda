@@ -130,7 +130,7 @@ export function maxDiffHeight(chatHeight: number): number {
 	return Math.max(3, chatHeight - 8);
 }
 
-function diffHeight(
+export function diffHeight(
 	diff: UnifiedDiff,
 	expanded: boolean,
 	chatHeight: number,
