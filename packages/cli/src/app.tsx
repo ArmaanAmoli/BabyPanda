@@ -76,6 +76,7 @@ export default function App() {
 	const [skills, setSkills] = useState<SkillFile[]>([]);
 	const [slashMenuOpen, setSlashMenuOpen] = useState(false);
 	const [providersLoaded, setProvidersLoaded] = useState(false);
+	const [providerLoadError, setProviderLoadError] = useState<string | null>(null);
 	const [setupProviderName, setSetupProviderName] = useState<string>();
 	// Web tools are opt-in. `null` = still loading, `true` = a key is saved,
 	// `false` = none saved (the prompt shows once, then the notice stays).
@@ -217,7 +218,8 @@ export default function App() {
 	// The Exa prompt is optional and comes second: while a provider key is
 	// still missing it stays hidden, so the two never compete for keystrokes
 	// and the provider is always resolved first.
-	const webKeyPromptVisible = showWebKeyPrompt && providersLoaded && !needsProviderKey;
+	const webKeyPromptVisible =
+		showWebKeyPrompt && providersLoaded && !needsProviderKey && !providerLoadError;
 	const webKeyPromptHeight = webKeyPromptVisible ? 5 : 0;
 	const menuItemCount = showProviderMenu
 		? settings.providers.providers.length
@@ -250,23 +252,54 @@ export default function App() {
 	}, []);
 
 	useEffect(() => {
+		let cancelled = false;
+		const loadProviders = async () => {
+			try {
+				const providers = await getProviders();
+				if (cancelled) return;
+				settings.providers.setProviders(providers);
+				setProviderLoadError(null);
+				if (!providers.some(provider => provider.hasKey)) {
+					setSetupProviderName(undefined);
+				}
+				setProvidersLoaded(true);
+			} catch (error) {
+				if (cancelled) return;
+				setProviderLoadError(String(error));
+				// Don't set providersLoaded = true so the provider prompt
+				// can still be shown on retry.
+			}
+		};
+		loadProviders();
+		return () => {
+			cancelled = true;
+		};
+	}, []);
+
+	const retryProviderLoad = () => {
+		setProviderLoadError(null);
+		setProvidersLoaded(false);
+		settings.providers.setProviders([]);
 		void getProviders()
 			.then(providers => {
 				settings.providers.setProviders(providers);
+				setProviderLoadError(null);
 				if (!providers.some(provider => provider.hasKey)) {
 					setSetupProviderName(undefined);
 				}
 				setProvidersLoaded(true);
 			})
 			.catch(error => {
-				setProvidersLoaded(true);
-				setClipboardStatus(`Provider loading failed: ${String(error)}`);
+				setProviderLoadError(String(error));
 			});
-	}, []);
+	};
 
 	// Web search is optional, so a missing key is not an error: prompt once at
 	// startup and leave a notice behind if the user skips it.
+	// Only check after providers have loaded so the NVIDIA key prompt
+	// always appears first.
 	useEffect(() => {
+		if (!providersLoaded) return;
 		void getWebApiKeys()
 			.then(keys => {
 				const configured = keys.some(
@@ -282,7 +315,7 @@ export default function App() {
 				setShowWebKeyPrompt(true);
 				showClipboardStatus(`Web key check failed: ${String(error)}`);
 			});
-	}, []);
+	}, [providersLoaded]);
 
 	const selectProvider = (providerName: string) => {
 		const provider = settings.providers.providers.find(
@@ -609,6 +642,24 @@ export default function App() {
 						</Box>
 					)}
 
+					{providerLoadError && (
+						<Box
+							height={setupHeight}
+							width="100%"
+							backgroundColor={APP_BACKGROUND_COLOR}
+						>
+							<Text color="#d66b6b">
+								Failed to load providers: {providerLoadError}
+							</Text>
+							<Box
+								flexDirection="row"
+								marginTop={1}
+								onPress={retryProviderLoad}
+							>
+								<Text color="#60a5fa">Retry</Text>
+							</Box>
+						</Box>
+					)}
 					{needsProviderKey && !setupProvider && (
 						<Box
 							height={setupHeight}
