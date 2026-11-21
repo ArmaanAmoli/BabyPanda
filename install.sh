@@ -61,13 +61,28 @@ install -m 0755 "$tmp_dir/$asset" "$binary_path"
 
 echo "Installed BabyPanda to $binary_path"
 
-# --- PATH hint ---------------------------------------------------------------
-if [[ ":$PATH:" != *":$install_dir:"* ]]; then
-  echo
-  echo "Add BabyPanda to PATH with:"
-  echo "  export PATH=\"$install_dir:\$PATH\""
-  echo
-  echo "Then run: babypanda help"
+# --- Add BabyPanda to PATH automatically -------------------------------------
+shell_rc=""
+case "$(basename "$SHELL")" in
+  bash) shell_rc="$HOME/.bashrc" ;;
+  zsh)  shell_rc="$HOME/.zshrc" ;;
+  *)    shell_rc="$HOME/.profile" ;;
+esac
+
+# $PATH is kept literal so it expands at login time, not now.
+path_line="export PATH=\"$install_dir:\$PATH\""
+
+if [[ -f "$shell_rc" ]] && grep -qF "export PATH=\"$install_dir" "$shell_rc"; then
+  echo "BabyPanda is already on PATH in $shell_rc"
 else
-  echo "Run: babypanda help"
+  {
+    echo ""
+    echo "# BabyPanda"
+    echo "$path_line"
+  } >> "$shell_rc"
+  echo "Added BabyPanda to PATH in $shell_rc"
 fi
+
+echo
+echo "Run: babypanda help"
+echo "(You may need to restart your terminal or run: source $shell_rc)"

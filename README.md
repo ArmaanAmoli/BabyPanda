@@ -97,13 +97,13 @@ For a pre-built binary on Ubuntu or WSL (x86_64):
 curl -fsSL https://raw.githubusercontent.com/ArmaanAmoli/BabyPanda/main/install.sh | bash
 ```
 
-This downloads and runs [`install.sh`](./install.sh), which verifies the checksum and installs `babypanda` to `~/.local/bin`. Pin a version with:
+This downloads and runs [`install.sh`](./install.sh), which verifies the checksum, installs `babypanda` to `~/.local/bin`, and adds it to your PATH automatically (appends to `~/.bashrc`, `~/.zshrc`, or `~/.profile`). Pin a version with:
 
 ```bash
 BABY_PANDA_VERSION=v0.1.0 bash install.sh
 ```
 
-Then add `~/.local/bin` to your PATH and run `babypanda help`.
+Then run `babypanda help` (you may need to restart your terminal or `source` your shell config first).
 
 ## Environment variables
 
