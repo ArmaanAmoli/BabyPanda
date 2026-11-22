@@ -17,7 +17,7 @@ import {buildToolCallLayout} from '../utils/toolCallLayout';
 import {ToolCallMessage} from './ToolCallMessage';
 import {ReasoningMessage} from './ReasoningMessage';
 import {pandaBannerRows} from '../utils/pandaBanner';
-import {ASSISTANT_GLYPH, RULE_COLOR, TEXT_WHITE} from '../theme';
+import {ASSISTANT_GLYPH, TEXT_WHITE} from '../theme';
 
 /** Glyph width plus the space after it: continuation lines align under text. */
 const GLYPH_INDENT = 2;
@@ -336,8 +336,8 @@ export function ChatBox({
 
 /**
  * A plain text message: glyph on the first row, wrapped continuation lines
- * indenting to align under the text. User messages get the same light rule
- * as the prompt box above and below instead of a background band.
+ * indenting to align under the text. User messages get a subtle, thin dashed
+ * rule above and below instead of a background band.
  */
 function GlyphBlock({
 	role,
@@ -352,7 +352,7 @@ function GlyphBlock({
 }) {
 	const rule = (
 		<Box width="100%" height={1} flexShrink={0}>
-			<Text color={RULE_COLOR}>{'─'.repeat(Math.max(1, width - 1))}</Text>
+			<Text dimColor>{'┈'.repeat(Math.max(1, width - 1))}</Text>
 		</Box>
 	);
 
