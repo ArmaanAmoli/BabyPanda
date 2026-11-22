@@ -33,15 +33,15 @@ export default function InstallCta() {
     <div className="pointer-events-none absolute inset-0 z-[2] flex items-center justify-center px-4">
       {/* Translucent + lightly blurred, no border, so the dot field shows
           through and the card reads as part of the banner. */}
-      <div className="pointer-events-auto w-full max-w-4xl rounded-lg bg-bg/40 px-6 py-5 font-montserrat backdrop-blur-[3px]">
+      <div className="pointer-events-auto w-full max-w-4xl rounded-lg bg-bg/40 px-6 py-5 backdrop-blur-[3px]">
         <p className="text-2xl font-extrabold tracking-tight text-accent sm:text-3xl">
           {install.ctaLabel}
         </p>
         <div className="relative mt-3 overflow-hidden rounded-md border border-ink/10 bg-bg/50">
-          {/* font-montserrat must sit on pre/code themselves: the UA stylesheet
-              forces monospace on those elements, which beats inheritance. */}
-          <pre className="overflow-x-auto px-4 py-3 pr-12 font-montserrat text-xs font-medium leading-6 text-ink sm:text-sm">
-            <code className="font-montserrat">{step.command}</code>
+          {/* The command is the one text that stays mono: the UA stylesheet
+              forces monospace on pre/code, so font-mono is set explicitly. */}
+          <pre className="overflow-x-auto px-4 py-3 pr-12 font-mono text-xs font-medium leading-6 text-ink sm:text-sm">
+            <code>{step.command}</code>
           </pre>
           <button
             type="button"

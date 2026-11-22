@@ -43,7 +43,7 @@ export default function App() {
       </main>
       {/* Copyright and licence line at the very end of the page. */}
       <footer className="border-t border-ink/10">
-        <p className="mx-auto w-full max-w-5xl px-5 py-6 font-mono text-[11px] uppercase tracking-[0.18em] text-ink/45">
+        <p className="mx-auto w-full max-w-5xl px-5 py-6 text-[11px] font-medium uppercase tracking-[0.18em] text-ink/45">
           {content.footer.meta}
         </p>
       </footer>
