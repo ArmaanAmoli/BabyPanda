@@ -5,7 +5,7 @@ import { existsSync, mkdirSync, writeFileSync } from 'fs';
 import { Database } from 'bun:sqlite';
 import { migrations } from './migrations';
 import { getProjectName, logError } from '@baby-panda/utils';
-import { LogType } from '@baby-panda/types';
+import { EXA_PROVIDER, LogType } from '@baby-panda/types';
 
 const dbFilePath = path.join(os.homedir(), '.babypanda', 'db', 'db.db');
 const testDbFilePath = path.join(os.homedir(), '.babypanda', 'db', 'db.test.db');
@@ -37,21 +37,58 @@ db.run('PRAGMA foreign_keys = ON;');
 
 let migrationsRun = false;
 
+const migrationTable = 'babypanda_migrations';
+const migrationTableExists = db.$client
+  .query(`SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?`)
+  .get(migrationTable);
+
+db.run(
+  `CREATE TABLE IF NOT EXISTS ${migrationTable} (name text PRIMARY KEY, applied_at integer NOT NULL);`,
+);
+
+// Databases created before migration tracking already have the final column,
+// but replaying the older table-rebuild migrations would drop that column and
+// erase newer data. Baseline only on the first tracked run; future migrations
+// still run normally because the tracking table exists on subsequent starts.
+if (!migrationTableExists) {
+  const apiKeyColumns = db.$client.query(`PRAGMA table_info(api_keys);`).all() as {
+    name: string;
+  }[];
+  if (apiKeyColumns.some((column) => column.name === 'type')) {
+    // Older binaries replayed the api_keys rebuild on every restart, resetting
+    // Exa's `web` type to the default `model`. Recover those existing keys as
+    // part of the one-time baseline instead of prompting for them again.
+    db.$client
+      .query(`UPDATE api_keys SET type = 'web' WHERE lower(provider) = lower(?);`)
+      .run(EXA_PROVIDER);
+    for (const migration of migrations) {
+      db.$client
+        .query(`INSERT OR IGNORE INTO ${migrationTable} (name, applied_at) VALUES (?, ?);`)
+        .run(migration.name, Date.now());
+    }
+  }
+}
+
 /**
- * Runs all pending embedded database migrations. Safe to call multiple times;
- * migrations are idempotent (CREATE TABLE IF NOT EXISTS, ALTER TABLE ADD
- * columns that may already exist may error on re-run, so we guard with a
- * module-level flag).
+ * Runs each embedded migration once and records it in the database. The
+ * on-disk record is essential for standalone binaries, whose next process
+ * must not replay destructive table-rebuild migrations.
  */
 export async function runMigrations(): Promise<void> {
   if (migrationsRun) return;
+  const appliedRows = db.$client.query(`SELECT name FROM ${migrationTable};`).all() as {
+    name: string;
+  }[];
+  const applied = new Set(appliedRows.map((row) => row.name));
+
   for (const migration of migrations) {
+    if (applied.has(migration.name)) continue;
     for (const statement of migration.statements) {
       try {
         db.run(statement);
       } catch (err) {
-        // Some statements (like ALTER TABLE ADD column) may fail if already
-        // applied. Log and continue rather than failing the whole migration.
+        // Preserve support for partially migrated legacy databases, where a
+        // statement such as ALTER TABLE ADD column may already have run.
         void logError(
           LogType.db,
           getProjectName(),
@@ -61,6 +98,9 @@ export async function runMigrations(): Promise<void> {
         );
       }
     }
+    db.$client
+      .query(`INSERT OR IGNORE INTO ${migrationTable} (name, applied_at) VALUES (?, ?);`)
+      .run(migration.name, Date.now());
   }
   migrationsRun = true;
 }
