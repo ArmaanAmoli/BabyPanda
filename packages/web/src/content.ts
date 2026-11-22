@@ -21,14 +21,6 @@ export interface SiteContent {
   year: number;
 }
 
-/** One call-to-action button. */
-export interface Cta {
-  /** Visible button text. */
-  label: string;
-  /** Target anchor or URL. */
-  href: string;
-}
-
 /** One image shown beside section copy. */
 export interface SectionImage {
   /** Root-relative URL of the image in the public folder. */
@@ -43,15 +35,11 @@ export interface HeroContent {
   headline: string;
   /** Supporting paragraph under the headline. */
   subhead: string;
-  /** Primary button (filled). */
-  primaryCta: Cta;
-  /** Secondary button (outlined). */
-  secondaryCta: Cta;
   /** Screenshot shown beside the hero copy. */
   image?: SectionImage;
 }
 
-/** Video demo shown in the "Watch it work" section. */
+/** Video demo shown in the "See it in action" section. */
 export interface DemoContent {
   /** Section heading. */
   title: string;
@@ -141,8 +129,6 @@ export const content: Content = {
     headline: 'Ship faster with an autonomous coding agent',
     subhead:
       'BabyPanda reads your repo, plans the change, then edits files and runs your tests from the command line — every diff streamed, every tool call visible before you approve.',
-    primaryCta: { label: 'Install in one line', href: '#install' },
-    secondaryCta: { label: 'Watch it work', href: '#demo' },
     image: {
       src: '/images/start-screen.png',
       alt: 'BabyPanda start screen in the terminal',

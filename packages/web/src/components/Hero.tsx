@@ -13,20 +13,6 @@ export default function Hero() {
       <p className="mt-5 max-w-xl text-base leading-relaxed text-ink/65 sm:text-lg">
         {hero.subhead}
       </p>
-      <div className="mt-8 flex flex-wrap items-center gap-3">
-        <a
-          href={hero.primaryCta.href}
-          className="rounded-sm bg-accent px-5 py-2.5 text-sm font-semibold text-bg transition-colors hover:bg-ink"
-        >
-          {hero.primaryCta.label}
-        </a>
-        <a
-          href={hero.secondaryCta.href}
-          className="rounded-sm border border-ink/25 px-5 py-2.5 text-sm font-medium text-ink/85 transition-colors hover:border-ink/60 hover:text-ink"
-        >
-          {hero.secondaryCta.label}
-        </a>
-      </div>
       {hero.image && (
         <div className="mt-10">
           <img
