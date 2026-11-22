@@ -66,6 +66,11 @@ import { createMCPServer } from './mcp/index';
 
 const MAX_REQUEST_RETRY = 3;
 const cwd = process.cwd();
+const WEB_TOOLS_UNAVAILABLE_INSTRUCTION =
+  'Web search and web page fetching are unavailable: no Exa API key has been ' +
+  'configured. Do not attempt to browse the web or claim to have searched it. ' +
+  'If the task needs current information from the internet, tell the user they ' +
+  'can enable it with the /web-api-keys command.';
 
 function countLines(text: string): number {
   if (text.length === 0) return 0;
@@ -302,11 +307,7 @@ export class BabyPandaAgent extends EventEmitter {
     if (!this.webToolsConfigured) {
       context.push({
         role: Role.system,
-        content:
-          'Web search and web page fetching are unavailable: no Exa API key has been ' +
-          'configured. Do not attempt to browse the web or claim to have searched it. ' +
-          'If the task needs current information from the internet, tell the user they ' +
-          'can enable it with the /web-api-keys command.',
+        content: WEB_TOOLS_UNAVAILABLE_INSTRUCTION,
       });
     }
 
@@ -364,7 +365,25 @@ export class BabyPandaAgent extends EventEmitter {
     return context;
   }
 
-  /** Re-reads the web credential and rebuilds the tool list for this turn. */
+  /** Keeps the model instructions in sync with the credentials found for this request. */
+  private syncWebToolsInstruction() {
+    const instructionIndex = this.messages.findIndex(
+      (message) =>
+        message.role === Role.system && message.content === WEB_TOOLS_UNAVAILABLE_INSTRUCTION,
+    );
+    if (this.webToolsConfigured) {
+      if (instructionIndex !== -1) this.messages.splice(instructionIndex, 1);
+      return;
+    }
+    if (instructionIndex === -1) {
+      this.messages.splice(this.messages[0]?.role === Role.system ? 1 : 0, 0, {
+        role: Role.system,
+        content: WEB_TOOLS_UNAVAILABLE_INSTRUCTION,
+      });
+    }
+  }
+
+  /** Re-reads the web credential and rebuilds the tool list for this request. */
   private async refreshWebTools(): Promise<boolean> {
     try {
       const configured = await getWebApiKeys();
@@ -495,6 +514,12 @@ export class BabyPandaAgent extends EventEmitter {
         this.messages.push(continuePrompt);
         injectContinuePrompt = false;
       }
+
+      // The Exa key can be added after this agent's initial context was built.
+      // Refresh both halves of the contract: the advertised tools and the
+      // system instruction that previously told the model browsing was off.
+      this.webToolsConfigured = await this.refreshWebTools();
+      this.syncWebToolsInstruction();
 
       const response = await this.client.chatCompletion(
         this.messages,

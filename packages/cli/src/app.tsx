@@ -76,7 +76,9 @@ export default function App() {
 	const [skills, setSkills] = useState<SkillFile[]>([]);
 	const [slashMenuOpen, setSlashMenuOpen] = useState(false);
 	const [providersLoaded, setProvidersLoaded] = useState(false);
-	const [providerLoadError, setProviderLoadError] = useState<string | null>(null);
+	const [providerLoadError, setProviderLoadError] = useState<string | null>(
+		null,
+	);
 	const [setupProviderName, setSetupProviderName] = useState<string>();
 	// Web tools are opt-in. `null` = still loading, `true` = a key is saved,
 	// `false` = none saved (the prompt shows once, then the notice stays).
@@ -219,7 +221,10 @@ export default function App() {
 	// still missing it stays hidden, so the two never compete for keystrokes
 	// and the provider is always resolved first.
 	const webKeyPromptVisible =
-		showWebKeyPrompt && providersLoaded && !needsProviderKey && !providerLoadError;
+		showWebKeyPrompt &&
+		providersLoaded &&
+		!needsProviderKey &&
+		!providerLoadError;
 	const webKeyPromptHeight = webKeyPromptVisible ? 5 : 0;
 	const menuItemCount = showProviderMenu
 		? settings.providers.providers.length
@@ -276,23 +281,23 @@ export default function App() {
 		};
 	}, []);
 
-	const retryProviderLoad = () => {
-		setProviderLoadError(null);
-		setProvidersLoaded(false);
-		settings.providers.setProviders([]);
-		void getProviders()
-			.then(providers => {
-				settings.providers.setProviders(providers);
-				setProviderLoadError(null);
-				if (!providers.some(provider => provider.hasKey)) {
-					setSetupProviderName(undefined);
-				}
-				setProvidersLoaded(true);
-			})
-			.catch(error => {
-				setProviderLoadError(String(error));
-			});
-	};
+	// const retryProviderLoad = () => {
+	// 	setProviderLoadError(null);
+	// 	setProvidersLoaded(false);
+	// 	settings.providers.setProviders([]);
+	// 	void getProviders()
+	// 		.then(providers => {
+	// 			settings.providers.setProviders(providers);
+	// 			setProviderLoadError(null);
+	// 			if (!providers.some(provider => provider.hasKey)) {
+	// 				setSetupProviderName(undefined);
+	// 			}
+	// 			setProvidersLoaded(true);
+	// 		})
+	// 		.catch(error => {
+	// 			setProviderLoadError(String(error));
+	// 		});
+	// };
 
 	// Web search is optional, so a missing key is not an error: prompt once at
 	// startup and leave a notice behind if the user skips it.
@@ -641,7 +646,7 @@ export default function App() {
 							<PermissionBox />
 						</Box>
 					)}
-
+					{/* 
 					{providerLoadError && (
 						<Box
 							height={setupHeight}
@@ -659,7 +664,7 @@ export default function App() {
 								<Text color="#60a5fa">Retry</Text>
 							</Box>
 						</Box>
-					)}
+					)} */}
 					{needsProviderKey && !setupProvider && (
 						<Box
 							height={setupHeight}
