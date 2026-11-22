@@ -9,7 +9,7 @@ import { content } from '@/content';
 export default function App() {
   // Document title and meta description come from content.site at runtime.
   useEffect(() => {
-    document.title = `${content.site.name} — ${content.site.tagline}`;
+    document.title = content.site.name;
     document
       .querySelector('meta[name="description"]')
       ?.setAttribute('content', content.site.description);
