@@ -8,9 +8,6 @@ export default function Showcase() {
         <h2 className="mt-5 text-3xl font-bold tracking-tight text-ink sm:text-4xl">
           {showcase.title}
         </h2>
-        <p className="mt-4 max-w-xl mx-auto text-base leading-relaxed text-ink/65 sm:text-lg">
-          {showcase.description}
-        </p>
       </div>
       <div className="flex flex-col gap-10">
         {showcase.items.map((item) => (

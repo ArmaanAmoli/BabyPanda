@@ -8,9 +8,6 @@ export default function Demo() {
         <h2 className="mt-5 text-3xl font-bold tracking-tight text-ink sm:text-4xl">
           {demo.title}
         </h2>
-        <p className="mt-4 max-w-xl mx-auto text-base leading-relaxed text-ink/65 sm:text-lg">
-          {demo.description}
-        </p>
       </div>
       <div className="mx-auto max-w-[1200px] rounded-xl border border-ink/15 overflow-hidden shadow-xl">
         <video

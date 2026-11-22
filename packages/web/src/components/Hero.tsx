@@ -10,9 +10,6 @@ export default function Hero() {
       <h1 className="mt-5 max-w-3xl text-4xl font-bold leading-[1.04] tracking-tight text-ink sm:text-6xl">
         {hero.headline}
       </h1>
-      <p className="mt-5 max-w-xl text-base leading-relaxed text-ink/65 sm:text-lg">
-        {hero.subhead}
-      </p>
       {hero.image && (
         <div className="mt-10">
           <img

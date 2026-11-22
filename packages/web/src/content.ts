@@ -33,8 +33,6 @@ export interface SectionImage {
 export interface HeroContent {
   /** Big headline. */
   headline: string;
-  /** Supporting paragraph under the headline. */
-  subhead: string;
   /** Screenshot shown beside the hero copy. */
   image?: SectionImage;
 }
@@ -43,8 +41,6 @@ export interface HeroContent {
 export interface DemoContent {
   /** Section heading. */
   title: string;
-  /** Supporting line under the heading. */
-  description: string;
   /** MP4 video in the public folder, autoplayed muted and looped. */
   video: { src: string };
 }
@@ -61,8 +57,6 @@ export interface ShowcaseItem {
 export interface ShowcaseContent {
   /** Section heading. */
   title: string;
-  /** Supporting line under the heading. */
-  description: string;
   /** Screenshots displayed prominently, not inside cards. */
   items: ShowcaseItem[];
 }
@@ -127,8 +121,6 @@ export const content: Content = {
   },
   hero: {
     headline: 'Ship faster with an autonomous coding agent',
-    subhead:
-      'BabyPanda reads your repo, plans the change, then edits files and runs your tests from the command line — every diff streamed, every tool call visible before you approve.',
     image: {
       src: '/images/start-screen.png',
       alt: 'BabyPanda start screen in the terminal',
@@ -136,16 +128,12 @@ export const content: Content = {
   },
   demo: {
     title: 'See it in action',
-    description:
-      'BabyPanda summarizing a repository — every tool call and answer streamed live into the terminal.',
     video: {
       src: '/videos/babypanda-summarize-repo-sample.mp4',
     },
   },
   showcase: {
     title: 'Built for review, not just automation',
-    description:
-      'The terminal interface shows diffs and permission prompts — every action is visible before you approve it.',
     items: [
       {
         src: '/images/diffViewer-screenshot.png',
