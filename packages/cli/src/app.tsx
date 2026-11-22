@@ -281,23 +281,23 @@ export default function App() {
 		};
 	}, []);
 
-	const retryProviderLoad = () => {
-		setProviderLoadError(null);
-		setProvidersLoaded(false);
-		settings.providers.setProviders([]);
-		void getProviders()
-			.then(providers => {
-				settings.providers.setProviders(providers);
-				setProviderLoadError(null);
-				if (!providers.some(provider => provider.hasKey)) {
-					setSetupProviderName(undefined);
-				}
-				setProvidersLoaded(true);
-			})
-			.catch(error => {
-				setProviderLoadError(String(error));
-			});
-	};
+	// const retryProviderLoad = () => {
+	// 	setProviderLoadError(null);
+	// 	setProvidersLoaded(false);
+	// 	settings.providers.setProviders([]);
+	// 	void getProviders()
+	// 		.then(providers => {
+	// 			settings.providers.setProviders(providers);
+	// 			setProviderLoadError(null);
+	// 			if (!providers.some(provider => provider.hasKey)) {
+	// 				setSetupProviderName(undefined);
+	// 			}
+	// 			setProvidersLoaded(true);
+	// 		})
+	// 		.catch(error => {
+	// 			setProviderLoadError(String(error));
+	// 		});
+	// };
 
 	// Web search is optional, so a missing key is not an error: prompt once at
 	// startup and leave a notice behind if the user skips it.
@@ -646,7 +646,7 @@ export default function App() {
 							<PermissionBox />
 						</Box>
 					)}
-
+					{/* 
 					{providerLoadError && (
 						<Box
 							height={setupHeight}
@@ -664,7 +664,7 @@ export default function App() {
 								<Text color="#60a5fa">Retry</Text>
 							</Box>
 						</Box>
-					)}
+					)} */}
 					{needsProviderKey && !setupProvider && (
 						<Box
 							height={setupHeight}
