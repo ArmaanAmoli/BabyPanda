@@ -33,11 +33,15 @@ export default function InstallCta() {
     <div className="pointer-events-none absolute inset-0 z-[2] flex items-center justify-center px-4">
       {/* Translucent + lightly blurred, no border, so the dot field shows
           through and the card reads as part of the banner. */}
-      <div className="pointer-events-auto w-full max-w-4xl rounded-lg bg-bg/40 px-6 py-5 backdrop-blur-[3px]">
+      <div className="pointer-events-auto w-full max-w-6xl rounded-lg bg-bg/40 px-6 py-5 backdrop-blur-[3px]">
         <div className="relative overflow-hidden rounded-md border border-ink/10 bg-bg/50">
           {/* The command is the one text that stays mono: the UA stylesheet
-              forces monospace on pre/code, so font-mono is set explicitly. */}
-          <pre className="overflow-x-auto px-4 py-3 pr-12 font-mono text-xs font-medium leading-6 text-ink sm:text-sm">
+              forces monospace on pre/code, so font-mono is set explicitly.
+              text-sm only from xl up: the 119-char command needs ~1000px at
+              14px, which the max-w-6xl card provides; below xl the 12px size
+              keeps it on one line, so overflow-x-auto never engages on
+              desktop widths and no scrollbar appears. */}
+          <pre className="overflow-x-auto px-4 py-3 pr-12 font-mono text-xs font-medium leading-6 text-ink xl:text-sm">
             <code>{step.command}</code>
           </pre>
           <button
