@@ -3,6 +3,11 @@
 // Components read from `content` and never hard-code copy, URLs or commands.
 // Replace every value marked with a trailing `// SAMPLE` comment.
 
+// Public-folder assets are written root-absolute; prefix them with Vite's
+// BASE_URL so they also resolve under a GitHub Pages project subpath
+// (e.g. https://<user>.github.io/<repo>/).
+const asset = (path: string) => `${import.meta.env.BASE_URL}${path.replace(/^\//, '')}`;
+
 /** Site-wide identity: document <title>, meta description, nav brand, halftone banner meta. */
 export interface SiteContent {
   /** Product name. Used in the nav brand, the document title and the footer. */
@@ -67,8 +72,6 @@ export interface InstallStep {
 }
 
 export interface InstallContent {
-  /** Call-to-action label on the hovering card over the dot banner at the top. */
-  ctaLabel: string;
   /** Ordered install steps, each rendered as a code block with a copy button. */
   steps: InstallStep[];
 }
@@ -122,31 +125,30 @@ export const content: Content = {
   hero: {
     headline: 'Ship faster with an autonomous coding agent',
     image: {
-      src: '/images/start-screen.png',
+      src: asset('/images/start-screen.png'),
       alt: 'BabyPanda start screen in the terminal',
     },
   },
   demo: {
     title: 'See it in action',
     video: {
-      src: '/videos/babypanda-summarize-repo-sample.mp4',
+      src: asset('/videos/babypanda-summarize-repo-sample.mp4'),
     },
   },
   showcase: {
     title: 'Built for review, not just automation',
     items: [
       {
-        src: '/images/diffViewer-screenshot.png',
+        src: asset('/images/diffViewer-screenshot.png'),
         alt: 'Inline diff viewer in the terminal',
       },
       {
-        src: '/images/command-permission-screenshot.png',
+        src: asset('/images/command-permission-screenshot.png'),
         alt: 'Command permission prompt in the terminal',
       },
     ],
   },
   install: {
-    ctaLabel: 'Install now!',
     steps: [
       {
         command:
