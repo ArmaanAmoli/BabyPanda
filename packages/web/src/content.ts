@@ -21,14 +21,6 @@ export interface SiteContent {
   year: number;
 }
 
-/** One call-to-action button. */
-export interface Cta {
-  /** Visible button text. */
-  label: string;
-  /** Target anchor or URL. */
-  href: string;
-}
-
 /** One image shown beside section copy. */
 export interface SectionImage {
   /** Root-relative URL of the image in the public folder. */
@@ -41,22 +33,14 @@ export interface SectionImage {
 export interface HeroContent {
   /** Big headline. */
   headline: string;
-  /** Supporting paragraph under the headline. */
-  subhead: string;
-  /** Primary button (filled). */
-  primaryCta: Cta;
-  /** Secondary button (outlined). */
-  secondaryCta: Cta;
   /** Screenshot shown beside the hero copy. */
   image?: SectionImage;
 }
 
-/** Video demo shown in the "Watch it work" section. */
+/** Video demo shown in the "See it in action" section. */
 export interface DemoContent {
   /** Section heading. */
   title: string;
-  /** Supporting line under the heading. */
-  description: string;
   /** MP4 video in the public folder, autoplayed muted and looped. */
   video: { src: string };
 }
@@ -73,22 +57,18 @@ export interface ShowcaseItem {
 export interface ShowcaseContent {
   /** Section heading. */
   title: string;
-  /** Supporting line under the heading. */
-  description: string;
   /** Screenshots displayed prominently, not inside cards. */
   items: ShowcaseItem[];
 }
 
 export interface InstallStep {
-  /** Short label above the command. */
-  label: string;
   /** The command shown in the code block and copied by the copy button. */
   command: string;
 }
 
 export interface InstallContent {
-  /** Section heading. */
-  title: string;
+  /** Call-to-action label on the hovering card over the dot banner at the top. */
+  ctaLabel: string;
   /** Ordered install steps, each rendered as a code block with a copy button. */
   steps: InstallStep[];
 }
@@ -141,10 +121,6 @@ export const content: Content = {
   },
   hero: {
     headline: 'Ship faster with an autonomous coding agent',
-    subhead:
-      'BabyPanda reads your repo, plans the change, then edits files and runs your tests from the command line — every diff streamed, every tool call visible before you approve.',
-    primaryCta: { label: 'Install in one line', href: '#install' },
-    secondaryCta: { label: 'Watch it work', href: '#demo' },
     image: {
       src: '/images/start-screen.png',
       alt: 'BabyPanda start screen in the terminal',
@@ -152,16 +128,12 @@ export const content: Content = {
   },
   demo: {
     title: 'See it in action',
-    description:
-      'BabyPanda summarizing a repository — every tool call and answer streamed live into the terminal.',
     video: {
       src: '/videos/babypanda-summarize-repo-sample.mp4',
     },
   },
   showcase: {
     title: 'Built for review, not just automation',
-    description:
-      'The terminal interface shows diffs and permission prompts — every action is visible before you approve it.',
     items: [
       {
         src: '/images/diffViewer-screenshot.png',
@@ -174,10 +146,9 @@ export const content: Content = {
     ],
   },
   install: {
-    title: 'Get started',
+    ctaLabel: 'Install now!',
     steps: [
       {
-        label: 'Install with one command',
         command:
           'curl -fsSL https://raw.githubusercontent.com/ArmaanAmoli/BabyPanda/main/install.sh | bash',
       },
