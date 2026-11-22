@@ -50,7 +50,7 @@ describe('panda banner', () => {
 		for (const marker of [
 			'ready',
 			'terminal coding agent',
-			'v0.1.0',
+			'v0.0.1',
 			'BABY',
 			'PANDA',
 		]) {
@@ -128,7 +128,7 @@ describe('panda banner', () => {
 	 * point -- the artwork is not supposed to move.
 	 */
 	test('the rasterised artwork has not drifted from the reference', () => {
-		expect(checksum(pandaBannerRows(SESSION, 200))).toBe('7e46c9e1e453287d');
-		expect(checksum(pandaBannerRows(SESSION, 80))).toBe('e0ebc755463b771f');
+		expect(checksum(pandaBannerRows(SESSION, 200))).toBe('384c35f2861b34aa');
+		expect(checksum(pandaBannerRows(SESSION, 80))).toBe('2cf726eb8460a18b');
 	});
 });

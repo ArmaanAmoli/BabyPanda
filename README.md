@@ -94,7 +94,7 @@ The portable reasoning levels are `none`, `low`, `medium`, and `high`.
 For a pre-built binary on Ubuntu or WSL (x86_64):
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/ArmaanAmoli/BabyPanda/main/install.sh | bash
+curl -fsSL --connect-timeout 5 --retry 3 https://raw.githubusercontent.com/ArmaanAmoli/BabyPanda/main/install.sh | bash
 ```
 
 This downloads and runs [`install.sh`](./install.sh), which verifies the checksum, installs `babypanda` to `~/.local/bin`, and adds it to your PATH automatically (appends to `~/.bashrc`, `~/.zshrc`, or `~/.profile`). Pin a version with:

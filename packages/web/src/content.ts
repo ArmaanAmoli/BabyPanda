@@ -152,7 +152,7 @@ export const content: Content = {
     steps: [
       {
         command:
-          'curl -fsSL https://raw.githubusercontent.com/ArmaanAmoli/BabyPanda/main/install.sh | bash',
+          'curl -fsSL --connect-timeout 5 --retry 3 https://raw.githubusercontent.com/ArmaanAmoli/BabyPanda/main/install.sh | bash',
       },
     ],
   },
