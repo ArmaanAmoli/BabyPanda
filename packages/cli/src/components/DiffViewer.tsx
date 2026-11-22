@@ -8,7 +8,6 @@ import {
 import {diffHeight} from '../utils/toolCallLayout';
 import {useScroll} from '../hooks/useScroll';
 import {
-	APP_BACKGROUND_COLOR,
 	DIFF_ADDED_BACKGROUND,
 	DIFF_ADDED_TEXT,
 	DIFF_REMOVED_BACKGROUND,
@@ -74,7 +73,7 @@ function DiffLineView({row, width}: {row: DiffRow; width: number}) {
 			width={width}
 			height={1}
 			flexShrink={0}
-			backgroundColor={rowBackground(row.type) ?? APP_BACKGROUND_COLOR}
+			backgroundColor={rowBackground(row.type)}
 		>
 			{/* One text node is measured and truncated as a unit. Separate flex
 			    children let a long source line squeeze the gutter out of view. */}

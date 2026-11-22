@@ -17,12 +17,7 @@ import {buildToolCallLayout} from '../utils/toolCallLayout';
 import {ToolCallMessage} from './ToolCallMessage';
 import {ReasoningMessage} from './ReasoningMessage';
 import {pandaBannerRows} from '../utils/pandaBanner';
-import {
-	APP_BACKGROUND_COLOR,
-	ASSISTANT_GLYPH,
-	TEXT_WHITE,
-	USER_BAND_BACKGROUND,
-} from '../theme';
+import {ASSISTANT_GLYPH, TEXT_WHITE} from '../theme';
 
 /** Glyph width plus the space after it: continuation lines align under text. */
 const GLYPH_INDENT = 2;
@@ -189,7 +184,9 @@ export function ChatBox({
 						}).height + 1
 					);
 				}
-				return Math.max(1, item.lines.length) + 1;
+				const lineCount = Math.max(1, item.lines.length);
+				// User messages add a rule above and below the text.
+				return lineCount + (item.kind === 'text' && item.user ? 3 : 1);
 			}),
 		[
 			items,
@@ -263,11 +260,6 @@ export function ChatBox({
 								: `text-${item.messageIndices[0] ?? index}`
 				}
 				renderItem={({item, startRow, clipTop, visibleRows}) => {
-					const itemFocused =
-						focusedMessageIndex !== null &&
-						item.kind !== 'banner' &&
-						item.messageIndices.includes(focusedMessageIndex);
-
 					if (item.kind === 'banner') {
 						return (
 							<>
@@ -291,7 +283,6 @@ export function ChatBox({
 									clipTop={clipTop}
 									visibleRows={visibleRows}
 									width={chatWidth}
-									focused={itemFocused}
 								/>
 								<Box height={1} flexShrink={0} />
 							</>
@@ -318,7 +309,6 @@ export function ChatBox({
 										visibleRows={visibleRows}
 										chatHeight={height}
 										width={chatWidth}
-										focused={itemFocused}
 									/>
 								)}
 								<Box height={1} flexShrink={0} />
@@ -332,6 +322,7 @@ export function ChatBox({
 								role={item.role}
 								lines={item.lines}
 								user={item.kind === 'text' && item.user}
+								width={chatWidth}
 							/>
 						);
 					}
@@ -345,20 +336,29 @@ export function ChatBox({
 
 /**
  * A plain text message: glyph on the first row, wrapped continuation lines
- * indenting to align under the text, and a full-width band behind user
- * messages.
+ * indenting to align under the text. User messages get a subtle, thin dashed
+ * rule above and below instead of a background band.
  */
 function GlyphBlock({
 	role,
 	lines,
 	user,
+	width,
 }: {
 	role: Role | ContentType;
 	lines: MessageLine[];
 	user: boolean;
+	width: number;
 }) {
+	const rule = (
+		<Box width="100%" height={1} flexShrink={0}>
+			<Text dimColor>{'┈'.repeat(Math.max(1, width - 1))}</Text>
+		</Box>
+	);
+
 	return (
 		<>
+			{user && rule}
 			{lines.map((line, lineIndex) => (
 				<Box
 					key={lineIndex}
@@ -366,7 +366,6 @@ function GlyphBlock({
 					height={1}
 					flexShrink={0}
 					flexDirection="row"
-					backgroundColor={user ? USER_BAND_BACKGROUND : APP_BACKGROUND_COLOR}
 				>
 					{/* The glyph marks the first row only; wrapped lines
 					    indent to align under the text. */}
@@ -383,6 +382,7 @@ function GlyphBlock({
 					</Box>
 				</Box>
 			))}
+			{user && rule}
 			<Box height={1} flexShrink={0} />
 		</>
 	);

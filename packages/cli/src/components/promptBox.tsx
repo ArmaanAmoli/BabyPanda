@@ -1,8 +1,8 @@
 import React from 'react';
 import {Box, Text, useInput, type DOMElement} from 'ink';
 import {useTerminal} from '../hooks/useTerminal';
-import {APP_BACKGROUND_COLOR} from '../theme';
 import {useScroll} from '../hooks/useScroll';
+import {RULE_COLOR} from '../theme';
 import {PADDING_APP} from '../layout';
 import {
 	SCROLLBAR_WIDTH,
@@ -24,7 +24,6 @@ import {
 } from '../utils/promptValue';
 
 const CURSOR_COLOR = '#ffffff';
-const RULE_COLOR = '#555555';
 const SCROLLBAR_TRACK = '│';
 const SCROLLBAR_THUMB = '┃';
 
@@ -709,12 +708,7 @@ export default function PromptBox({
 	const inputHeight = Math.max(1, maxHeight - 2);
 
 	return (
-		<Box
-			flexDirection="column"
-			width="100%"
-			height={maxHeight}
-			backgroundColor={APP_BACKGROUND_COLOR}
-		>
+		<Box flexDirection="column" width="100%" height={maxHeight}>
 			<Text color={RULE_COLOR}>{'─'.repeat(width)}</Text>
 			{active ? (
 				<PromptInput

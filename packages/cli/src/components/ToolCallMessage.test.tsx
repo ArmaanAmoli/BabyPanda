@@ -70,7 +70,6 @@ function ToolCall({
 			visibleRows={chatHeight}
 			chatHeight={chatHeight}
 			width={WIDTH}
-			focused={false}
 		/>
 	);
 }

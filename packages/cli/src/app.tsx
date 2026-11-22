@@ -53,7 +53,7 @@ import {activityLabel} from './utils/activityLabel';
 import {useToolCalls} from './hooks/useToolCalls';
 import {getMessageGroups} from './utils/messageGroups';
 import {buildTranscriptBoxes} from './utils/responseSlots';
-import {APP_BACKGROUND_COLOR, STATUS_RUNNING} from './theme';
+import {STATUS_RUNNING} from './theme';
 
 const SLASH_COMMANDS: {name: string; description: string}[] = [
 	{name: 'provider', description: 'switch provider'},
@@ -607,13 +607,7 @@ export default function App() {
 	});
 
 	return (
-		<Box
-			flexDirection="column"
-			width={columns}
-			height={rows}
-			padding={0}
-			backgroundColor={APP_BACKGROUND_COLOR}
-		>
+		<Box flexDirection="column" width={columns} height={rows} padding={0}>
 			<Box
 				height="100%"
 				width="100%"
@@ -634,15 +628,10 @@ export default function App() {
 					flexDirection={'column'}
 					width="100%"
 					height={bottomHeight}
-					backgroundColor={APP_BACKGROUND_COLOR}
 					justifyContent={'flex-end'}
 				>
 					{pendingPermissionMessages.length > 0 && (
-						<Box
-							height={activityHeight}
-							width="50%"
-							backgroundColor={APP_BACKGROUND_COLOR}
-						>
+						<Box height={activityHeight} width="50%">
 							<PermissionBox />
 						</Box>
 					)}
@@ -651,7 +640,6 @@ export default function App() {
 						<Box
 							height={setupHeight}
 							width="100%"
-							backgroundColor={APP_BACKGROUND_COLOR}
 						>
 							<Text color="#d66b6b">
 								Failed to load providers: {providerLoadError}
@@ -666,11 +654,7 @@ export default function App() {
 						</Box>
 					)} */}
 					{needsProviderKey && !setupProvider && (
-						<Box
-							height={setupHeight}
-							width="100%"
-							backgroundColor={APP_BACKGROUND_COLOR}
-						>
+						<Box height={setupHeight} width="100%">
 							<CommandMenu
 								title="Choose a provider to get started"
 								items={settings.providers.providers.map(provider => ({
@@ -684,11 +668,7 @@ export default function App() {
 					)}
 
 					{webKeyPromptVisible && (
-						<Box
-							height={webKeyPromptHeight}
-							width="100%"
-							backgroundColor={APP_BACKGROUND_COLOR}
-						>
+						<Box height={webKeyPromptHeight} width="100%">
 							<WebApiKeyBox
 								onSubmit={key => {
 									void saveWebApiKey(key)
@@ -711,11 +691,7 @@ export default function App() {
 					)}
 
 					{needsProviderKey && setupProvider && (
-						<Box
-							height={setupHeight}
-							width="100%"
-							backgroundColor={APP_BACKGROUND_COLOR}
-						>
+						<Box height={setupHeight} width="100%">
 							<ProviderSetupBox
 								provider={setupProvider}
 								onSubmit={key => {
@@ -812,11 +788,7 @@ export default function App() {
 					)}
 
 					{!needsProviderKey && !showWebKeyPrompt && (
-						<Box
-							height={promptHeight}
-							width="100%"
-							backgroundColor={APP_BACKGROUND_COLOR}
-						>
+						<Box height={promptHeight} width="100%">
 							<PromptBox
 								placeholder={'Write a message... '}
 								value={prompt}
@@ -829,11 +801,7 @@ export default function App() {
 						</Box>
 					)}
 					{!needsProviderKey && !showWebKeyPrompt && (
-						<Box
-							height={statusHeight}
-							paddingX={1}
-							backgroundColor={APP_BACKGROUND_COLOR}
-						>
+						<Box height={statusHeight} paddingX={1}>
 							{responding && (
 								<>
 									<Text color={STATUS_RUNNING}>
@@ -874,7 +842,6 @@ export default function App() {
 					borderColor={
 						clipboardStatus.startsWith('Copy failed') ? '#d66b6b' : '#7fc7a4'
 					}
-					backgroundColor={APP_BACKGROUND_COLOR}
 				>
 					<Text
 						color={
@@ -894,7 +861,6 @@ export default function App() {
 					paddingY={0}
 					borderStyle="round"
 					borderColor="#7fc7a4"
-					backgroundColor={APP_BACKGROUND_COLOR}
 				>
 					<Text color="#9fe3bd">{'Sandboxing Enabled'}</Text>
 				</Box>

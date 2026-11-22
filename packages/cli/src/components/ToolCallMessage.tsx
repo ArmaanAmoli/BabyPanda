@@ -24,13 +24,7 @@ import {
 	truncateEnd,
 } from '../utils/formatLink';
 import {DiffViewer} from './DiffViewer';
-import {
-	APP_BACKGROUND_COLOR,
-	DIFF_ADDED_TEXT,
-	DIFF_REMOVED_TEXT,
-	HIGHLIGHT_BACKGROUND,
-	TEXT_WHITE,
-} from '../theme';
+import {DIFF_ADDED_TEXT, DIFF_REMOVED_TEXT, TEXT_WHITE} from '../theme';
 
 /** Muted grey for secondary text: hints, command continuation, error detail. */
 const MUTED_TEXT = '#8a7f7f';
@@ -51,7 +45,6 @@ export interface ToolCallMessageProps {
 	visibleRows: number;
 	chatHeight: number;
 	width: number;
-	focused: boolean;
 }
 
 /**
@@ -76,7 +69,6 @@ export function ToolCallMessage({
 	visibleRows,
 	chatHeight,
 	width,
-	focused,
 }: ToolCallMessageProps) {
 	const layout = useMemo(
 		() =>
@@ -92,7 +84,6 @@ export function ToolCallMessage({
 	const height = layout.height;
 	const maxGroupScroll = Math.max(0, layout.expandedFullHeight - height);
 	const [groupScrollTop, setGroupScrollTop] = useState(0);
-	const [hoveredRow, setHoveredRow] = useState<number | null>(null);
 	const rootRef = useRef<DOMElement>(null);
 	// Content can shrink when a diff collapses; never leave the window past its end.
 	const scrollTop = Math.min(groupScrollTop, maxGroupScroll);
@@ -141,13 +132,6 @@ export function ToolCallMessage({
 			// A collapsed group renders no diff or command rows, so a click
 			// that asks for one has to reveal them first.
 			if (!expanded) onToggleGroup();
-		} else if (event.name === 'move') {
-			const span = spanAt(logicalRow);
-			setHoveredRow(
-				span?.row.type === 'bullet' || span?.row.type === 'root'
-					? span.index
-					: null,
-			);
 		}
 	});
 
@@ -160,16 +144,8 @@ export function ToolCallMessage({
 		row: Extract<LayoutRow, {type: 'root'}>,
 		index: number,
 	) => {
-		const highlighted = (focused && !expanded) || hoveredRow === index;
 		return (
-			<Box
-				key={index}
-				height={1}
-				flexShrink={0}
-				backgroundColor={
-					highlighted ? HIGHLIGHT_BACKGROUND : APP_BACKGROUND_COLOR
-				}
-			>
+			<Box key={index} height={1} flexShrink={0}>
 				<Text color={statusColor(row.status)}>■</Text>
 				<Text> </Text>
 				<Text color={TEXT_WHITE} wrap="truncate">
@@ -185,11 +161,7 @@ export function ToolCallMessage({
 		);
 	};
 
-	const renderBullet = (
-		bullet: BulletView,
-		index: number,
-		highlighted: boolean,
-	) => {
+	const renderBullet = (bullet: BulletView, index: number) => {
 		const targetMax = bulletTargetMax(bullet, width);
 		let targetText: string;
 		if (bullet.link) {
@@ -208,9 +180,6 @@ export function ToolCallMessage({
 				height={1}
 				flexShrink={0}
 				paddingLeft={bullet.indent}
-				backgroundColor={
-					highlighted ? HIGHLIGHT_BACKGROUND : APP_BACKGROUND_COLOR
-				}
 			>
 				<Text color={statusColor(bullet.status)}>●</Text>
 				<Text> </Text>
@@ -247,12 +216,11 @@ export function ToolCallMessage({
 		clipTop = 0,
 		visibleRows = 1,
 	) => {
-		const rowHighlighted = (focused && !expanded) || hoveredRow === index;
 		switch (row.type) {
 			case 'root':
 				return renderRoot(row, index);
 			case 'bullet':
-				return renderBullet(row.bullet, index, rowHighlighted);
+				return renderBullet(row.bullet, index);
 			case 'error':
 				return (
 					<Box
@@ -304,7 +272,6 @@ export function ToolCallMessage({
 			flexShrink={0}
 			flexDirection="column"
 			width={width}
-			backgroundColor={APP_BACKGROUND_COLOR}
 		>
 			<Box flexShrink={0} flexDirection="column">
 				{/* Render only the visible window. Nested overflow clips do not
