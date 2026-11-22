@@ -17,12 +17,7 @@ import {buildToolCallLayout} from '../utils/toolCallLayout';
 import {ToolCallMessage} from './ToolCallMessage';
 import {ReasoningMessage} from './ReasoningMessage';
 import {pandaBannerRows} from '../utils/pandaBanner';
-import {
-	APP_BACKGROUND_COLOR,
-	ASSISTANT_GLYPH,
-	TEXT_WHITE,
-	USER_BAND_BACKGROUND,
-} from '../theme';
+import {ASSISTANT_GLYPH, TEXT_WHITE} from '../theme';
 
 /** Glyph width plus the space after it: continuation lines align under text. */
 const GLYPH_INDENT = 2;
@@ -263,11 +258,6 @@ export function ChatBox({
 								: `text-${item.messageIndices[0] ?? index}`
 				}
 				renderItem={({item, startRow, clipTop, visibleRows}) => {
-					const itemFocused =
-						focusedMessageIndex !== null &&
-						item.kind !== 'banner' &&
-						item.messageIndices.includes(focusedMessageIndex);
-
 					if (item.kind === 'banner') {
 						return (
 							<>
@@ -291,7 +281,6 @@ export function ChatBox({
 									clipTop={clipTop}
 									visibleRows={visibleRows}
 									width={chatWidth}
-									focused={itemFocused}
 								/>
 								<Box height={1} flexShrink={0} />
 							</>
@@ -318,7 +307,6 @@ export function ChatBox({
 										visibleRows={visibleRows}
 										chatHeight={height}
 										width={chatWidth}
-										focused={itemFocused}
 									/>
 								)}
 								<Box height={1} flexShrink={0} />
@@ -327,13 +315,7 @@ export function ChatBox({
 					}
 
 					if (item.kind === 'text' || item.kind === 'content') {
-						return (
-							<GlyphBlock
-								role={item.role}
-								lines={item.lines}
-								user={item.kind === 'text' && item.user}
-							/>
-						);
+						return <GlyphBlock role={item.role} lines={item.lines} />;
 					}
 
 					return <></>;
@@ -345,17 +327,14 @@ export function ChatBox({
 
 /**
  * A plain text message: glyph on the first row, wrapped continuation lines
- * indenting to align under the text, and a full-width band behind user
- * messages.
+ * indenting to align under the text.
  */
 function GlyphBlock({
 	role,
 	lines,
-	user,
 }: {
 	role: Role | ContentType;
 	lines: MessageLine[];
-	user: boolean;
 }) {
 	return (
 		<>
@@ -366,7 +345,6 @@ function GlyphBlock({
 					height={1}
 					flexShrink={0}
 					flexDirection="row"
-					backgroundColor={user ? USER_BAND_BACKGROUND : APP_BACKGROUND_COLOR}
 				>
 					{/* The glyph marks the first row only; wrapped lines
 					    indent to align under the text. */}

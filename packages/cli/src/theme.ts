@@ -9,8 +9,6 @@
  * palette and are not defined here.
  */
 
-export const APP_BACKGROUND_COLOR = '#141414';
-
 /** Tool-call status. Yellow also covers "waiting for permission". */
 export const STATUS_RUNNING = '#ffe100';
 export const STATUS_DONE = '#73bc59';
@@ -28,17 +26,14 @@ export const REASONING_ACCENT = '#863737';
 /** Assistant message glyph. */
 export const ASSISTANT_GLYPH = '#7e7474';
 
-/** Full-width band behind a user message, a neutral grey step above the background. */
-export const USER_BAND_BACKGROUND = '#2a2a2a';
-
-/** Focused or hovered row. */
-export const HIGHLIGHT_BACKGROUND = '#242424';
+/** Horizontal rules above and below the prompt box and around user messages. */
+export const RULE_COLOR = '#555555';
 
 /**
- * Diff information. The backgrounds are the status colours pre-blended against
- * APP_BACKGROUND_COLOR: chalk silently discards the alpha channel of an
- * 8-digit hex, so "transparent" has to be baked in. The blends below are the
- * user-chosen tints (a 25% blend was still too subtle on the target display).
+ * Diff information. The backgrounds are the status colours pre-blended into
+ * dark tints: chalk silently discards the alpha channel of an 8-digit hex, so
+ * "transparent" has to be baked in. The blends below are the user-chosen
+ * tints (a 25% blend was still too subtle on the target display).
  */
 export const DIFF_ADDED_TEXT = STATUS_DONE;
 export const DIFF_REMOVED_TEXT = STATUS_FAILED;

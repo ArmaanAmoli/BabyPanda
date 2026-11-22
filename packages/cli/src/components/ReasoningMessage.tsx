@@ -1,14 +1,10 @@
-import React, {useRef, useState} from 'react';
+import React, {useRef} from 'react';
 import {Box, Text, type DOMElement} from 'ink';
 import type {MessageLine} from '../types';
 import {useMouse} from '../hooks/useMouse';
 import type {MouseEvent} from '../utils/terminal/mouse';
 import {SPINNER_FRAMES, useSpinnerFrame} from './spinner';
-import {
-	APP_BACKGROUND_COLOR,
-	HIGHLIGHT_BACKGROUND,
-	REASONING_ACCENT,
-} from '../theme';
+import {REASONING_ACCENT} from '../theme';
 
 /** Glyph width plus the space after it: continuation lines align under text. */
 const GLYPH_INDENT = 2;
@@ -27,7 +23,6 @@ export interface ReasoningMessageProps {
 	/** Visible rows of this item in the viewport. */
 	visibleRows: number;
 	width: number;
-	focused: boolean;
 }
 
 /**
@@ -48,11 +43,9 @@ export function ReasoningMessage({
 	clipTop,
 	visibleRows,
 	width,
-	focused,
 }: ReasoningMessageProps) {
 	const frame = useSpinnerFrame(streaming);
 	const glyph = streaming ? SPINNER_FRAMES[frame]! : '∴';
-	const [hovered, setHovered] = useState(false);
 	const rootRef = useRef<DOMElement>(null);
 
 	const height = expanded ? Math.max(1, lines.length) : 1;
@@ -64,26 +57,15 @@ export function ReasoningMessage({
 		const isGlyphRow = clipTop === 0 && event.row === startRow;
 		if (event.name === 'left-press') {
 			if (isGlyphRow) onToggle();
-		} else if (event.name === 'move') {
-			setHovered(isGlyphRow);
 		}
 	});
 
-	const highlighted = (focused && !expanded) || hovered;
 	const lineCount = lines.length;
 	const label = `thinking · ${lineCount} line${lineCount === 1 ? '' : 's'}`;
 
 	if (!expanded) {
 		return (
-			<Box
-				ref={rootRef}
-				width={width}
-				height={1}
-				flexShrink={0}
-				backgroundColor={
-					highlighted ? HIGHLIGHT_BACKGROUND : APP_BACKGROUND_COLOR
-				}
-			>
+			<Box ref={rootRef} width={width} height={1} flexShrink={0}>
 				<Text color={REASONING_ACCENT}>{glyph}</Text>
 				<Text> </Text>
 				<Text dimColor wrap="truncate">
@@ -100,7 +82,6 @@ export function ReasoningMessage({
 			height={height}
 			flexShrink={0}
 			flexDirection="column"
-			backgroundColor={APP_BACKGROUND_COLOR}
 		>
 			{lines.map((line, index) => (
 				<Box
@@ -109,11 +90,6 @@ export function ReasoningMessage({
 					height={1}
 					flexShrink={0}
 					flexDirection="row"
-					backgroundColor={
-						index === 0 && highlighted
-							? HIGHLIGHT_BACKGROUND
-							: APP_BACKGROUND_COLOR
-					}
 				>
 					{index === 0 ? (
 						<>
