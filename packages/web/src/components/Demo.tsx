@@ -3,8 +3,8 @@ import { content } from '@/content';
 export default function Demo() {
   const { demo } = content;
   return (
-    <section id="demo" className="mx-auto w-full max-w-5xl px-5 py-14 sm:py-20">
-      <div className="text-center mb-10">
+    <section id="demo" className="mx-auto w-full max-w-5xl px-5 py-10 sm:py-12">
+      <div className="text-center mb-8">
         <h2 className="mt-5 text-3xl font-bold tracking-tight text-ink sm:text-4xl">
           {demo.title}
         </h2>

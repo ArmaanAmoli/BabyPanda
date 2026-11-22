@@ -3,7 +3,7 @@ import { content } from '@/content';
 export default function Hero() {
   const { hero, site } = content;
   return (
-    <section className="mx-auto w-full max-w-5xl px-5 pt-12 pb-14 sm:pt-16 sm:pb-20">
+    <section className="mx-auto w-full max-w-5xl px-5 pt-10 pb-10 sm:pt-12 sm:pb-12">
       <p className="font-mono text-[11px] uppercase tracking-[0.22em] text-accent sm:text-xs">
         {site.tagline}
       </p>
@@ -28,7 +28,7 @@ export default function Hero() {
         </a>
       </div>
       {hero.image && (
-        <div className="mt-12">
+        <div className="mt-10">
           <img
             src={hero.image.src}
             alt={hero.image.alt}
