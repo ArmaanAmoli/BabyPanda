@@ -31,16 +31,17 @@ export default function InstallCta() {
 
   return (
     <div className="pointer-events-none absolute inset-0 z-[2] flex items-center justify-center px-4">
-      {/* Translucent + lightly blurred so the dot field shows through and the
-          card reads as part of the banner, not a slab on top of it. */}
-      <div className="pointer-events-auto w-full max-w-4xl rounded-lg border border-ink/15 bg-bg/40 px-6 py-5 backdrop-blur-[3px]">
-        <p className="font-mono text-[11px] uppercase tracking-[0.22em] text-accent sm:text-xs">
+      {/* Translucent + lightly blurred, no border, so the dot field shows
+          through and the card reads as part of the banner. */}
+      <div className="pointer-events-auto w-full max-w-4xl rounded-lg bg-bg/40 px-6 py-5 font-montserrat backdrop-blur-[3px]">
+        <p className="text-2xl font-extrabold tracking-tight text-accent sm:text-3xl">
           {install.ctaLabel}
         </p>
-        <p className="mt-1 text-xs text-ink/55 sm:text-sm">{step.label}</p>
-        <div className="relative mt-2.5 overflow-hidden rounded-md border border-ink/10 bg-bg/50">
-          <pre className="overflow-x-auto px-4 py-3 pr-12 font-mono text-[12px] leading-6 text-ink sm:text-[13px]">
-            <code>{step.command}</code>
+        <div className="relative mt-3 overflow-hidden rounded-md border border-ink/10 bg-bg/50">
+          {/* font-montserrat must sit on pre/code themselves: the UA stylesheet
+              forces monospace on those elements, which beats inheritance. */}
+          <pre className="overflow-x-auto px-4 py-3 pr-12 font-montserrat text-xs font-medium leading-6 text-ink sm:text-sm">
+            <code className="font-montserrat">{step.command}</code>
           </pre>
           <button
             type="button"

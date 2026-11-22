@@ -80,8 +80,6 @@ export interface ShowcaseContent {
 }
 
 export interface InstallStep {
-  /** Short label above the command. */
-  label: string;
   /** The command shown in the code block and copied by the copy button. */
   command: string;
 }
@@ -177,7 +175,6 @@ export const content: Content = {
     ctaLabel: 'Install now!',
     steps: [
       {
-        label: 'Install with one command',
         command:
           'curl -fsSL https://raw.githubusercontent.com/ArmaanAmoli/BabyPanda/main/install.sh | bash',
       },
