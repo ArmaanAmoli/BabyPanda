@@ -1,10 +1,15 @@
 /**
  * BabyPanda startup/exit banner.
  *
- * Ported from `docs/panda-banner.js`, which stays the verbatim reference. The
- * panda is rasterised from vector shapes into a half-block grid (`▀` carries a
+ * Ported from `docs/panda-banner.js` (the original reference). The panda is
+ * rasterised from vector shapes into a half-block grid (`▀` carries a
  * foreground and a background colour, so one character cell is two pixels), and
  * the wordmark is a 5x5 pixel font rendered the same way.
+ *
+ * Unlike the reference, empty cells print a plain space with no background
+ * colour, so the terminal's own background shows through. A thin near-black
+ * outline surrounds the panda and every wordmark letter so the art stays
+ * readable on light themes.
  *
  * The raster is cached per resolution scale: it is deterministic and the only
  * things that change between calls are the session id and the terminal width.
@@ -189,12 +194,16 @@ function rasterizePanda(scale: number): string[] {
 		pixels.push(row);
 	}
 
-	const rows = renderHalfBlocks(pixels, width, height);
+	const padded = withOutline(pixels, width, height);
+	const rows = renderHalfBlocks(padded.pixels, padded.width, padded.height);
 	pandaCache.set(scale, rows);
 	return rows;
 }
 
-/** Two pixel rows per terminal row, using `▀` as a split foreground/background. */
+/**
+ * Two pixel rows per terminal row, using `▀` as a split foreground/background.
+ * Empty pixels never set a background, so the terminal's own shows through.
+ */
 function renderHalfBlocks(
 	pixels: (RGB | null)[][],
 	width: number,
@@ -217,6 +226,48 @@ function renderHalfBlocks(
 	return rows;
 }
 
+// ---------- outline ----------
+
+/** Near-black, so the art stays readable on a white terminal theme. */
+const OUTLINE: RGB = [10, 10, 14];
+
+/**
+ * Pads the grid by one pixel on every side and fills each empty pixel that
+ * touches a painted one (up/down/left/right) with the outline colour. The row
+ * count is rounded up to even so rows still pair into character cells.
+ */
+function withOutline(
+	pixels: (RGB | null)[][],
+	width: number,
+	height: number,
+): {pixels: (RGB | null)[][]; width: number; height: number} {
+	const outWidth = width + 2;
+	const outHeight = (height + 2 + 1) & ~1;
+	const out: (RGB | null)[][] = Array.from({length: outHeight}, () =>
+		Array.from({length: outWidth}, () => null),
+	);
+	const filled = (y: number, x: number) => pixels[y]?.[x] != null;
+
+	for (let y = 0; y < outHeight; y++) {
+		for (let x = 0; x < outWidth; x++) {
+			const sy = y - 1;
+			const sx = x - 1;
+			const own = pixels[sy]?.[sx];
+			if (own) {
+				out[y]![x] = own;
+			} else if (
+				filled(sy - 1, sx) ||
+				filled(sy + 1, sx) ||
+				filled(sy, sx - 1) ||
+				filled(sy, sx + 1)
+			) {
+				out[y]![x] = OUTLINE;
+			}
+		}
+	}
+	return {pixels: out, width: outWidth, height: outHeight};
+}
+
 // ---------- wordmark (5x5 pixel font) ----------
 
 const FONT: Record<string, string[]> = {
@@ -235,7 +286,7 @@ function word(text: string): string[] {
 	if (cached) return cached;
 
 	const width = text.length * 6 - 1;
-	const pixels: (RGB | null)[][] = Array.from({length: 6}, () =>
+	const pixels: (RGB | null)[][] = Array.from({length: 5}, () =>
 		Array.from({length: width}, () => null),
 	);
 	for (const [index, character] of [...text].entries()) {
@@ -251,17 +302,21 @@ function word(text: string): string[] {
 		});
 	}
 
-	const rows = renderHalfBlocks(pixels, width, 6);
+	// letters are spaced 6 columns apart, so neighbours share one outline column
+	const padded = withOutline(pixels, width, 5);
+	const rows = renderHalfBlocks(padded.pixels, padded.width, padded.height);
 	wordmarkCache.set(text, rows);
 	return rows;
 }
 
 // ---------- compose ----------
 
-/** Widest fixed line of the right-hand column (the rule under the wordmark). */
-const RIGHT_COLUMN_WIDTH = 29;
+/** Widest fixed line of the right-hand column (the outlined PANDA wordmark). */
+const RIGHT_COLUMN_WIDTH = 31;
 /** Gap between the panda and the right column, plus the two leading spaces. */
 const BANNER_CHROME_WIDTH = 5;
+/** One pixel of outline padding on each side of the panda. */
+const OUTLINE_PADDING = 2;
 
 /**
  * Widest line the right-hand column will actually render. The session line is
@@ -275,7 +330,10 @@ function rightColumnWidth(sessionId: string): number {
 /** Full banner width at a given resolution scale. */
 export function bannerWidth(scale: number, sessionId: string): number {
 	return (
-		Math.round(36 * scale) + BANNER_CHROME_WIDTH + rightColumnWidth(sessionId)
+		Math.round(36 * scale) +
+		OUTLINE_PADDING +
+		BANNER_CHROME_WIDTH +
+		rightColumnWidth(sessionId)
 	);
 }
 
@@ -334,5 +392,5 @@ export function pandaBannerRows(sessionId: string, columns: number): string[] {
 export function pandaBannerHeight(sessionId: string, columns: number): number {
 	const scale = bannerScale(columns, sessionId);
 	if (scale === null) return TEXT_FALLBACK_LINES;
-	return Math.round(32 * scale) / 2;
+	return ((Math.round(32 * scale) & ~1) + OUTLINE_PADDING) / 2;
 }

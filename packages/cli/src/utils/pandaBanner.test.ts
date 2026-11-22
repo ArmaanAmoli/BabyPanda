@@ -25,9 +25,9 @@ function checksum(rows: string[]): string {
 }
 
 describe('panda banner', () => {
-	test('renders 24 rows at full scale and 16 at the reduced scale', () => {
-		expect(pandaBannerRows(SESSION, 200)).toHaveLength(24);
-		expect(pandaBannerRows(SESSION, 80)).toHaveLength(16);
+	test('renders 25 rows at full scale and 17 at the reduced scale', () => {
+		expect(pandaBannerRows(SESSION, 200)).toHaveLength(25);
+		expect(pandaBannerRows(SESSION, 80)).toHaveLength(17);
 	});
 
 	test('every row fits the terminal width it was rendered for', () => {
@@ -75,20 +75,20 @@ describe('panda banner', () => {
 
 	test('scale steps down with the terminal and drops when too narrow', () => {
 		// the 26-character ULID makes the session line the widest right-column
-		// line, so it — not the 29-character rule — sets the required width
-		expect(bannerWidth(1.5, SESSION)).toBe(93);
-		expect(bannerWidth(1, SESSION)).toBe(75);
+		// line, so it — not the 31-character outlined wordmark — sets the width
+		expect(bannerWidth(1.5, SESSION)).toBe(95);
+		expect(bannerWidth(1, SESSION)).toBe(77);
 		expect(bannerScale(200, SESSION)).toBe(1.5);
-		expect(bannerScale(93, SESSION)).toBe(1.5);
-		expect(bannerScale(92, SESSION)).toBe(1);
-		expect(bannerScale(75, SESSION)).toBe(1);
-		expect(bannerScale(74, SESSION)).toBeNull();
+		expect(bannerScale(95, SESSION)).toBe(1.5);
+		expect(bannerScale(94, SESSION)).toBe(1);
+		expect(bannerScale(77, SESSION)).toBe(1);
+		expect(bannerScale(76, SESSION)).toBeNull();
 	});
 
 	test('a short session id lets the full scale fit a narrower terminal', () => {
-		expect(bannerWidth(1.5, 'abc')).toBe(88);
-		expect(bannerScale(88, 'abc')).toBe(1.5);
-		expect(bannerScale(87, 'abc')).toBe(1);
+		expect(bannerWidth(1.5, 'abc')).toBe(92);
+		expect(bannerScale(92, 'abc')).toBe(1.5);
+		expect(bannerScale(91, 'abc')).toBe(1);
 	});
 
 	test('falls back to a text-only wordmark when too narrow', () => {
@@ -122,13 +122,13 @@ describe('panda banner', () => {
 	});
 
 	/*
-	 * Drift guard: these digests pin the exact rasterised output against the
-	 * reference implementation in docs/panda-banner.js. Any change to the
-	 * shapes, the supersampling, the half-block renderer or the wordmark font
-	 * breaks them, which is the point -- the artwork is not supposed to move.
+	 * Drift guard: these digests pin the exact rasterised output of the current
+	 * transparent, outlined artwork. Any change to the shapes, supersampling,
+	 * half-block renderer, outline, or wordmark font breaks them, which is the
+	 * point -- the artwork is not supposed to move.
 	 */
 	test('the rasterised artwork has not drifted from the reference', () => {
-		expect(checksum(pandaBannerRows(SESSION, 200))).toBe('ac2089222d1afb81');
-		expect(checksum(pandaBannerRows(SESSION, 80))).toBe('c69ea55c35c30ece');
+		expect(checksum(pandaBannerRows(SESSION, 200))).toBe('7e46c9e1e453287d');
+		expect(checksum(pandaBannerRows(SESSION, 80))).toBe('e0ebc755463b771f');
 	});
 });
