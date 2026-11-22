@@ -17,7 +17,7 @@ import {buildToolCallLayout} from '../utils/toolCallLayout';
 import {ToolCallMessage} from './ToolCallMessage';
 import {ReasoningMessage} from './ReasoningMessage';
 import {pandaBannerRows} from '../utils/pandaBanner';
-import {ASSISTANT_GLYPH, TEXT_WHITE} from '../theme';
+import {ASSISTANT_GLYPH, RULE_COLOR, TEXT_WHITE} from '../theme';
 
 /** Glyph width plus the space after it: continuation lines align under text. */
 const GLYPH_INDENT = 2;
@@ -184,7 +184,9 @@ export function ChatBox({
 						}).height + 1
 					);
 				}
-				return Math.max(1, item.lines.length) + 1;
+				const lineCount = Math.max(1, item.lines.length);
+				// User messages add a rule above and below the text.
+				return lineCount + (item.kind === 'text' && item.user ? 3 : 1);
 			}),
 		[
 			items,
@@ -315,7 +317,14 @@ export function ChatBox({
 					}
 
 					if (item.kind === 'text' || item.kind === 'content') {
-						return <GlyphBlock role={item.role} lines={item.lines} />;
+						return (
+							<GlyphBlock
+								role={item.role}
+								lines={item.lines}
+								user={item.kind === 'text' && item.user}
+								width={chatWidth}
+							/>
+						);
 					}
 
 					return <></>;
@@ -327,17 +336,29 @@ export function ChatBox({
 
 /**
  * A plain text message: glyph on the first row, wrapped continuation lines
- * indenting to align under the text.
+ * indenting to align under the text. User messages get the same light rule
+ * as the prompt box above and below instead of a background band.
  */
 function GlyphBlock({
 	role,
 	lines,
+	user,
+	width,
 }: {
 	role: Role | ContentType;
 	lines: MessageLine[];
+	user: boolean;
+	width: number;
 }) {
+	const rule = (
+		<Box width="100%" height={1} flexShrink={0}>
+			<Text color={RULE_COLOR}>{'─'.repeat(Math.max(1, width - 1))}</Text>
+		</Box>
+	);
+
 	return (
 		<>
+			{user && rule}
 			{lines.map((line, lineIndex) => (
 				<Box
 					key={lineIndex}
@@ -361,6 +382,7 @@ function GlyphBlock({
 					</Box>
 				</Box>
 			))}
+			{user && rule}
 			<Box height={1} flexShrink={0} />
 		</>
 	);
