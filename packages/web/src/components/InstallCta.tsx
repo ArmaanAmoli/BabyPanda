@@ -30,13 +30,15 @@ export default function InstallCta() {
   };
 
   return (
-    <div className="pointer-events-none absolute inset-0 z-[2] flex items-center justify-center px-5">
-      <div className="pointer-events-auto w-full max-w-xl rounded-lg border border-ink/20 bg-bg/85 px-5 py-4 shadow-2xl backdrop-blur-sm">
+    <div className="pointer-events-none absolute inset-0 z-[2] flex items-center justify-center px-4">
+      {/* Translucent + lightly blurred so the dot field shows through and the
+          card reads as part of the banner, not a slab on top of it. */}
+      <div className="pointer-events-auto w-full max-w-4xl rounded-lg border border-ink/15 bg-bg/40 px-6 py-5 backdrop-blur-[3px]">
         <p className="font-mono text-[11px] uppercase tracking-[0.22em] text-accent sm:text-xs">
           {install.ctaLabel}
         </p>
         <p className="mt-1 text-xs text-ink/55 sm:text-sm">{step.label}</p>
-        <div className="relative mt-2.5 overflow-hidden rounded-md border border-ink/15 bg-ink/[0.05]">
+        <div className="relative mt-2.5 overflow-hidden rounded-md border border-ink/10 bg-bg/50">
           <pre className="overflow-x-auto px-4 py-3 pr-12 font-mono text-[12px] leading-6 text-ink sm:text-[13px]">
             <code>{step.command}</code>
           </pre>
