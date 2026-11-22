@@ -87,8 +87,8 @@ export interface InstallStep {
 }
 
 export interface InstallContent {
-  /** Section heading. */
-  title: string;
+  /** Call-to-action label on the hovering card over the dot banner at the top. */
+  ctaLabel: string;
   /** Ordered install steps, each rendered as a code block with a copy button. */
   steps: InstallStep[];
 }
@@ -174,7 +174,7 @@ export const content: Content = {
     ],
   },
   install: {
-    title: 'Get started',
+    ctaLabel: 'Install now!',
     steps: [
       {
         label: 'Install with one command',

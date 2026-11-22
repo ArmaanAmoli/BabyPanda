@@ -2,7 +2,7 @@ import { useEffect } from 'react';
 import Hero from '@/components/Hero';
 import Demo from '@/components/Demo';
 import Showcase from '@/components/Showcase';
-import Install from '@/components/Install';
+import InstallCta from '@/components/InstallCta';
 import HalftoneWordmarkFooter from '@/components/ui/halftone-wordmark-footer';
 import { content } from '@/content';
 
@@ -19,8 +19,10 @@ export default function App() {
     <div className="min-h-screen bg-bg font-sans text-ink">
       {/* The halftone dots banner opens the page; its link columns act as the
           navigation, so there is no separate navbar. w-full is required:
-          without it the canvas collapses to 0px. */}
-      <div className="w-full">
+          without it the canvas collapses to 0px. The relative wrapper hosts
+          the hovering install card over the banner's empty middle, and carries
+          the #install anchor so the hero CTA scrolls here. */}
+      <div id="install" className="relative w-full">
         <HalftoneWordmarkFooter
           wordmark={content.footer.wordmark}
           label={content.footer.label}
@@ -32,12 +34,12 @@ export default function App() {
           dotGap={5.5}
           palette={{ background: '#0b0b0a', ink: '#f1efe8', warm: '#8fd16a' }}
         />
+        <InstallCta />
       </div>
       <main>
         <Hero />
         <Demo />
         <Showcase />
-        <Install />
       </main>
       {/* Copyright and licence line at the very end of the page. */}
       <footer className="border-t border-ink/10">
