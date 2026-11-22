@@ -277,7 +277,10 @@ export function VirtualizedList<T>({
 						// The wrapper clips the item to its visible slice; the
 						// negative margin shifts the content up by clipTop so a
 						// partly visible item is cut mid-content without
-						// breaking the layout.
+						// breaking the layout. Items must not render nested
+						// overflow="hidden" boxes: Ink applies only the innermost
+						// clip, which would replace this wrapper's clip and let
+						// clipped rows escape into neighbouring regions.
 						<Box
 							key={keyExtractor(item, index)}
 							height={visibleRows}

@@ -615,7 +615,7 @@ export default function App() {
 				flexDirection="column"
 				gap={GAP_CHAT_BOX_PROMPT_BOX}
 			>
-				<Box height={chatHeight} flexDirection="column">
+				<Box height={chatHeight} flexDirection="column" overflow="hidden">
 					{/* Mouse rows are 1-based, so the chat region starts at row 1.
 					    This also keeps the visible line count (end - start + 1)
 					    equal to the container height (rows - HEIGHT_OF_PROMPT_BOX).
@@ -629,6 +629,7 @@ export default function App() {
 					width="100%"
 					height={bottomHeight}
 					justifyContent={'flex-end'}
+					overflow="hidden"
 				>
 					{pendingPermissionMessages.length > 0 && (
 						<Box height={activityHeight} width="50%">

@@ -99,7 +99,7 @@ export function ReasoningMessage({
 					) : (
 						<Text>{' '.repeat(GLYPH_INDENT)}</Text>
 					)}
-					<Box flexGrow={1} height={1} overflow="hidden">
+					<Box flexGrow={1} height={1}>
 						<Text wrap="truncate" dimColor>
 							{line.content}
 						</Text>
