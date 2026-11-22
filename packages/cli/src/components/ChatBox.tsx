@@ -235,7 +235,12 @@ export function ChatBox({
 	}, [activeToolBatch, expandGroup]);
 
 	return (
-		<Box flexGrow={1} flexDirection="column" justifyContent="flex-end">
+		<Box
+			height={height}
+			overflow="hidden"
+			flexDirection="column"
+			justifyContent="flex-end"
+		>
 			<VirtualizedList
 				data={items}
 				height={height}
@@ -377,7 +382,7 @@ function GlyphBlock({
 					) : (
 						<Text>{' '.repeat(GLYPH_INDENT)}</Text>
 					)}
-					<Box flexGrow={1} height={1} overflow="hidden">
+					<Box flexGrow={1} height={1}>
 						<Text wrap="truncate">{line.content || EMPTY_ROW}</Text>
 					</Box>
 				</Box>
