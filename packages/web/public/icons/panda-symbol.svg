@@ -1,0 +1,97 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-labelledby="title description">
+  <title id="title">Essential white paper origami panda</title>
+  <desc id="description">A minimalist white paper panda with nine-sided dark eye patches, no mouth, neutral gray shadows, and only a few subtle paper-edge highlights.</desc>
+  <defs>
+    <linearGradient id="background" x1="10" y1="4" x2="54" y2="60" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#171717"/>
+      <stop offset="0.45" stop-color="#070707"/>
+      <stop offset="1" stop-color="#000"/>
+    </linearGradient>
+    <radialGradient id="spotlight" cx="0" cy="0" r="1" gradientTransform="translate(25 14) rotate(53) scale(43)">
+      <stop stop-color="#fff" stop-opacity="0.1"/>
+      <stop offset="1" stop-color="#fff" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="paper-left" x1="15" y1="12" x2="36" y2="53" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#fff"/>
+      <stop offset="1" stop-color="#d4d4d4"/>
+    </linearGradient>
+    <linearGradient id="paper-right" x1="41" y1="14" x2="35" y2="54" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#e7e7e7"/>
+      <stop offset="1" stop-color="#aaa"/>
+    </linearGradient>
+    <filter id="paper-shadow" x="-30%" y="-25%" width="160%" height="170%">
+      <feDropShadow dx="0" dy="3" stdDeviation="2.2" flood-color="#000" flood-opacity="0.8"/>
+    </filter>
+    <filter id="floor-blur" x="-30%" y="-100%" width="160%" height="300%">
+      <feGaussianBlur stdDeviation="1.5"/>
+    </filter>
+  </defs>
+
+  <rect x="1" y="1" width="62" height="62" rx="18" fill="url(#background)"/>
+  <rect x="1" y="1" width="62" height="62" rx="18" fill="url(#spotlight)"/>
+  <rect x="1.5" y="1.5" width="61" height="61" rx="17.5" fill="none" stroke="#fff" stroke-opacity="0.1"/>
+  <ellipse cx="32" cy="56" rx="20" ry="3.2" fill="#000" filter="url(#floor-blur)"/>
+
+  <g filter="url(#paper-shadow)">
+    <path d="m24 45-7 13 15-2 15 2-7-13Z" fill="#c8c8c8"/>
+    <path d="m24 45 8 11-15 2Z" fill="#f2f2f2"/>
+    <path d="m40 45-8 11 15 2Z" fill="#aaa"/>
+    <path d="m24 45 8 3 8-3-8 11Z" fill="#d9d9d9"/>
+
+    <path d="m12 22-1-12 11 3 5 9-8 7Z" fill="url(#paper-left)" stroke="#fff" stroke-opacity="0.58" stroke-width="0.32" stroke-linejoin="miter"/>
+    <path d="m11 10 8 12-7 7Z" fill="#f8f8f8"/>
+    <path d="m11 10 11 3-3 9Z" fill="#fff"/>
+    <path d="m22 13 5 9-8-1Z" fill="#b9b9b9"/>
+    <path d="m19 21 8 1-8 7Z" fill="#d5d5d5"/>
+    <path d="m11 10 8 11 3-8m-3 8-7 8m7-8 8 1" fill="none" stroke="#3d3d3d" stroke-opacity="0.44" stroke-width="0.28"/>
+    <path d="m12 11 6.5 9.5" fill="none" stroke="#fff" stroke-opacity="0.86" stroke-width="0.22"/>
+
+    <path d="m52 22 1-12-11 3-5 9 8 7Z" fill="url(#paper-right)" stroke="#fff" stroke-opacity="0.46" stroke-width="0.32" stroke-linejoin="miter"/>
+    <path d="m53 10-8 12 7 7Z" fill="#c4c4c4"/>
+    <path d="m53 10-11 3 3 9Z" fill="#ededed"/>
+    <path d="m42 13-5 9 8-1Z" fill="#999"/>
+    <path d="m45 21-8 1 8 7Z" fill="#b5b5b5"/>
+    <path d="m53 10-8 11-3-8m3 8 7 8m-7-8-8 1" fill="none" stroke="#252525" stroke-opacity="0.42" stroke-width="0.28"/>
+    <path d="m52 11-6.5 9.5" fill="none" stroke="#fff" stroke-opacity="0.72" stroke-width="0.22"/>
+
+    <path d="m32 11 12 5 7 13-3 14-9 10-7 3-7-3-9-10-3-14 7-13Z" fill="#e8e8e8" stroke="#fff" stroke-opacity="0.62" stroke-width="0.35" stroke-linejoin="miter"/>
+
+    <path d="m32 11-12 5 7 14Z" fill="#fff"/>
+    <path d="m32 11 12 5-7 14Z" fill="#d5d5d5"/>
+    <path d="m32 11 5 19H27Z" fill="#f4f4f4"/>
+    <path d="m20 16-7 13 9 3 5-2Z" fill="#e5e5e5"/>
+    <path d="m44 16 7 13-9 3-5-2Z" fill="#b8b8b8"/>
+    <path d="m13 29 3 14 10-6-4-5Z" fill="#f5f5f5"/>
+    <path d="m51 29-3 14-10-6 4-5Z" fill="#c6c6c6"/>
+    <path d="m27 30 5 13-6-6Z" fill="#fff"/>
+    <path d="m37 30-5 13 6-6Z" fill="#bcbcbc"/>
+    <path d="m27 30 10 0-5 13Z" fill="#dedede"/>
+    <path d="m16 43 9 10 7-10-6-6Z" fill="#d9d9d9"/>
+    <path d="m48 43-9 10-7-10 6-6Z" fill="#b0b0b0"/>
+    <path d="m25 53 7 3 7-3-7-10Z" fill="#efefef"/>
+    <path d="m32 43 7 10-7 3Z" fill="#c4c4c4"/>
+
+    <polygon id="left-eye-patch" points="20,25 25,23.5 29,26 31,31 29,36 25,41 20,40 16.5,36 16,31" fill="#090909"/>
+    <polygon points="20,25 25,23.5 24,32 16,31" fill="#242424"/>
+    <polygon points="25,23.5 29,26 31,31 24,32" fill="#000"/>
+    <polygon points="16,31 24,32 25,41 20,40 16.5,36" fill="#111"/>
+    <polygon id="right-eye-patch" points="44,25 39,23.5 35,26 33,31 35,36 39,41 44,40 47.5,36 48,31" fill="#050505"/>
+    <polygon points="44,25 39,23.5 40,32 48,31" fill="#181818"/>
+    <polygon points="39,23.5 35,26 33,31 40,32" fill="#000"/>
+    <polygon points="48,31 40,32 39,41 44,40 47.5,36" fill="#090909"/>
+
+
+    <path d="m32 37-9 5 4 7 5-3 5 3 4-7Z" fill="#f7f7f7"/>
+    <path d="m23 42 9 4-5 3Z" fill="#d0d0d0"/>
+    <path d="m41 42-9 4 5 3Z" fill="#b3b3b3"/>
+    <path d="m27 39 5-2 5 2-5 5Z" fill="#080808"/>
+    <path d="m27 39 5-2-1 3Z" fill="#333"/>
+    <path d="m32 37 5 2-6 1Z" fill="#171717"/>
+
+  </g>
+
+  <g id="paper-highlights" fill="none" stroke="#fff" stroke-linecap="butt" stroke-linejoin="miter" stroke-miterlimit="4" shape-rendering="geometricPrecision">
+    <path d="m20 16 12-5 12 5M13 29l3 14 9 10M25 53l7 3 7-3" stroke-opacity="0.7" stroke-width="0.24"/>
+    <path d="m32 11 0 8M25 53l3-4m11 4-3-4" stroke-opacity="0.86" stroke-width="0.22"/>
+  </g>
+</svg>
