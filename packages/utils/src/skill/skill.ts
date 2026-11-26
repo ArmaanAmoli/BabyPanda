@@ -1,10 +1,11 @@
 import fs from 'fs';
-import os from 'os';
+import os, { homedir } from 'os';
 import path from 'path';
 import { getMatchingFolders } from '../getMatchingFolders';
 import { getYamlHeaders } from '../getYAMLHeaders';
 import { z } from 'zod';
 import skillsInstructions from './SKILLS.md' with { type: 'text' };
+import type { AddSkill } from '@baby-panda/types';
 
 const skillFoldersNameRegex = /^[a-z]+(-+[a-z]+)*$/;
 
@@ -168,4 +169,67 @@ export async function getSkillsInstructions(): Promise<string> {
   // directory to resolve `__dirname` against, so a runtime read of this file
   // fails with ENOENT inside Bun's virtual filesystem.
   return skillsInstructions;
+}
+
+class SkillAlreadyExistError extends Error {}
+class PathExistButNotDirectory extends Error {}
+
+export async function writeSkill({
+  name,
+  description,
+  content,
+  isGlobal,
+  disableModelInvocation,
+}: AddSkill): Promise<boolean> {
+  const globalPath = isGlobal
+    ? path.join(homedir(), '.babypanda', 'skills')
+    : path.join(process.cwd(), '.babypanda', 'skills');
+  const skillPathExists = await fs.promises.exists(globalPath);
+  // lstat is only valid when the path exists: on a fresh install the skills
+  // dir does not exist yet and an unconditional lstat would throw ENOENT.
+  const skillPathIsDir = skillPathExists && (await fs.promises.lstat(globalPath)).isDirectory();
+
+  if (!skillPathExists) {
+    await fs.promises.mkdir(globalPath, { recursive: true });
+  } else if (!skillPathIsDir) {
+    throw new PathExistButNotDirectory(`${globalPath} is not a directory`);
+  }
+
+  /* Create required dirs */
+  const skillDirName = path.join(globalPath, name);
+  if (
+    (await fs.promises.exists(skillDirName)) &&
+    (await fs.promises.lstat(skillDirName)).isDirectory()
+  ) {
+    throw new SkillAlreadyExistError(
+      'The skill already exists try another name or ask the user if they want to overwrite',
+    );
+  } else {
+    await fs.promises.mkdir(skillDirName);
+    await fs.promises.writeFile(
+      path.join(skillDirName, 'SKILL.md'),
+      createSkillFileContent(name, description, content, disableModelInvocation),
+    );
+    return true;
+  }
+}
+
+function createSkillFileContent(
+  name: string,
+  description: string,
+  content: string,
+  disableModelInvocation = false,
+): string {
+  // name/description are emitted as JSON double-quoted scalars, which are valid
+  // YAML: a raw description containing ": " (e.g. "via GitHub: create ...")
+  // would break the frontmatter and scanSkillDir would silently skip the skill.
+  const skill = `---
+name: ${JSON.stringify(name)}
+description: ${JSON.stringify(description)}
+disable-model-invocation: ${disableModelInvocation}
+---
+
+${content}`;
+
+  return skill;
 }

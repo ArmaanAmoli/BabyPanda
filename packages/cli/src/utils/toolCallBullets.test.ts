@@ -173,3 +173,39 @@ describe('write bullet stats', () => {
 		expect(bulletStats([call])).toBe('· 3 lines');
 	});
 });
+
+describe('addSkill bullet', () => {
+	test('shows "adding skill" with the skill name and the project SKILL.md path', () => {
+		const call: ToolCallEntry = {
+			id: 's1',
+			name: 'addSkill',
+			arguments: {
+				name: 'grill',
+				description: 'Grill the user',
+				content: 'Ask questions.',
+				isGlobal: false,
+			},
+			status: 'running',
+		};
+		const bullet = buildBullets([call])[0]!;
+		expect(bullet.verb).toBe('adding skill');
+		expect(bullet.target).toBe('grill .babypanda/skills/grill/SKILL.md');
+	});
+
+	test('a global skill points at ~/.babypanda/skills', () => {
+		const call: ToolCallEntry = {
+			id: 's2',
+			name: 'addSkill',
+			arguments: {
+				name: 'deploy',
+				description: 'Deploy the app',
+				content: 'Run the deploy.',
+				isGlobal: true,
+			},
+			status: 'done',
+		};
+		const bullet = buildBullets([call])[0]!;
+		expect(bullet.verb).toBe('adding skill');
+		expect(bullet.target).toBe('deploy ~/.babypanda/skills/deploy/SKILL.md');
+	});
+});

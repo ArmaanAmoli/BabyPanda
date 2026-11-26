@@ -465,4 +465,18 @@ export const ReadSkillSchema = z.object({
   name: z.string(),
 });
 
+export const AddSkillSchema = z.object({
+  // Must match the folder-name regex used by skill discovery
+  // (skillFoldersNameRegex in @baby-panda/utils), otherwise the created
+  // folder is skipped and the skill stays invisible.
+  name: z
+    .string()
+    .nonempty()
+    .regex(/^[a-z]+(-+[a-z]+)*$/, 'lowercase letters and single hyphens only, e.g. "code-review"'),
+  description: z.string().nonempty(),
+  content: z.string().nonempty(),
+  isGlobal: z.boolean().default(false),
+  disableModelInvocation: z.boolean().default(false),
+});
+export type AddSkill = z.infer<typeof AddSkillSchema>;
 export { ToolError };

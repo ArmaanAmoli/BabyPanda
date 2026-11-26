@@ -17,8 +17,9 @@ import {
   WebSearchSchema,
   GetWebPageSchema,
   ReadSkillSchema,
+  AddSkillSchema,
 } from '@baby-panda/types';
-import { getSkillByName, readSkillBody } from '@baby-panda/utils';
+import { getSkillByName, readSkillBody, writeSkill } from '@baby-panda/utils';
 
 export function createMCPServer(): McpServer {
   const server = new McpServer({
@@ -301,6 +302,26 @@ export function createMCPServer(): McpServer {
       const result = await readSkillBody(skill.filePath);
       return {
         content: [{ type: 'text', text: `Skill: ${skill.name} (${skill.source}) \n${result}` }],
+      };
+    },
+  );
+
+  server.registerTool(
+    'addSkill',
+    {
+      description: 'Add a new global or local skill on user request',
+      inputSchema: AddSkillSchema,
+    },
+    async (args) => {
+      // eslint-disable-next-line no-useless-assignment
+      let result = ``;
+      try {
+        result = `${await writeSkill(args)}`;
+      } catch (err) {
+        result = err instanceof Error ? err.message : `${err}`;
+      }
+      return {
+        content: [{ type: 'text', text: result }],
       };
     },
   );

@@ -350,4 +350,44 @@ export const baseTools: ModelTool[] = [
       },
     },
   },
+  {
+    type: 'function',
+    function: {
+      name: 'addSkill',
+      description:
+        'Create a new skill when the user asks for one. Writes <name>/SKILL.md under ~/.babypanda/skills (global) or <cwd>/.babypanda/skills (project).',
+      parameters: {
+        type: 'object',
+        properties: {
+          name: {
+            type: 'string',
+            description:
+              'Skill name and folder name: lowercase letters, digits and single hyphens only (e.g. "code-review").',
+          },
+          description: {
+            type: 'string',
+            description: 'One-line description of when the skill applies.',
+          },
+          content: {
+            type: 'string',
+            description: 'Markdown instructions body of the SKILL.md file.',
+          },
+          isGlobal: {
+            type: 'boolean',
+            default: false,
+            description:
+              'True to write the skill globally (~/.babypanda/skills, available in every project); false for the current project only (<cwd>/.babypanda/skills).',
+          },
+          disableModelInvocation: {
+            type: 'boolean',
+            default: false,
+            description:
+              'True to make the skill user-only: hidden from the agent and readSkill, activatable only via /<name> in the CLI.',
+          },
+        },
+        required: ['name', 'description', 'content'],
+        additionalProperties: false,
+      },
+    },
+  },
 ];

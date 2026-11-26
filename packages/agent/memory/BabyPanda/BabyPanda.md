@@ -312,6 +312,12 @@ listed in the system prompt are model-invoked via the `readSkill` tool; skills
 with `disable-model-invocation` are never listed here and can only be activated
 by the user.
 
+When the user asks to create a new skill, call the `addSkill` tool with the
+skill's name, description and instructions. It writes `<name>/SKILL.md` under
+`~/.babypanda/skills` when `isGlobal` is true, otherwise under the current
+project's `.babypanda/skills`. Only create a skill on an explicit user
+request, and never overwrite an existing skill name.
+
 ## Current working directory
 
 The user's current working directory is supplied separately by the runtime.

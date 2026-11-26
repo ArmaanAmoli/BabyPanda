@@ -93,6 +93,7 @@ const VERBS: Record<string, string> = {
 	read_notes: 'reading note',
 	list_notes: 'listing notes',
 	add_content_to_memory: 'updating memory',
+	addSkill: 'adding skill',
 };
 
 function firstStringArg(args: Record<string, unknown>): string | undefined {
@@ -100,6 +101,19 @@ function firstStringArg(args: Record<string, unknown>): string | undefined {
 		if (typeof value === 'string' && value.length > 0) return value;
 	}
 	return undefined;
+}
+
+/**
+ * Target of an addSkill bullet: the skill name followed by the SKILL.md path
+ * the tool writes to, mirroring writeSkill's tier choice — `~` for the global
+ * tier, a cwd-relative path for the project tier.
+ */
+function addSkillTarget(args: Record<string, unknown>): string {
+	const name = typeof args['name'] === 'string' ? (args['name'] as string) : '';
+	const dir =
+		args['isGlobal'] === true ? '~/.babypanda/skills' : '.babypanda/skills';
+	const filePath = `${dir}/${name}/SKILL.md`;
+	return name.length > 0 ? `${name} ${filePath}` : filePath;
 }
 
 /** The most relevant argument to display as the bullet target. */
@@ -230,7 +244,9 @@ export function buildBullets(calls: ToolCallEntry[]): BulletView[] {
 			target:
 				call.name === 'web_search'
 					? `"${bulletTarget(call.arguments)}"`
-					: bulletTarget(call.arguments),
+					: call.name === 'addSkill'
+						? addSkillTarget(call.arguments)
+						: bulletTarget(call.arguments),
 			stats: formatStats(call.name, call, diffStats),
 			diffStats,
 			hasDiff: isFileMutation(call.name),
