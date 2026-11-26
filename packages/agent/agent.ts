@@ -323,19 +323,11 @@ export class BabyPandaAgent extends EventEmitter {
 
     //fetch metadata of all SKILL.md in ./.babypanda folder
 
-    const skillInstruction = getSkillsInstructions();
-    const listOfAvailableSkills = (await getSkillsFiles())
-      .filter((skill) => !skill.disableModelInvocation) // user-only skills are never listed for the model
-      .map((skill) => {
-        const hint = skill.argumentHint ? ` ${skill.argumentHint}` : '';
-        return `- ${skill.name}${hint} : ${skill.description} (${skill.source})`;
-      })
-      .join('\n');
-
-    if (listOfAvailableSkills.length > 0) {
+    const skillsInstructionContent = await this.buildSkillsInstruction();
+    if (skillsInstructionContent !== null) {
       const listOfAvailableSkillsWithInstructions: SystemMessage = {
         role: Role.system,
-        content: skillInstruction + '\n' + listOfAvailableSkills,
+        content: skillsInstructionContent,
       };
       context.push(listOfAvailableSkillsWithInstructions);
     }
@@ -363,6 +355,52 @@ export class BabyPandaAgent extends EventEmitter {
 
     context.push(...messageHistory);
     return context;
+  }
+
+  /**
+   * Builds the skills system message (SKILLS.md instructions + the list of
+   * model-visible skills), or null when no skill is visible to the model.
+   * Shared by createContext and syncSkillsInstruction so both always agree.
+   */
+  private async buildSkillsInstruction(): Promise<string | null> {
+    const listOfAvailableSkills = (await getSkillsFiles())
+      .filter((skill) => !skill.disableModelInvocation) // user-only skills are never listed for the model
+      .map((skill) => {
+        const hint = skill.argumentHint ? ` ${skill.argumentHint}` : '';
+        return `- ${skill.name}${hint} : ${skill.description} (${skill.source})`;
+      })
+      .join('\n');
+    if (listOfAvailableSkills.length === 0) return null;
+    return (await getSkillsInstructions()) + '\n' + listOfAvailableSkills;
+  }
+
+  /**
+   * Re-reads the skills from disk and updates the skills system message in
+   * place. A successful addSkill changes what getSkillsFiles() returns, so
+   * without this the new skill stays invisible to the model until the next
+   * compaction (or forever, when no skills existed at session start and the
+   * message was never added). The message is identified by its embedded
+   * SKILLS.md prefix.
+   */
+  private async syncSkillsInstruction() {
+    const prefix = await getSkillsInstructions();
+    const content = await this.buildSkillsInstruction();
+    const index = this.messages.findIndex(
+      (message) =>
+        message.role === Role.system &&
+        typeof message.content === 'string' &&
+        message.content.startsWith(prefix),
+    );
+    if (content === null) {
+      if (index !== -1) this.messages.splice(index, 1);
+      return;
+    }
+    const message: SystemMessage = { role: Role.system, content };
+    if (index === -1) {
+      this.messages.splice(this.messages[0]?.role === Role.system ? 1 : 0, 0, message);
+    } else {
+      this.messages[index] = message;
+    }
   }
 
   /** Keeps the model instructions in sync with the credentials found for this request. */
@@ -720,6 +758,12 @@ export class BabyPandaAgent extends EventEmitter {
                   stats,
                   pages,
                 );
+                // A successful addSkill changes what getSkillsFiles() returns:
+                // refresh the skills system message so the new skill is listed
+                // for the model right away instead of after the next compaction.
+                if (call.name === 'addSkill' && raw.error == null) {
+                  await this.syncSkillsInstruction();
+                }
               };
 
               // Executes one shell call: validates the arguments, asks the
