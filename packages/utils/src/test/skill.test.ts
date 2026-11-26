@@ -8,6 +8,7 @@ import {
   readSkillBody,
   applySkillArguments,
   wrapSkillContent,
+  writeSkill as writeNewSkill,
 } from '../skill/skill';
 
 let home: string;
@@ -145,5 +146,40 @@ describe('wrapSkillContent', () => {
     expect(wrapSkillContent('grill', 'Ask questions.')).toBe(
       '<skill name="grill">\nAsk questions.\n</skill>',
     );
+  });
+});
+
+describe('writeSkill (addSkill tool)', () => {
+  // writeSkill resolves the project tier from process.cwd(), so the test
+  // chdirs into the temp cwd for the duration of the call.
+  async function writeProjectSkill(args: { name: string; description: string; content: string }) {
+    const prevCwd = process.cwd();
+    process.chdir(cwd);
+    try {
+      await writeNewSkill({ ...args, isGlobal: false, disableModelInvocation: false });
+    } finally {
+      process.chdir(prevCwd);
+    }
+  }
+
+  test('a description containing ": " still produces a detectable skill', async () => {
+    const description = 'When making code changes via GitHub: create an issue first.';
+    await writeProjectSkill({
+      name: 'github-stacked-pr-workflow',
+      description,
+      content: 'Body.',
+    });
+
+    const skills = await getSkillsFiles({ cwd, home });
+    expect(skills.map((s) => s.name)).toEqual(['github-stacked-pr-workflow']);
+    expect(skills[0]?.description).toBe(description);
+    expect((await readSkillBody(skills[0]!.filePath)).trim()).toBe('Body.');
+  });
+
+  test('refuses to overwrite an existing skill', async () => {
+    await writeProjectSkill({ name: 'grill', description: 'Grill the user', content: 'Ask.' });
+    await expect(
+      writeProjectSkill({ name: 'grill', description: 'Again', content: 'No.' }),
+    ).rejects.toThrow('already exists');
   });
 });

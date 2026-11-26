@@ -15,6 +15,7 @@ import {
   readSkillBody,
   applySkillArguments,
   wrapSkillContent,
+  writeSkill,
 } from './src/skill/skill';
 export type { SkillFile, SkillSource } from './src/skill/skill';
 export {
@@ -32,4 +33,5 @@ export {
   readSkillBody,
   applySkillArguments,
   wrapSkillContent,
+  writeSkill,
 };
