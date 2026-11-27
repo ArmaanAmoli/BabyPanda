@@ -82,3 +82,32 @@ export function cleanMessage(row: HistoryRow): MessagesArray[number] {
 export function cleanMessages(rows: HistoryRow[]): MessagesArray {
   return rows.map((row) => cleanMessage(row));
 }
+
+/**
+ * Reduces in-memory messages to the exact fields each role's provider schema
+ * defines.
+ *
+ * The live agent loop pushes full ToolResultRecords (success/before/stats/
+ * pages, kept for CLI rendering) into the message array, and those keys are
+ * not part of the chat-completions schema. NVIDIA's minimax endpoint rejects
+ * tool or assistant messages that carry extra keys with a misleading 422
+ * ("input rejected by content safety screening"), while other models ignore
+ * them. DB rows are stripped by cleanMessage on reload; this applies the same
+ * rules to the live array so both paths send identical payloads.
+ */
+export function toApiMessages(messages: MessagesArray): MessagesArray {
+  return messages.map((message) => {
+    switch (message.role) {
+      case Role.tool:
+        return ToolMessageSchema.parse(message);
+      case Role.assistant:
+        return AssistantMessageSchema.parse(message);
+      case Role.user:
+        return UserMessageSchema.parse(message);
+      case Role.system:
+        return SystemMessageSchema.parse(message);
+      default:
+        return message;
+    }
+  });
+}

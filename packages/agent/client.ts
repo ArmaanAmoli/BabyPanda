@@ -6,6 +6,7 @@ import type { UrlApi } from './types'; // verbatimModuleSyntax
 import { baseTools, type ModelTool } from './config/tools';
 import { ContentFormat, type ProvidersEnum } from './config/models';
 import getModelDetails from './services/getModelDetails';
+import { toApiMessages } from './utils/cleanMessages';
 
 /** One text part of a multimodal `content` array. */
 type TextPart = { type: 'text'; text: string };
@@ -45,10 +46,16 @@ function buildRequestBody(
   requestTools: ModelTool[],
 ): Record<string, unknown> {
   const modelDetails = getModelDetails(provider, model);
+  // Every message is reduced to the fields its role's schema defines before
+  // it goes on the wire: the live loop holds rich tool records (success,
+  // before, stats, ...) and some endpoints reject messages with extra keys.
+  const apiMessages = toApiMessages(messages);
   const data: Record<string, unknown> = {
     model,
     messages:
-      modelDetails.contentFormat === ContentFormat.parts ? toTextPartMessages(messages) : messages,
+      modelDetails.contentFormat === ContentFormat.parts
+        ? toTextPartMessages(apiMessages)
+        : apiMessages,
     tools: requestTools,
     max_tokens: 8192,
     stream: true,
