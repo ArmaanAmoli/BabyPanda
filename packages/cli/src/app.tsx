@@ -19,6 +19,7 @@ import {
 	WebApiKeyBox,
 } from './components/commandMenu';
 import {ChatBox} from './components/ChatBox';
+import {StatusBar} from './components/statusBar';
 import {
 	ContentType,
 	ReasoningEffort,
@@ -28,6 +29,7 @@ import {
 } from '@baby-panda/types';
 import type {WsEventMessage} from '@baby-panda/types';
 import {getMessages, getProviders, saveProviderKey} from './services/requests';
+import {getSessionName, renameSession} from './services/requests';
 import {getWebApiKeys, saveWebApiKey} from './services/requests';
 import {useSession} from './hooks/useSession';
 import {
@@ -51,12 +53,11 @@ import type {SkillFile} from '@baby-panda/utils';
 import {splitSkillInvocation} from './utils/skillInvocation';
 import {enqueuePendingSkillMessage} from './utils/pendingSkillMessages';
 import {useSettings} from './hooks/useSettings';
-import {SPINNER_FRAMES, useSpinnerFrame} from './components/spinner';
+import {useSpinnerFrame} from './components/spinner';
 import {activityLabel} from './utils/activityLabel';
 import {useToolCalls} from './hooks/useToolCalls';
 import {getMessageGroups} from './utils/messageGroups';
 import {buildTranscriptBoxes} from './utils/responseSlots';
-import {STATUS_RUNNING} from './theme';
 
 const SLASH_COMMANDS: {name: string; description: string}[] = [
 	{name: 'provider', description: 'switch provider'},
@@ -68,6 +69,7 @@ const SLASH_COMMANDS: {name: string; description: string}[] = [
 		description: 'add or change the Exa key for web search',
 	},
 	{name: 'api-key', description: 'change the Nvidia or Exa API key'},
+	{name: 'rename-session', description: 'rename this session'},
 ];
 export default function App() {
 	const {exit} = useApp();
@@ -76,6 +78,9 @@ export default function App() {
 	const sessionState = useSession();
 	const {pendingPermissionMessages} = usePendingPermissionMessages();
 	const sessionId = sessionState.sessionId;
+	// The label at the right edge of the status bar. It is read once and then
+	// kept locally, so a rename is reflected without another round trip.
+	const [sessionName, setSessionName] = useState('');
 	const {messageHistory, setMessageHistory, lastRole} = useMessageHistory();
 	const messageGroups = getMessageGroups(messageHistory);
 	const [prompt, setPrompt] = useState<PromptValue>(() => textValue(''));
@@ -487,6 +492,29 @@ export default function App() {
 				return;
 			}
 			// execute command
+			if (token === 'rename-session') {
+				// everything after the command word, so a name may contain spaces
+				const requested = invocationText
+					.trim()
+					.slice(token.length + 1)
+					.trim();
+				if (requested.length === 0) {
+					showClipboardStatus('Usage: /rename-session <name>');
+				} else {
+					void renameSession(sessionId, requested)
+						.then(name => {
+							setSessionName(name);
+							showClipboardStatus(`Session renamed to ${name}`);
+						})
+						.catch(error =>
+							showClipboardStatus(`Rename failed: ${String(error)}`),
+						);
+				}
+				setPrompt(textValue(''));
+				setIsCommand(false);
+				setSlashMenuOpen(false);
+				return;
+			}
 			if (token === 'web-api-keys') {
 				setPrompt(textValue(''));
 				setIsCommand(false);
@@ -540,6 +568,19 @@ export default function App() {
 		};
 		socket?.send(JSON.stringify(wsMessage));
 	};
+
+	useEffect(() => {
+		const loadSessionName = async () => {
+			try {
+				setSessionName(await getSessionName(sessionId));
+			} catch (error) {
+				// The status bar simply stays without a label; the session id
+				// next to it still identifies the session.
+				showClipboardStatus(`Session name unavailable: ${String(error)}`);
+			}
+		};
+		loadSessionName();
+	}, []);
 
 	useEffect(() => {
 		const getHistory = async () => {
@@ -942,32 +983,20 @@ export default function App() {
 						</Box>
 					)}
 					{!needsProviderKey && !showWebKeyPrompt && !showChangeKeyBox && (
-						<Box height={statusHeight} paddingX={1}>
-							{responding && (
-								<>
-									<Text color={STATUS_RUNNING}>
-										{SPINNER_FRAMES[spinnerFrame]}{' '}
-									</Text>
-									<Text dimColor>{statusLabel} · </Text>
-								</>
-							)}
-							<Text dimColor>
-								Session {sessionId} · {settings.model.provider} ·{' '}
-								{settings.model.model} · effort:{' '}
-								{settings.model.reasoningEffort} ·{' '}
-								{settings.model.contextWindow.toLocaleString()} context ·{' '}
-								{settings.model.contextWindow
-									? Math.round(
-											(settings.model.contextWindowUsed /
-												settings.model.contextWindow) *
-												100,
-										)
-									: 0}
-								% used
-							</Text>
-							{webKeyConfigured === false && (
-								<Text color="#f0c674"> · web search off (/web-api-keys)</Text>
-							)}
+						<Box height={statusHeight}>
+							<StatusBar
+								sessionId={sessionId}
+								sessionName={sessionName}
+								provider={settings.model.provider}
+								model={settings.model.model}
+								reasoningEffort={settings.model.reasoningEffort}
+								contextWindow={settings.model.contextWindow}
+								contextWindowUsed={settings.model.contextWindowUsed}
+								responding={responding}
+								spinnerFrame={spinnerFrame}
+								statusLabel={statusLabel}
+								webSearchOff={webKeyConfigured === false}
+							/>
 						</Box>
 					)}
 				</Box>
