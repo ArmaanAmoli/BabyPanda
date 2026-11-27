@@ -267,4 +267,21 @@ export const migrations: Migration[] = [
       `ALTER TABLE \`session\` ADD \`reasoning_effort\` text;`,
     ],
   },
+  {
+    name: '20261127161030_session_names',
+    statements: [
+      `ALTER TABLE \`session\` ADD \`name\` text DEFAULT 'untitled' NOT NULL;`,
+      // Every row added by the statement above carries the same placeholder,
+      // so they are numbered per project directory before the unique index
+      // exists. The order is (created_at, session_id) because session_id is
+      // the only tie-breaker that is guaranteed to be unique.
+      `UPDATE \`session\` SET \`name\` = 'untitled-' || (
+  SELECT COUNT(*) FROM \`session\` AS \`other\`
+  WHERE \`other\`.\`project_directory\` = \`session\`.\`project_directory\`
+    AND (\`other\`.\`created_at\` < \`session\`.\`created_at\`
+      OR (\`other\`.\`created_at\` = \`session\`.\`created_at\` AND \`other\`.\`session_id\` <= \`session\`.\`session_id\`))
+);`,
+      `CREATE UNIQUE INDEX \`session_project_directory_name_unique\` ON \`session\` (\`project_directory\`,\`name\`);`,
+    ],
+  },
 ];
