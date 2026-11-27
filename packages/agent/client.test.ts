@@ -10,7 +10,10 @@ describe('toProviderMessages', () => {
       { role: Role.system, content: 'sys' },
       { role: Role.user, content: 'hello' },
     ];
-    expect(toProviderMessages(messages, true, 'm')).toEqual(messages);
+    const converted = toProviderMessages(messages, true, 'm');
+    expect(converted).toHaveLength(2);
+    expect(converted[0]).toEqual({ role: Role.system, content: 'sys' });
+    expect(converted[1]).toEqual({ role: Role.user, content: 'hello' });
   });
 
   test('image parts become OpenAI image_url parts for multimodal models', () => {

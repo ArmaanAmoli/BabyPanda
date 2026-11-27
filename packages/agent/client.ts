@@ -3,9 +3,11 @@ import { setTimeout } from 'node:timers/promises';
 // import type { Message } from '@baby-panda/types';
 import {
   Role,
+  type AssistantMessage,
   type MessagesArray,
-  type MultiModalContent,
   type ReasoningEffort,
+  type SystemMessage,
+  type ToolMessage,
 } from '@baby-panda/types';
 import type { UrlApi } from './types'; // verbatimModuleSyntax
 import { baseTools, type ModelTool } from './config/tools';
@@ -35,6 +37,21 @@ import { toApiMessages } from './utils/cleanMessages';
 //   });
 // }
 
+/** One part of a provider-facing user `content` array. */
+type ProviderContentPart =
+  { type: 'text'; text: string } | { type: 'image_url'; image_url: { url: string } };
+
+/** A user message as the provider sees it: text or OpenAI-style parts. */
+type ProviderUserMessage = {
+  role: Role.user;
+  content: string | ProviderContentPart[];
+};
+
+/** The request's message list with user content in the provider's shape. */
+export type ProviderMessagesArray = (
+  AssistantMessage | ToolMessage | SystemMessage | ProviderUserMessage
+)[];
+
 /**
  * Converts internal message content to the provider's wire shape.
  *
@@ -49,14 +66,15 @@ export function toProviderMessages(
   messages: MessagesArray,
   multimodal: boolean,
   model: string,
-): unknown {
-  return messages.map((message) => {
-    if (message.role !== Role.user || typeof message.content === 'string') {
-      return message;
+): ProviderMessagesArray {
+  return messages.map((message): ProviderMessagesArray[number] => {
+    if (message.role !== Role.user) return message;
+    if (typeof message.content === 'string') {
+      return { role: Role.user, content: message.content };
     }
 
-    const parts = (message.content as MultiModalContent).map((part) => {
-      if (part.type === 'text') return part;
+    const parts: ProviderContentPart[] = message.content.map((part) => {
+      if (part.type === 'text') return { type: 'text', text: part.text };
       if (!multimodal) {
         throw new Error(
           `Model ${model} does not support image input. Remove the image or switch to a multimodal model.`,
@@ -65,7 +83,7 @@ export function toProviderMessages(
       return { type: 'image_url', image_url: { url: part.image } };
     });
 
-    return { ...message, content: parts };
+    return { role: Role.user, content: parts };
   });
 }
 
