@@ -10,6 +10,8 @@ import {
   updateSession as updateSessionMethod,
   getSession as getSessionMethod,
   getSessionsByProjectDirectory as getSessionsByProjectDirectoryMethod,
+  renameSession as renameSessionMethod,
+  getSessionName as getSessionNameMethod,
   getCompactionSummaries as getCompactionSummariesMethod,
   getMostRecentCompactionSummary as getMostRecentCompactionSummaryMethod,
   getMessagesForSummary as getMessagesForSummaryMethod,
@@ -48,6 +50,8 @@ export const getSession = wrapWithSQLSafeExecutor(getSessionMethod);
 export const getSessionsByProjectDirectory = wrapWithSQLSafeExecutor(
   getSessionsByProjectDirectoryMethod,
 );
+export const renameSession = wrapWithSQLSafeExecutor(renameSessionMethod);
+export const getSessionName = wrapWithSQLSafeExecutor(getSessionNameMethod);
 export const getCompactionSummaries = wrapWithSQLSafeExecutor(getCompactionSummariesMethod);
 export const getMostRecentCompactionSummary = wrapWithSQLSafeExecutor(
   getMostRecentCompactionSummaryMethod,
