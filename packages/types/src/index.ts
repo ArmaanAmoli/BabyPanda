@@ -1,6 +1,8 @@
 import z from 'zod';
 import { ToolError } from './error';
 
+const BaseSchema = z.object({});
+
 export enum OpenAiRoles {
   system = 'system',
   user = 'user',
@@ -29,23 +31,6 @@ export enum ReasoningEffort {
   max = 'max',
 }
 
-// export interface MessageRegular {
-//   role: Role;
-//   content: string | null;
-//   sessionId: string;
-//   tool_calls?: ToolCall[];
-//   tool_call_id?: string;
-// }
-
-// export interface ToolCall {
-//   id: string;
-//   type: 'function';
-//   function: {
-//     name: string;
-//     arguments: string;
-//   };
-// }
-
 export const ToolCallSchema = z.object({
   id: z.string(),
   type: z.literal('function'),
@@ -57,9 +42,33 @@ export const ToolCallSchema = z.object({
 
 export type ToolCall = z.infer<typeof ToolCallSchema>;
 
+export const ImageUrlSchema = z.string();
+
+export const TextContentPartSchema = BaseSchema.extend({
+  type: z.literal('text'),
+  text: z.string(),
+});
+
+export const ImageContentPartSchema = BaseSchema.extend({
+  type: z.literal('image'),
+  image: ImageUrlSchema,
+});
+
+/**
+ * OpenAI-style content parts for a user message: text parts plus image parts
+ * (each image is a data URL). An array rather than a fixed [text, image]
+ * tuple so one prompt can carry several pasted images.
+ */
+export const MultiModalContentSchema = z.array(
+  z.union([TextContentPartSchema, ImageContentPartSchema]),
+);
+
+export type MultiModalContent = z.infer<typeof MultiModalContentSchema>;
+export type ImageContentPart = z.infer<typeof ImageContentPartSchema>;
+
 export const UserMessageSchema = z.object({
   role: z.literal(Role.user),
-  content: z.string(),
+  content: z.string().or(MultiModalContentSchema),
 });
 
 export type UserMessage = z.infer<typeof UserMessageSchema>;
@@ -70,16 +79,6 @@ export const SystemMessageSchema = z.object({
 });
 
 export type SystemMessage = z.infer<typeof SystemMessageSchema>;
-
-// const AgentToolCallSchemaUncertain = z.object({
-//   index: z.number(),
-//   id: z.string().optional(),
-//   type: z.literal('function').optional(),
-//   function: z.object({
-//     name: z.string().optional(),
-//     arguments: z.string().optional(),
-//   }).optional(),
-// });
 
 export const AssistantMessageSchema = z.object({
   role: z.literal(Role.assistant),
@@ -148,22 +147,6 @@ export type DBMessage = {
   sequence: number;
 };
 
-// export type UserMessage = Omit<MessageRegular, 'role'> & { role: Role.user };
-// export type SystemMessage = Omit<MessageRegular, 'role'> & {
-//   role: Role.system;
-// };
-// export type AssistantMessage = Omit<MessageRegular, 'role'> & {
-//   role: Role.assistant;
-// };
-// export type ToolMessage = Omit<MessageRegular, 'role'> & {
-//   role: Role.tool;
-//   tool_call_id: string;
-// };
-// export type MessageAPI = Omit<MessageRegular, 'sessionId'>;
-// export type Message =
-//   UserMessage | SystemMessage | AssistantMessage | ToolMessage | MessageRegular | MessageAPI; // universal Message Type
-// export type MessageDB = Message & { createdAt: Date };
-
 export enum ContentType {
   content = 'content',
   reasoning_content = 'reasoning_content',
@@ -172,45 +155,6 @@ export enum ContentType {
   unidentified = 'unidentified',
   permission = 'permission',
 }
-
-// export const MessageContentSchema = z.object({
-//   role: z.string(),
-//   content: z.object({
-//     /* tool_call: z
-//        .array(
-//          z.object({
-//            id: z.string(),
-//            type: z.string(),
-//            function: z.string(),
-//            arguments: z.record(z.string(), z.unknown()),
-//          }),
-//        )
-//        .optional(),*/
-//     thought: z.string().optional(),
-//     answer: z.string().optional(),
-//   }),
-// });
-
-// export type MessageContent = z.infer<typeof MessageContentSchema>;
-
-// export const ToolRawResultSchema = z.object({
-//   id: z.string(),
-//   name: z.string(),
-//   arguments: z.record(z.string(), z.unknown()),
-//   result: z.unknown().optional(),
-//   error: z.string().optional(),
-// });
-
-// export const CleanedMessageSchema = z.object({
-//   role: z.enum(Role),
-//   content: z.string(),
-//   createdAt: z.number().nullable(),
-//   // isThought: z.boolean().default(false).optional()
-// });
-
-// export const CleanedMessageArraySchema = z.array(CleanedMessageSchema);
-
-// export type CleanedMessage = z.infer<typeof CleanedMessageSchema>;
 
 export enum LogType {
   agent = 'agent.log',
@@ -312,8 +256,6 @@ export type ToolResultRecord = z.infer<typeof ToolResultRecordSchema>;
 export const PermissionsEnumsSchema = z.enum(['allowOnce', 'allowAlways']);
 export const PermissionsEnums = PermissionsEnumsSchema.enum;
 
-const BaseSchema = z.object({});
-
 export const WsEventMessageSchema = z.discriminatedUnion('eventType', [
   z.discriminatedUnion('permission', [
     BaseSchema.extend({
@@ -332,7 +274,7 @@ export const WsEventMessageSchema = z.discriminatedUnion('eventType', [
       eventType: z.literal(WsEventTypeSchema.enum.message),
       // skill content only travels via the dedicated `skill` event
       role: z.enum(Role).exclude([Role.assistant, Role.skill]),
-      content: z.string(),
+      content: z.string().or(MultiModalContentSchema),
     }),
     BaseSchema.extend({
       eventType: z.literal(WsEventTypeSchema.enum.message),
