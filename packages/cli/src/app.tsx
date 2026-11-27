@@ -60,7 +60,11 @@ const SLASH_COMMANDS: {name: string; description: string}[] = [
 	{name: 'model', description: 'switch model'},
 	{name: 'efforts', description: 'set reasoning effort'},
 	{name: 'sandbox', description: 'toggle shell sandbox'},
-	{name: 'web-api-keys', description: 'add an Exa key for web search'},
+	{
+		name: 'web-api-keys',
+		description: 'add or change the Exa key for web search',
+	},
+	{name: 'api-key', description: 'change the Nvidia or Exa API key'},
 ];
 export default function App() {
 	const {exit} = useApp();
@@ -87,6 +91,9 @@ export default function App() {
 	);
 	const [showWebKeyPrompt, setShowWebKeyPrompt] = useState(false);
 	const [webKeyPromptDismissed, setWebKeyPromptDismissed] = useState(false);
+	// `/api-key` flow: which credential is being changed — a model provider
+	// name (e.g. Nvidia) or EXA_PROVIDER. `null` = no key-change box open.
+	const [keyChangeTarget, setKeyChangeTarget] = useState<string | null>(null);
 	const [clipboardStatus, setClipboardStatus] = useState<string>();
 	const clipboardStatusTimer = useRef<
 		ReturnType<typeof setTimeout> | undefined
@@ -138,6 +145,32 @@ export default function App() {
 		isCommand && command === '/model' && activeProvider != null;
 	const showEffortMenu =
 		isCommand && command === '/efforts' && activeProvider != null;
+	const showKeyMenu = isCommand && command === '/api-key';
+	const keyMenuItems = React.useMemo(() => {
+		const items = settings.providers.providers.map(provider => ({
+			label: `${provider.provider} — model provider${
+				provider.hasKey ? ' (key saved)' : ' (no key yet)'
+			}`,
+			value: provider.provider,
+		}));
+		items.push({
+			label: `Exa — web search${webKeyConfigured ? ' (key saved)' : ' (no key yet)'}`,
+			value: EXA_PROVIDER,
+		});
+		return items;
+	}, [settings.providers.providers, webKeyConfigured]);
+	const changeKeyProvider =
+		keyChangeTarget != null && keyChangeTarget !== EXA_PROVIDER
+			? settings.providers.providers.find(
+					provider => provider.provider === keyChangeTarget,
+				)
+			: undefined;
+	// The change box only makes sense once the mandatory provider setup is
+	// done, so it never competes with the first-run provider prompt.
+	const showChangeKeyBox =
+		keyChangeTarget != null &&
+		!needsProviderKey &&
+		(changeKeyProvider != null || keyChangeTarget === EXA_PROVIDER);
 	const slashQuery = isCommand ? (command ?? '').slice(1).toLowerCase() : '';
 	const slashItems = React.useMemo(() => {
 		const items: {label: string; value: string}[] = [];
@@ -165,6 +198,7 @@ export default function App() {
 		!showProviderMenu &&
 		!showModelMenu &&
 		!showEffortMenu &&
+		!showKeyMenu &&
 		slashItems.length > 0;
 	const statusHeight = 1;
 	const promptMaxHeight = Math.min(8, Math.max(3, Math.floor(rows * 0.25)));
@@ -233,23 +267,37 @@ export default function App() {
 			: showEffortMenu
 				? settings.model.reasoningEfforts.length
 				: 0;
+	// Both change-key boxes carry a title, an escape hint and the input, so
+	// they need 5 rows (the first-run provider setup box stays at 4).
+	const changeKeyHeight = showChangeKeyBox ? 5 : 0;
 	const menuLimit = Math.max(
 		1,
-		rows - statusHeight - promptHeight - activityHeight - setupHeight - 2,
+		rows -
+			statusHeight -
+			promptHeight -
+			activityHeight -
+			setupHeight -
+			changeKeyHeight -
+			2,
 	);
 	const menuHeight =
 		menuItemCount > 0 ? Math.min(menuItemCount, menuLimit) + 2 : 0;
+	const keyMenuHeight = showKeyMenu
+		? Math.min(keyMenuItems.length, menuLimit) + 2
+		: 0;
 	const slashMenuHeight = showSlashMenu
 		? Math.min(slashItems.length, menuLimit) + 2
 		: 0;
 	const bottomHeight =
 		menuHeight +
+		keyMenuHeight +
 		slashMenuHeight +
 		statusHeight +
 		promptHeight +
 		activityHeight +
 		setupHeight +
-		webKeyPromptHeight;
+		webKeyPromptHeight +
+		changeKeyHeight;
 	const chatHeight = Math.max(1, rows - bottomHeight - GAP_CHAT_BOX_PROMPT_BOX);
 
 	useEffect(() => {
@@ -396,12 +444,20 @@ export default function App() {
 		}
 	};
 
+	const onKeyMenuSelect = (value: string) => {
+		setKeyChangeTarget(value);
+		setSlashMenuOpen(false);
+		setPrompt(textValue(''));
+		setIsCommand(false);
+	};
+
 	const onSubmit = async () => {
 		if (isEmptyPrompt(prompt)) {
 			return;
 		}
 		if (isCommand) {
-			if (showProviderMenu || showModelMenu || showEffortMenu) return;
+			if (showProviderMenu || showModelMenu || showEffortMenu || showKeyMenu)
+				return;
 			const parts = promptText(prompt).trim().split(/\s+/);
 			const token = (parts[0] ?? '').substring(1);
 			// commands win collisions; otherwise a matching skill name activates the skill
@@ -595,6 +651,11 @@ export default function App() {
 				setWebKeyPromptDismissed(true);
 				return;
 			}
+			if (showChangeKeyBox) {
+				// cancel the change; the saved key is untouched
+				setKeyChangeTarget(null);
+				return;
+			}
 			if (slashMenuOpen) {
 				setSlashMenuOpen(false);
 				return;
@@ -679,6 +740,78 @@ export default function App() {
 											setWebKeyPromptDismissed(false);
 											showClipboardStatus(
 												'Exa API key saved — web search is enabled',
+											);
+										})
+										.catch(error => {
+											showClipboardStatus(
+												`Could not save Exa key: ${String(error)}`,
+											);
+										});
+								}}
+							/>
+						</Box>
+					)}
+
+					{showChangeKeyBox && changeKeyProvider && (
+						<Box height={changeKeyHeight} width="100%">
+							<ProviderSetupBox
+								provider={changeKeyProvider}
+								changeMode
+								onSubmit={key => {
+									void saveProviderKey(
+										changeKeyProvider.provider,
+										changeKeyProvider.endpoint,
+										key,
+									)
+										.then(() => {
+											settings.providers.setProviders(previous =>
+												previous.map(provider =>
+													provider.provider === changeKeyProvider.provider
+														? {...provider, hasKey: true}
+														: provider,
+												),
+											);
+											// Only the active provider's key is held by the
+											// running agent, so push it over the socket to apply
+											// the change without a restart. Other providers pick
+											// the new key up from the database when /provider
+											// selects them.
+											if (
+												settings.model.provider === changeKeyProvider.provider
+											) {
+												socket?.send(
+													JSON.stringify({
+														eventType: WsEventTypes.setting,
+														setting: {apiKey: key},
+													}),
+												);
+											}
+											setKeyChangeTarget(null);
+											showClipboardStatus(
+												`${changeKeyProvider.provider} API key updated`,
+											);
+										})
+										.catch(error => {
+											showClipboardStatus(
+												`Could not save ${changeKeyProvider.provider} key: ${String(error)}`,
+											);
+										});
+								}}
+							/>
+						</Box>
+					)}
+
+					{showChangeKeyBox && keyChangeTarget === EXA_PROVIDER && (
+						<Box height={changeKeyHeight} width="100%">
+							<WebApiKeyBox
+								changeMode
+								onSubmit={key => {
+									void saveWebApiKey(key)
+										.then(() => {
+											setWebKeyConfigured(true);
+											setKeyChangeTarget(null);
+											showClipboardStatus(
+												'Exa API key updated — web search is enabled',
 											);
 										})
 										.catch(error => {
@@ -777,6 +910,14 @@ export default function App() {
 									limit={menuLimit}
 								/>
 							)}
+							{showKeyMenu && (
+								<CommandMenu
+									title="Change which API key?"
+									items={keyMenuItems}
+									onSelect={onKeyMenuSelect}
+									limit={menuLimit}
+								/>
+							)}
 							{showSlashMenu && (
 								<CommandMenu
 									title="Commands & skills"
@@ -788,7 +929,7 @@ export default function App() {
 						</>
 					)}
 
-					{!needsProviderKey && !showWebKeyPrompt && (
+					{!needsProviderKey && !showWebKeyPrompt && !showChangeKeyBox && (
 						<Box height={promptHeight} width="100%">
 							<PromptBox
 								placeholder={'Write a message... '}
@@ -801,7 +942,7 @@ export default function App() {
 							/>
 						</Box>
 					)}
-					{!needsProviderKey && !showWebKeyPrompt && (
+					{!needsProviderKey && !showWebKeyPrompt && !showChangeKeyBox && (
 						<Box height={statusHeight} paddingX={1}>
 							{responding && (
 								<>
