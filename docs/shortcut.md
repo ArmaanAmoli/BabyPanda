@@ -90,6 +90,11 @@ paste as described above.
   image*) and a file copied in Explorer, which puts only a path on the
   clipboard — the fallback then reads the file back from disk and re-encodes
   it as PNG. Copying a non-image file still shows "No image on clipboard".
+- **Several images at once**: select several image files in Explorer and copy
+  them, and one `Ctrl+O` inserts them all as consecutive chips, numbered in
+  clipboard order (`image-1.png`, `image-2.png`, …). One undo removes the whole
+  batch. A selection is capped at 10 images per paste, and the toast says so
+  when the cap bites.
 - A clipboard holding no image just shows a "No image on clipboard" notice.
 - An image chip is atomic like a paste chip (the cursor cannot enter it, one
   `Backspace`/`Delete` removes it, undo/redo works), but it never expands.

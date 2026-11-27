@@ -24,7 +24,10 @@ import {
 	textValue,
 	type PromptValue,
 } from '../utils/promptValue';
-import {readClipboardImage} from '../utils/readClipboardImage';
+import {
+	MAX_IMAGES_PER_PASTE,
+	readClipboardImages,
+} from '../utils/readClipboardImage';
 
 const CURSOR_COLOR = '#ffffff';
 const SCROLLBAR_TRACK = '│';
@@ -133,6 +136,20 @@ function buildScrollbar(
 	}
 
 	return cells;
+}
+
+/**
+ * Toast for a Ctrl+O paste. One image names itself, as it always has; several
+ * are counted, because listing ten names would not fit the toast. Hitting the
+ * cap is called out so a truncated selection is never silent.
+ */
+function imagePasteStatus(names: string[]): string {
+	if (names.length === 1) return `Pasted ${names[0]!} (Ctrl+O)`;
+	if (names.length < MAX_IMAGES_PER_PASTE) {
+		return `Pasted ${names.length} images (Ctrl+O)`;
+	}
+
+	return `Pasted ${names.length} images (Ctrl+O, capped at ${MAX_IMAGES_PER_PASTE})`;
 }
 
 function PromptInput({
@@ -263,24 +280,34 @@ function PromptInput({
 	latestRef.current = {value, cursor, commit};
 	const imageReadBusyRef = React.useRef(false);
 
-	const pasteImageFromClipboard = async () => {
+	const pasteImagesFromClipboard = async () => {
 		if (imageReadBusyRef.current) return;
 		imageReadBusyRef.current = true;
 		onStatus?.('Reading clipboard…');
 		try {
-			const image = await readClipboardImage();
-			if (!image) {
+			const images = await readClipboardImages();
+			if (images.length === 0) {
 				onStatus?.('No image on clipboard');
 				return;
 			}
 
-			const segment = createImageSegment(image);
+			// Every image goes in at the cursor, in clipboard order, through a
+			// single commit so one undo removes the whole batch. `position` is
+			// deliberately not called `cursor`: that name is the component's
+			// state, and this runs long after the key was pressed.
 			const latest = latestRef.current;
-			latest.commit(
-				replaceRange(latest.value, latest.cursor, latest.cursor, segment),
-				latest.cursor + segment.text.length,
-			);
-			onStatus?.(`Pasted ${segment.name} (Ctrl+O)`);
+			let nextValue = latest.value;
+			let position = latest.cursor;
+			const names: string[] = [];
+			for (const image of images) {
+				const segment = createImageSegment(image);
+				names.push(segment.name);
+				nextValue = replaceRange(nextValue, position, position, segment);
+				position += segment.text.length;
+			}
+
+			latest.commit(nextValue, position);
+			onStatus?.(imagePasteStatus(names));
 		} catch (error) {
 			onStatus?.(error instanceof Error ? error.message : String(error));
 		} finally {
@@ -575,7 +602,7 @@ function PromptInput({
 					// them) bind Ctrl+V to their own text paste and never forward
 					// it, while Ctrl+O is unbound and reaches us under the Kitty
 					// keyboard protocol too. Text paste stays on bracketed paste.
-					void pasteImageFromClipboard();
+					void pasteImagesFromClipboard();
 				}
 
 				// Every other control combination is somebody else's.

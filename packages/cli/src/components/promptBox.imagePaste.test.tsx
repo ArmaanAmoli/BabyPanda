@@ -17,7 +17,7 @@ const images = [
 let call = 0;
 
 mock.module('../utils/readClipboardImage', () => ({
-	readClipboardImage: async () => images[call++ % images.length],
+	readClipboardImages: async () => images[call++ % images.length],
 }));
 
 import React from 'react';
@@ -27,6 +27,7 @@ import type {ReadStream} from 'node:tty';
 import {render as inkRender, useStdin} from 'ink';
 import {
 	getImageSegments,
+	promptText,
 	textValue,
 	type PromptValue,
 } from '../utils/promptValue';
@@ -127,6 +128,30 @@ async function renderPrompt() {
 }
 
 describe('prompt box image chips', () => {
+	test('one Ctrl+O with several clipboard images pastes them all', async () => {
+		const {instance, latest, emit} = await renderPrompt();
+
+		emit('\x0f');
+		await waitFor(() => getImageSegments(latest()).length === 3, '3 images');
+
+		const segments = getImageSegments(latest());
+		// Numbering continues across the batch, and each keeps its own bytes.
+		expect(segments.map(image => image.name)).toEqual([
+			'image-1.png',
+			'image-2.png',
+			'image-3.png',
+		]);
+		expect(new Set(segments.map(image => image.dataUrl)).size).toBe(3);
+		expect(promptText(latest())).toContain('[image: image-1.png]');
+		expect(promptText(latest())).toContain('[image: image-3.png]');
+
+		// One undo removes the whole batch, not one image at a time.
+		emit('\x1a'); // Ctrl+Z
+		await waitFor(() => getImageSegments(latest()).length === 0, 'undo');
+
+		instance.unmount();
+	});
+
 	test('Backspace-erase, paste another, type -> exactly one image', async () => {
 		const {instance, latest, emit} = await renderPrompt();
 
