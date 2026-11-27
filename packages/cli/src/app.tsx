@@ -16,6 +16,7 @@ import {buildUserContent, userContentToDisplay} from './utils/userContent';
 import {
 	CommandMenu,
 	ProviderSetupBox,
+	SlashCommandMenu,
 	WebApiKeyBox,
 } from './components/commandMenu';
 import {ChatBox} from './components/ChatBox';
@@ -58,6 +59,7 @@ import {activityLabel} from './utils/activityLabel';
 import {useToolCalls} from './hooks/useToolCalls';
 import {getMessageGroups} from './utils/messageGroups';
 import {buildTranscriptBoxes} from './utils/responseSlots';
+import {getSlashMenuHeight, type SlashMenuEntry} from './utils/slashMenuLayout';
 
 const SLASH_COMMANDS: {name: string; description: string}[] = [
 	{name: 'provider', description: 'switch provider'},
@@ -181,11 +183,12 @@ export default function App() {
 		(changeKeyProvider != null || keyChangeTarget === EXA_PROVIDER);
 	const slashQuery = isCommand ? (command ?? '').slice(1).toLowerCase() : '';
 	const slashItems = React.useMemo(() => {
-		const items: {label: string; value: string}[] = [];
+		const items: SlashMenuEntry[] = [];
 		for (const cmd of SLASH_COMMANDS) {
 			if (cmd.name.includes(slashQuery)) {
 				items.push({
-					label: `/${cmd.name} — ${cmd.description}`,
+					name: cmd.name,
+					description: cmd.description,
 					value: `command:${cmd.name}`,
 				});
 			}
@@ -194,7 +197,8 @@ export default function App() {
 			if (skill.name.includes(slashQuery)) {
 				const hint = skill.argumentHint ? ` ${skill.argumentHint}` : '';
 				items.push({
-					label: `/${skill.name}${hint} — ${skill.description} (${skill.source})`,
+					name: `${skill.name}${hint}`,
+					description: `${skill.description} (${skill.source})`,
 					value: `skill:${skill.name}`,
 				});
 			}
@@ -294,7 +298,7 @@ export default function App() {
 		? Math.min(keyMenuItems.length, menuLimit) + 2
 		: 0;
 	const slashMenuHeight = showSlashMenu
-		? Math.min(slashItems.length, menuLimit) + 2
+		? getSlashMenuHeight(slashItems.length, menuLimit)
 		: 0;
 	const bottomHeight =
 		menuHeight +
@@ -957,14 +961,6 @@ export default function App() {
 									limit={menuLimit}
 								/>
 							)}
-							{showSlashMenu && (
-								<CommandMenu
-									title="Commands & skills"
-									items={slashItems}
-									onSelect={onSlashSelect}
-									limit={menuLimit}
-								/>
-							)}
 						</>
 					)}
 
@@ -979,6 +975,19 @@ export default function App() {
 								maxHeight={promptHeight}
 								menuOpen={showSlashMenu}
 								onStatus={showClipboardStatus}
+							/>
+						</Box>
+					)}
+
+					{/* The slash menu hangs off the bottom of the prompt box: the
+					    box's own rule separates the input from the list, exactly as
+					    the reference layout does. */}
+					{showSlashMenu && (
+						<Box height={slashMenuHeight} width="100%">
+							<SlashCommandMenu
+								items={slashItems}
+								onSelect={onSlashSelect}
+								limit={menuLimit}
 							/>
 						</Box>
 					)}
