@@ -50,7 +50,7 @@ describe('panda banner', () => {
 		for (const marker of [
 			'ready',
 			'terminal coding agent',
-			'v0.0.1',
+			'v0.0.2',
 			'BABY',
 			'PANDA',
 		]) {
@@ -125,10 +125,12 @@ describe('panda banner', () => {
 	 * Drift guard: these digests pin the exact rasterised output of the current
 	 * transparent, outlined artwork. Any change to the shapes, supersampling,
 	 * half-block renderer, outline, or wordmark font breaks them, which is the
-	 * point -- the artwork is not supposed to move.
+	 * point -- the artwork is not supposed to move. The digest covers the whole
+	 * row, so the version line is part of it too: bumping the version moves
+	 * the digest as well.
 	 */
 	test('the rasterised artwork has not drifted from the reference', () => {
-		expect(checksum(pandaBannerRows(SESSION, 200))).toBe('384c35f2861b34aa');
-		expect(checksum(pandaBannerRows(SESSION, 80))).toBe('2cf726eb8460a18b');
+		expect(checksum(pandaBannerRows(SESSION, 200))).toBe('55905a4b2f3ac1ba');
+		expect(checksum(pandaBannerRows(SESSION, 80))).toBe('f687c64f137d7576');
 	});
 });
