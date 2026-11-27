@@ -1,18 +1,25 @@
 import axios, { type AxiosResponse } from 'axios';
 import { setTimeout } from 'node:timers/promises';
 // import type { Message } from '@baby-panda/types';
-import { Role, type MessagesArray, type ReasoningEffort } from '@baby-panda/types';
+import {
+  Role,
+  type AssistantMessage,
+  type MessagesArray,
+  type ReasoningEffort,
+  type SystemMessage,
+  type ToolMessage,
+} from '@baby-panda/types';
 import type { UrlApi } from './types'; // verbatimModuleSyntax
 import { baseTools, type ModelTool } from './config/tools';
-import { ContentFormat, type ProvidersEnum } from './config/models';
+import { type ProvidersEnum } from './config/models';
 import getModelDetails from './services/getModelDetails';
 import { toApiMessages } from './utils/cleanMessages';
 
 /** One text part of a multimodal `content` array. */
-type TextPart = { type: 'text'; text: string };
+// type TextPart = { type: 'text'; text: string };
 
 /** A user message whose `content` is the parts array kimi-k3.1-pro expects. */
-type TextPartMessage = { role: Role.user; content: TextPart[] };
+// type TextPartMessage = { role: Role.user; content: TextPart[] };
 
 /**
  * Rewrites user messages into the `[{ type: 'text', text }]` parts form.
@@ -22,10 +29,60 @@ type TextPartMessage = { role: Role.user; content: TextPart[] };
  * tool results stay plain text. Image parts are deliberately not produced --
  * image support is not wired up yet.
  */
-function toTextPartMessages(messages: MessagesArray): (MessagesArray[number] | TextPartMessage)[] {
-  return messages.map((message) => {
+// function toTextPartMessages(messages: MessagesArray): (MessagesArray[number] | TextPartMessage)[] {
+//   return messages.map((message) => {
+//     if (message.role !== Role.user) return message;
+//     const parts: TextPart[] = [{ type: 'text', text: message.content }];
+//     return { role: Role.user, content: parts };
+//   });
+// }
+
+/** One part of a provider-facing user `content` array. */
+type ProviderContentPart =
+  { type: 'text'; text: string } | { type: 'image_url'; image_url: { url: string } };
+
+/** A user message as the provider sees it: text or OpenAI-style parts. */
+type ProviderUserMessage = {
+  role: Role.user;
+  content: string | ProviderContentPart[];
+};
+
+/** The request's message list with user content in the provider's shape. */
+export type ProviderMessagesArray = (
+  AssistantMessage | ToolMessage | SystemMessage | ProviderUserMessage
+)[];
+
+/**
+ * Converts internal message content to the provider's wire shape.
+ *
+ * Internally (WebSocket + DB) an image part is `{type:'image', image}` with a
+ * data URL; OpenAI-compatible endpoints, NVIDIA's included, expect
+ * `{type:'image_url', image_url:{url}}`. Text-only messages pass through
+ * untouched. A model whose details do not mark it multimodal cannot receive
+ * image parts at all, which is rejected here with a readable error rather
+ * than left to the provider's own (often opaque) rejection.
+ */
+export function toProviderMessages(
+  messages: MessagesArray,
+  multimodal: boolean,
+  model: string,
+): ProviderMessagesArray {
+  return messages.map((message): ProviderMessagesArray[number] => {
     if (message.role !== Role.user) return message;
-    const parts: TextPart[] = [{ type: 'text', text: message.content }];
+    if (typeof message.content === 'string') {
+      return { role: Role.user, content: message.content };
+    }
+
+    const parts: ProviderContentPart[] = message.content.map((part) => {
+      if (part.type === 'text') return { type: 'text', text: part.text };
+      if (!multimodal) {
+        throw new Error(
+          `Model ${model} does not support image input. Remove the image or switch to a multimodal model.`,
+        );
+      }
+      return { type: 'image_url', image_url: { url: part.image } };
+    });
+
     return { role: Role.user, content: parts };
   });
 }
@@ -46,16 +103,13 @@ function buildRequestBody(
   requestTools: ModelTool[],
 ): Record<string, unknown> {
   const modelDetails = getModelDetails(provider, model);
-  // Every message is reduced to the fields its role's schema defines before
-  // it goes on the wire: the live loop holds rich tool records (success,
-  // before, stats, ...) and some endpoints reject messages with extra keys.
-  const apiMessages = toApiMessages(messages);
   const data: Record<string, unknown> = {
     model,
-    messages:
-      modelDetails.contentFormat === ContentFormat.parts
-        ? toTextPartMessages(apiMessages)
-        : apiMessages,
+    // Every message is first reduced to the fields its role's schema defines
+    // (the live loop holds rich tool records — success, before, stats, ... —
+    // and some endpoints reject messages with extra keys), then image parts
+    // are converted to the provider's image_url shape.
+    messages: toProviderMessages(toApiMessages(messages), modelDetails.multimodal, model),
     tools: requestTools,
     max_tokens: 8192,
     stream: true,
