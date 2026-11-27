@@ -1,5 +1,9 @@
 import wcwidth from 'ts-wcwidth';
-import type {PromptSegment, PromptValue} from './promptValue';
+import {
+	isChipSegment,
+	type ImageSegment,
+	type PromptValue,
+} from './promptValue';
 
 /**
  * Columns permanently reserved on the right edge of the prompt box for the
@@ -283,11 +287,45 @@ export function formatPasteChip(
 }
 
 /**
+ * Label for an image chip: `[🖼 image-1.png · 1920×1080 · 1.2 MB]`.
+ *
+ * Same one-row truncation strategy as formatPasteChip. The byte size is
+ * estimated from the base64 payload (4 base64 chars ≈ 3 bytes), and the
+ * dimensions are dropped when the PNG header did not provide them.
+ */
+export function formatImageChip(
+	segment: Pick<ImageSegment, 'name' | 'width' | 'height' | 'dataUrl'>,
+	width: number,
+): string {
+	const base64Length = Math.max(
+		0,
+		segment.dataUrl.length - segment.dataUrl.indexOf(',') - 1,
+	);
+	const size = formatBytes(Math.floor((base64Length * 3) / 4));
+	const dimensions =
+		segment.width > 0 && segment.height > 0
+			? ` · ${segment.width}×${segment.height}`
+			: '';
+
+	const full = `[🖼 ${segment.name}${dimensions} · ${size}]`;
+	if (getDisplayWidth(full) <= width) return full;
+
+	const withoutSize = `[🖼 ${segment.name}${dimensions}]`;
+	if (getDisplayWidth(withoutSize) <= width) return withoutSize;
+
+	const minimal = `[🖼 ${segment.name}]`;
+	if (getDisplayWidth(minimal) <= width) return minimal;
+
+	return minimal.slice(0, Math.max(1, width));
+}
+
+/**
  * Splits a prompt value into visual lines.
  *
- * A collapsed paste segment contributes exactly one row carrying its chip label;
- * every other segment contributes its real wrapped lines. Offsets stay in the
- * flattened text, so the cursor the prompt box keeps maps straight onto them.
+ * A collapsed chip (paste or image) contributes exactly one row carrying its
+ * chip label; every other segment contributes its real wrapped lines. Offsets
+ * stay in the flattened text, so the cursor the prompt box keeps maps straight
+ * onto them.
  */
 export function wrapPromptValue(
 	value: PromptValue,
@@ -298,16 +336,15 @@ export function wrapPromptValue(
 	let offset = 0;
 	let index = 0;
 
-	const isCollapsedChip = (segment: PromptSegment) =>
-		segment.kind === 'paste' && segment.collapsed;
-
 	while (index < value.segments.length) {
 		const segment = value.segments[index]!;
 		const segmentStart = offset;
 
-		if (isCollapsedChip(segment)) {
-			chipIndex += 1;
-			const label = formatPasteChip(chipIndex, segment.text, width);
+		if (isChipSegment(segment)) {
+			const label =
+				segment.kind === 'image'
+					? formatImageChip(segment, width)
+					: formatPasteChip((chipIndex += 1), segment.text, width);
 			lines.push({
 				text: label,
 				start: segmentStart,
@@ -332,7 +369,7 @@ export function wrapPromptValue(
 
 		while (lastIndex + 1 < value.segments.length) {
 			const next = value.segments[lastIndex + 1]!;
-			if (isCollapsedChip(next)) break;
+			if (isChipSegment(next)) break;
 
 			text += next.text;
 			offset += next.text.length;

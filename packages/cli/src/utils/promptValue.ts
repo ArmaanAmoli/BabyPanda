@@ -26,17 +26,78 @@ export interface PasteSegment {
 	collapsed: boolean;
 }
 
-export type PromptSegment = TextSegment | PasteSegment;
+export interface ImageSegment {
+	kind: 'image';
+	/** Stable across edits and undo, so React keys and lookups stay valid. */
+	id: string;
+	/** Generated display name, e.g. 'image-1.png'. Nothing is written to disk. */
+	name: string;
+	width: number;
+	height: number;
+	/** The payload sent to the model: data:image/png;base64,... */
+	dataUrl: string;
+	/**
+	 * Inline placeholder kept in promptText, so the cursor and every offset
+	 * computation treat an image like a short piece of text.
+	 */
+	text: string;
+	/** Images are always collapsed chips; unlike a paste they never expand. */
+	collapsed: true;
+}
+
+export type PromptSegment = TextSegment | PasteSegment | ImageSegment;
 
 export interface PromptValue {
 	segments: PromptSegment[];
 }
 
 let nextPasteId = 0;
+let nextImageId = 0;
 
 function createPasteId(): string {
 	nextPasteId += 1;
 	return `paste-${nextPasteId}`;
+}
+
+/**
+ * Creates the segment for a clipboard image. The data URL is the only place
+ * the bytes live (they end up in the message content, hence in the DB); the
+ * generated name gives the chip and the text placeholder something to show.
+ */
+export function createImageSegment(image: {
+	width: number;
+	height: number;
+	dataUrl: string;
+}): ImageSegment {
+	nextImageId += 1;
+	const name = `image-${nextImageId}.png`;
+	return {
+		kind: 'image',
+		id: `image-${nextImageId}`,
+		name,
+		width: image.width,
+		height: image.height,
+		dataUrl: image.dataUrl,
+		text: `[image: ${name}]`,
+		collapsed: true,
+	};
+}
+
+/** A collapsed chip (paste or image) is atomic: one row, cursor stays outside. */
+export function isChipSegment(
+	segment: PromptSegment,
+): segment is PasteSegment | ImageSegment {
+	return segment.kind !== 'text' && segment.collapsed;
+}
+
+export function isImageSegment(
+	segment: PromptSegment,
+): segment is ImageSegment {
+	return segment.kind === 'image';
+}
+
+export function getImageSegments(value: PromptValue): ImageSegment[] {
+	return value.segments.filter(isImageSegment);
 }
 
 function clamp(value: number, minimum: number, maximum: number): number {
@@ -58,7 +119,7 @@ export function isEmptyPrompt(value: PromptValue): boolean {
 }
 
 function cloneWithText(segment: PromptSegment, text: string): PromptSegment {
-	return segment.kind === 'paste' ? {...segment, text} : {kind: 'text', text};
+	return segment.kind === 'text' ? {kind: 'text', text} : {...segment, text};
 }
 
 /**
@@ -97,6 +158,12 @@ export function normalizePromptValue(value: PromptValue): PromptValue {
  * This one primitive covers insertion (`start === end`), deletion
  * (`replacement` null) and replacement. Offsets are UTF-16 code-unit positions
  * into `promptText(value)`, matching the cursor the prompt box keeps.
+ *
+ * Collapsed chips are atomic for every edit, not just Backspace/Delete: a
+ * deletion that touches any part of a chip removes the whole chip, and an
+ * insertion strictly inside one is clamped to its start. Without this, a
+ * partial erase (Ctrl+W over a chip's placeholder, say) leaves a sliced chip
+ * behind — a corrupted image segment that still renders and still gets sent.
  */
 export function replaceRange(
 	value: PromptValue,
@@ -110,6 +177,42 @@ export function replaceRange(
 
 	for (const segment of value.segments) {
 		const segmentEnd = position + segment.text.length;
+
+		if (isChipSegment(segment)) {
+			const deletionOverlaps =
+				start !== end && start < segmentEnd && end > position;
+
+			if (deletionOverlaps) {
+				// The whole chip goes. The replacement, if any, still belongs at
+				// the edit's start, exactly as in the generic path below.
+				if (!placed && start <= segmentEnd) {
+					placed = true;
+					if (replacement) {
+						next.push(replacement);
+					}
+				}
+
+				position = segmentEnd;
+				continue;
+			}
+
+			const insertionInside =
+				start === end && start > position && start < segmentEnd;
+			if (insertionInside) {
+				// Clamp to the chip's start rather than splitting it in two.
+				if (!placed) {
+					placed = true;
+					if (replacement) {
+						next.push(replacement);
+					}
+				}
+
+				next.push(segment);
+				position = segmentEnd;
+				continue;
+			}
+		}
+
 		const localStart = clamp(start - position, 0, segment.text.length);
 		const localEnd = clamp(end - position, 0, segment.text.length);
 
@@ -146,14 +249,14 @@ export function replaceRange(
 }
 
 /**
- * Range of the collapsed paste segment ending exactly at `offset`, if any.
+ * Range of the collapsed chip (paste or image) ending exactly at `offset`.
  *
  * A collapsed chip is atomic: the cursor can only sit immediately before or
  * after one, never inside, so one Backspace removes the whole block and its
  * contents can never be partially edited. An expanded paste is ordinary text
  * and edits character by character like anything else.
  */
-export function getPasteRangeBefore(
+export function getChipRangeBefore(
 	value: PromptValue,
 	offset: number,
 ): {start: number; end: number} | null {
@@ -162,11 +265,7 @@ export function getPasteRangeBefore(
 	for (const segment of value.segments) {
 		const segmentEnd = position + segment.text.length;
 
-		if (
-			segment.kind === 'paste' &&
-			segment.collapsed &&
-			segmentEnd === offset
-		) {
+		if (isChipSegment(segment) && segmentEnd === offset) {
 			return {start: position, end: segmentEnd};
 		}
 
@@ -176,15 +275,15 @@ export function getPasteRangeBefore(
 	return null;
 }
 
-/** Range of the collapsed paste segment starting exactly at `offset`, if any. */
-export function getPasteRangeAfter(
+/** Range of the collapsed chip starting exactly at `offset`, if any. */
+export function getChipRangeAfter(
 	value: PromptValue,
 	offset: number,
 ): {start: number; end: number} | null {
 	let position = 0;
 
 	for (const segment of value.segments) {
-		if (segment.kind === 'paste' && segment.collapsed && position === offset) {
+		if (isChipSegment(segment) && position === offset) {
 			return {start: position, end: position + segment.text.length};
 		}
 
