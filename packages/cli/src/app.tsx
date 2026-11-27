@@ -6,6 +6,7 @@ import {GAP_CHAT_BOX_PROMPT_BOX, PADDING_APP} from './layout';
 import {getPromptLineCount, getPromptWrapWidth} from './utils/promptLayout';
 import {
 	getImageSegments,
+	initializeImageIdFromHistory,
 	isEmptyPrompt,
 	promptText,
 	textValue,
@@ -542,7 +543,11 @@ export default function App() {
 
 	useEffect(() => {
 		const getHistory = async () => {
-			setMessageHistory(await getMessages(sessionId));
+			const history = await getMessages(sessionId);
+			// Continue image numbering after the highest chip already in the
+			// transcript, so a paste after a reload never reuses a name.
+			initializeImageIdFromHistory(history.map(message => message.content));
+			setMessageHistory(history);
 		};
 		getHistory();
 	}, []);

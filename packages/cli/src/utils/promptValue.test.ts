@@ -5,6 +5,7 @@ import {
 	getChipRangeAfter,
 	getChipRangeBefore,
 	getImageSegments,
+	initializeImageIdFromHistory,
 	isChipSegment,
 	isEmptyPrompt,
 	normalizePromptValue,
@@ -151,5 +152,21 @@ describe('paste chips (regression)', () => {
 			start: 1,
 			end: 1 + paste.text.length,
 		});
+	});
+});
+
+describe('initializeImageIdFromHistory', () => {
+	test('continues after the highest image name in history', () => {
+		initializeImageIdFromHistory([
+			'see [🖼 image-4.png · 1×1 · 3 B]',
+			'and [image: image-7.png]',
+			'no images here',
+		]);
+		expect(makeImage().name).toBe('image-8.png');
+	});
+
+	test('with no images in history the first paste is image-1.png', () => {
+		initializeImageIdFromHistory(['plain text', 'no chips at all']);
+		expect(makeImage().name).toBe('image-1.png');
 	});
 });

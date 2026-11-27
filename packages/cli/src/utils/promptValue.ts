@@ -60,6 +60,22 @@ function createPasteId(): string {
 }
 
 /**
+ * Seeds the image counter from the chat history, so an image pasted after a
+ * session reload never reuses a name already in the transcript. Placeholder
+ * names (`image-N.png`) are matched wherever they appear; with no images in
+ * history the counter starts at 0, so the first paste is image-1.png.
+ */
+export function initializeImageIdFromHistory(contents: string[]): void {
+	let highest = 0;
+	for (const content of contents) {
+		for (const match of content.matchAll(/image-(\d+)\.png/g)) {
+			highest = Math.max(highest, Number(match[1]));
+		}
+	}
+	nextImageId = highest;
+}
+
+/**
  * Creates the segment for a clipboard image. The data URL is the only place
  * the bytes live (they end up in the message content, hence in the DB); the
  * generated name gives the chip and the text placeholder something to show.

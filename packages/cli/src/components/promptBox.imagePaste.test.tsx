@@ -57,6 +57,13 @@ class TestStdout extends EventEmitter {
 	};
 }
 
+interface FakeStdin extends Readable {
+	isTTY?: boolean;
+	setRawMode: (mode: boolean) => FakeStdin;
+	ref: () => FakeStdin;
+	unref: () => FakeStdin;
+}
+
 let emitter: EventEmitter | undefined;
 let latestValue: PromptValue;
 
@@ -85,9 +92,7 @@ async function renderPrompt() {
 	const filteredStdin = new FilteredStdin(
 		new Readable({read() {}}) as unknown as ReadStream,
 	);
-	const fakeStdin = new Readable({read() {}}) as Readable & {
-		isTTY?: boolean;
-	};
+	const fakeStdin = new Readable({read() {}}) as FakeStdin;
 	fakeStdin.isTTY = true;
 	fakeStdin.setRawMode = () => fakeStdin;
 	fakeStdin.ref = () => fakeStdin;
