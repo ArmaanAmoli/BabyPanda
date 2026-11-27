@@ -155,9 +155,7 @@ describe('the PowerShell fallback', () => {
 	});
 
 	test('stops reading files at the paste cap', () => {
-		expect(POWERSHELL_SCRIPT).toContain(
-			`$maxImages = ${MAX_IMAGES_PER_PASTE}`,
-		);
+		expect(POWERSHELL_SCRIPT).toContain(`$maxImages = ${MAX_IMAGES_PER_PASTE}`);
 		expect(POWERSHELL_SCRIPT).toContain('$candidates.Count -ge $maxImages');
 	});
 });
