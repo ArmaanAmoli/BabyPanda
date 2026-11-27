@@ -35,6 +35,7 @@ import {
   createMessage,
   getMostRecentCompactionSummary,
   getWebApiKeys,
+  updateSession,
 } from '@baby-panda/db';
 import { Models, ProvidersEnum } from '@agent/config/models';
 import {
@@ -276,6 +277,10 @@ export class BabyPandaAgent extends EventEmitter {
   public async init() {
     await ensureExistanceOfRequiredFolders();
     await this.connectToMCP();
+    // Restore the model settings persisted on the session row before the
+    // context is built, so a resumed session continues with the model and
+    // reasoning effort the user last used instead of the defaults.
+    await this.restoreModelSettings();
     this.messages = await this.createContext();
   }
   private async connectToMCP() {
@@ -1040,10 +1045,64 @@ export class BabyPandaAgent extends EventEmitter {
     if (!modelDetails.reasoningEfforts.includes(this.reasoningEffort)) {
       this.reasoningEffort = modelDetails.reasoningEfforts[0] ?? ReasoningEffort.none;
     }
+    await this.persistModelSettings();
   }
 
   setReasoningEffort(reasoningEffort: ReasoningEffort) {
     this.reasoningEffort = reasoningEffort;
+    void this.persistModelSettings();
+  }
+
+  /**
+   * Applies the model settings stored on the session row, if any. A stored
+   * provider/model that is no longer in the config (or an effort the model
+   * does not accept) falls back to the defaults, mirroring `setModel`, so a
+   * stale row can never leave the agent in an unusable state.
+   */
+  private async restoreModelSettings() {
+    const [session] = await getSession(this.sessionId);
+    if (!session) return;
+    const storedProvider = session.provider as ProvidersEnum | null;
+    const storedModel = session.model;
+    const storedDetails =
+      storedProvider && storedModel && storedProvider in Models
+        ? Models[storedProvider].models[storedModel]
+        : undefined;
+    if (storedProvider && storedModel && storedDetails) {
+      this.provider = storedProvider;
+      this.model = storedModel;
+      this.contextWindow = storedDetails.contextLength;
+    }
+    const efforts = Models[this.provider].models[this.model]?.reasoningEfforts ?? [];
+    const storedEffort = session.reasoningEffort;
+    if (storedEffort && efforts.includes(storedEffort)) {
+      this.reasoningEffort = storedEffort;
+    } else if (!efforts.includes(this.reasoningEffort)) {
+      this.reasoningEffort = efforts[0] ?? ReasoningEffort.none;
+    }
+  }
+
+  /**
+   * Writes the current provider/model/reasoning effort onto the session row
+   * so the next time this session is opened the same settings are restored.
+   * Never rejects: a failed write must not break the running session.
+   */
+  private async persistModelSettings() {
+    try {
+      await updateSession(this.sessionId, {
+        provider: this.provider,
+        model: this.model,
+        reasoningEffort: this.reasoningEffort,
+      });
+    } catch (err) {
+      await logError(
+        LogType.agent,
+        this.projectDirectoryName,
+        this.sessionId,
+        'failed to persist model settings',
+        err,
+      );
+    }
   }
 
   getModelState() {

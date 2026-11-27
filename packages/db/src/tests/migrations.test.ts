@@ -103,4 +103,86 @@ describe('embedded migrations', () => {
       { provider: 'exa', endpoint: 'https://api.exa.ai', hasKey: 'fake-exa-key' },
     ]);
   });
+
+  test('session model settings are stored and restored across processes', () => {
+    const home = mkdtempSync(path.join(tmpdir(), 'babypanda-migrations-'));
+    temporaryHomes.push(home);
+
+    const sessionId = runInFreshProcess(
+      home,
+      `
+        await database.runMigrations();
+        const id = await database.createSession();
+        await database.updateSession(id, {
+          provider: 'Nvidia',
+          model: 'moonshotai/kimi-k3.1-pro',
+          reasoningEffort: 'high',
+        });
+        console.log(JSON.stringify(id));
+        database.closeDatabase();
+      `,
+    ) as string;
+
+    const restored = runInFreshProcess(
+      home,
+      `
+        await database.runMigrations();
+        const [session] = await database.getSession(${JSON.stringify(sessionId)});
+        console.log(
+          JSON.stringify({
+            provider: session.provider,
+            model: session.model,
+            reasoningEffort: session.reasoningEffort,
+          }),
+        );
+        database.closeDatabase();
+      `,
+    ) as { provider: string; model: string; reasoningEffort: string };
+
+    expect(restored).toEqual({
+      provider: 'Nvidia',
+      model: 'moonshotai/kimi-k3.1-pro',
+      reasoningEffort: 'high',
+    });
+  });
+
+  test('sessions created before the model settings columns exist read back as null', () => {
+    const home = mkdtempSync(path.join(tmpdir(), 'babypanda-migrations-'));
+    temporaryHomes.push(home);
+    const dbDirectory = path.join(home, '.babypanda', 'db');
+    mkdirSync(dbDirectory, { recursive: true });
+    const legacy = new Database(path.join(dbDirectory, 'db.db'));
+    legacy.run(
+      `CREATE TABLE session (
+        session_id text PRIMARY KEY,
+        created_at integer NOT NULL,
+        parent_session_id text,
+        messages_count integer DEFAULT 0 NOT NULL,
+        tokens_in_context_window integer DEFAULT 0 NOT NULL,
+        project_directory text NOT NULL
+      );`,
+    );
+    legacy
+      .query(`INSERT INTO session (session_id, created_at, project_directory) VALUES (?, ?, ?);`)
+      .run('01LEGACYSESSION', 1789950520329, '/tmp/legacy');
+    legacy.close();
+
+    const restored = runInFreshProcess(
+      home,
+      `
+        await database.runMigrations();
+        const [session] = await database.getSession('01LEGACYSESSION');
+        console.log(
+          JSON.stringify({
+            provider: session.provider,
+            model: session.model,
+            reasoningEffort: session.reasoningEffort,
+          }),
+        );
+        database.closeDatabase();
+      `,
+    ) as { provider: unknown; model: unknown; reasoningEffort: unknown };
+
+    expect(restored).toEqual({ provider: null, model: null, reasoningEffort: null });
+  });
 });
