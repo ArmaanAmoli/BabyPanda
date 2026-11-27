@@ -13,11 +13,16 @@ import {describe, expect, test, mock} from 'bun:test';
 const images = [
 	{width: 100, height: 80, dataUrl: 'data:image/png;base64,AAAA'},
 	{width: 200, height: 160, dataUrl: 'data:image/png;base64,BBBB'},
+	{width: 300, height: 240, dataUrl: 'data:image/png;base64,CCCC'},
 ];
 let call = 0;
 
 mock.module('../utils/readClipboardImage', () => ({
-	readClipboardImages: async () => images[call++ % images.length],
+	// `readClipboardImages` yields every image the clipboard holds, so the
+	// first Ctrl+O reads all three at once — Explorer's Copy puts a whole file
+	// list on the clipboard — and every later press reads one, the common case.
+	readClipboardImages: async () => (call++ === 0 ? images : [images[1]!]),
+	MAX_IMAGES_PER_PASTE: 10,
 }));
 
 import React from 'react';
@@ -27,6 +32,7 @@ import type {ReadStream} from 'node:tty';
 import {render as inkRender, useStdin} from 'ink';
 import {
 	getImageSegments,
+	initializeImageIdFromHistory,
 	promptText,
 	textValue,
 	type PromptValue,
@@ -89,6 +95,10 @@ function Harness() {
 
 async function renderPrompt() {
 	emitter = undefined;
+	// The image counter lives at module scope and every other test file that
+	// pastes an image bumps it, so seed it from an empty history — exactly what
+	// the app does on a fresh session — to keep the generated names stable.
+	initializeImageIdFromHistory([]);
 	const stdout = new TestStdout();
 	const filteredStdin = new FilteredStdin(
 		new Readable({read() {}}) as unknown as ReadStream,

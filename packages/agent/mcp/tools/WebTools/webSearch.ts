@@ -55,6 +55,8 @@ export async function webSearch(query: string): Promise<WebSearchResults> {
       'failed to parse Exa search results',
       err,
     );
-    throw new Error(`Error occured while parsing WebSearchResults in webSearch.ts, ${err}`);
+    throw new Error(`Error occured while parsing WebSearchResults in webSearch.ts, ${err}`, {
+      cause: err,
+    });
   }
 }
