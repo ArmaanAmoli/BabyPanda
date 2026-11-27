@@ -1,5 +1,10 @@
 import {describe, expect, test} from 'bun:test';
-import {MAX_IMAGE_BASE64_LENGTH, readPngSize} from './readClipboardImage';
+import {
+	IMAGE_FILE_EXTENSIONS,
+	MAX_IMAGE_BASE64_LENGTH,
+	POWERSHELL_SCRIPT,
+	readPngSize,
+} from './readClipboardImage';
 
 function pngHeader(width: number, height: number): Buffer {
 	const png = Buffer.alloc(24);
@@ -27,4 +32,31 @@ describe('readPngSize', () => {
 
 test('the base64 cap is 20 MB', () => {
 	expect(MAX_IMAGE_BASE64_LENGTH).toBe(20 * 1024 * 1024);
+});
+
+describe('the PowerShell fallback', () => {
+	test('reads a copied image file back from the clipboard file-drop list', () => {
+		// Explorer's "Copy" puts CF_HDROP (paths, not pixels) on the clipboard,
+		// so GetImage() alone reports "no image on clipboard".
+		expect(POWERSHELL_SCRIPT).toContain('ContainsFileDropList()');
+		expect(POWERSHELL_SCRIPT).toContain('GetFileDropList()');
+		expect(POWERSHELL_SCRIPT).toContain('[System.Drawing.Image]::FromFile');
+	});
+
+	test('only accepts extensions System.Drawing can decode', () => {
+		for (const extension of IMAGE_FILE_EXTENSIONS) {
+			expect(extension).toMatch(/^\.(png|jpe?g|gif|bmp|tiff?)$/);
+		}
+		// The list is embedded in the script, not duplicated by hand.
+		for (const extension of IMAGE_FILE_EXTENSIONS) {
+			expect(POWERSHELL_SCRIPT).toContain(`'${extension}'`);
+		}
+	});
+
+	test('still prefers real clipboard image data', () => {
+		expect(POWERSHELL_SCRIPT).toContain('Clipboard]::GetImage()');
+		expect(POWERSHELL_SCRIPT.indexOf('GetImage()')).toBeLessThan(
+			POWERSHELL_SCRIPT.indexOf('ContainsFileDropList()'),
+		);
+	});
 });

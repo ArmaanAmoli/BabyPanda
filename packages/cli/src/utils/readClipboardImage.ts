@@ -19,11 +19,37 @@ export const MAX_IMAGE_BASE64_LENGTH = 20 * 1024 * 1024;
 const NATIVE_TIMEOUT_MS = 5_000;
 const POWERSHELL_TIMEOUT_MS = 30_000;
 
-const POWERSHELL_SCRIPT = `
+/**
+ * Extensions the PowerShell fallback accepts from a clipboard file-drop list.
+ * Explorer's "Copy" puts CF_HDROP on the clipboard — paths, not pixels — so a
+ * copied image file has to be read back from disk. Every extension here is
+ * decodable by System.Drawing, which re-encodes it as PNG below.
+ */
+export const IMAGE_FILE_EXTENSIONS = [
+	'.png',
+	'.jpg',
+	'.jpeg',
+	'.gif',
+	'.bmp',
+	'.tif',
+	'.tiff',
+];
+
+export const POWERSHELL_SCRIPT = `
 Add-Type -AssemblyName System.Windows.Forms,System.Drawing;
-$img = [System.Windows.Forms.Clipboard]::GetImage();
-if ($null -eq $img) { exit 1 }
 $max = 1568;
+$imageExtensions = @(${IMAGE_FILE_EXTENSIONS.map(ext => `'${ext}'`).join(', ')});
+$img = $null;
+try { $img = [System.Windows.Forms.Clipboard]::GetImage() } catch { }
+if ($null -eq $img -and [System.Windows.Forms.Clipboard]::ContainsFileDropList()) {
+	foreach ($file in [System.Windows.Forms.Clipboard]::GetFileDropList()) {
+		if ($imageExtensions -notcontains [System.IO.Path]::GetExtension($file)) { continue }
+		if (-not (Test-Path -LiteralPath $file -PathType Leaf)) { continue }
+		try { $img = [System.Drawing.Image]::FromFile($file) } catch { $img = $null }
+		if ($null -ne $img) { break }
+	}
+}
+if ($null -eq $img) { exit 1 }
 $s = [Math]::Min(1.0, $max / [Math]::Max($img.Width, $img.Height));
 $w = [Math]::Max(1, [int]($img.Width * $s)); $h = [Math]::Max(1, [int]($img.Height * $s));
 $out = New-Object System.Drawing.Bitmap($w, $h);
@@ -32,7 +58,9 @@ $g.InterpolationMode = [System.Drawing.Drawing2D.InterpolationMode]::HighQuality
 $g.DrawImage($img, 0, 0, $w, $h); $g.Dispose();
 $ms = New-Object System.IO.MemoryStream;
 $out.Save($ms, [System.Drawing.Imaging.ImageFormat]::Png);
-[Console]::Out.Write([Convert]::ToBase64String($ms.ToArray()))
+$b64 = [Convert]::ToBase64String($ms.ToArray());
+$ms.Dispose(); $out.Dispose(); $img.Dispose();
+[Console]::Out.Write($b64)
 `;
 
 export interface ClipboardImage {

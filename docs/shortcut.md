@@ -86,6 +86,10 @@ paste as described above.
 - The reader is Linux/WSL-only: it tries `wl-paste`, then `xclip`, then falls
   back to `powershell.exe` through WSL interop, which downscales the image to
   at most 1568 px on its long side. Any source is capped at 20 MB of base64.
+- Both kinds of copy work: image data (a screenshot, or a browser's *Copy
+  image*) and a file copied in Explorer, which puts only a path on the
+  clipboard — the fallback then reads the file back from disk and re-encodes
+  it as PNG. Copying a non-image file still shows "No image on clipboard".
 - A clipboard holding no image just shows a "No image on clipboard" notice.
 - An image chip is atomic like a paste chip (the cursor cannot enter it, one
   `Backspace`/`Delete` removes it, undo/redo works), but it never expands.
