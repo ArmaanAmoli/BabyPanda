@@ -28,6 +28,7 @@ const websocketHandler = (c: Context, next: Next) => {
     return {
       async onOpen(_event, ws) {
         wsCollection.set(sessionId, ws);
+        let initPromise: Promise<void> | undefined;
         if (agentStore.get(sessionId) == undefined) {
           const configured = (await getProviders()).find(
             (provider) => provider.provider?.toLowerCase() === ProvidersEnum.Nvidia.toLowerCase(),
@@ -35,20 +36,13 @@ const websocketHandler = (c: Context, next: Next) => {
           const url = configured?.endpoint ?? `${Models.Nvidia.url}`;
           const apikey = configured?.hasKey ?? '';
           const agent = new BabyPandaAgent({ url, apikey }, sessionId);
-          const initAgent = async () => await agent.init();
-          initAgent().catch((err) => {
+          initPromise = agent.init().catch((err) => {
             void logError(LogType.agent, cwd, sessionId, 'agent initialization failed', err);
           });
           agentStore.set(sessionId, agent);
         }
         //attach event listners
         const babyPanda = agentStore.get(sessionId)!;
-        wsCollection.get(sessionId)?.send(
-          JSON.stringify({
-            eventType: WsEventTypes.setting,
-            payload: babyPanda.getModelState(),
-          }),
-        );
 
         const onAskForPermission = (permissionObject: UserPermission) => {
           const ws = wsCollection.get(sessionId);
@@ -133,6 +127,17 @@ const websocketHandler = (c: Context, next: Next) => {
         babyPanda.on('end', onLoopEnd);
         babyPanda.on('error', onError);
         babyPanda.on('context-update', onContextUpdate);
+
+        // init() restores the model settings persisted on the session row;
+        // wait for it so the initial setting payload carries the restored
+        // values instead of the hard-coded defaults.
+        if (initPromise) await initPromise;
+        wsCollection.get(sessionId)?.send(
+          JSON.stringify({
+            eventType: WsEventTypes.setting,
+            payload: babyPanda.getModelState(),
+          }),
+        );
       },
 
       async onMessage(event) {

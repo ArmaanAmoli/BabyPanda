@@ -259,4 +259,12 @@ export const migrations: Migration[] = [
     name: '20261115013904_add_api_key_type',
     statements: [`ALTER TABLE \`api_keys\` ADD \`type\` text DEFAULT 'model' NOT NULL;`],
   },
+  {
+    name: '20261116093000_session_model_settings',
+    statements: [
+      `ALTER TABLE \`session\` ADD \`provider\` text;`,
+      `ALTER TABLE \`session\` ADD \`model\` text;`,
+      `ALTER TABLE \`session\` ADD \`reasoning_effort\` text;`,
+    ],
+  },
 ];

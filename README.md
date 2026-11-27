@@ -88,7 +88,10 @@ provider from the setup prompt when the CLI starts, or use `/provider` later.
 Do not paste provider keys into source code, logs, issues, or pull requests.
 
 Use `/model` to select a model and `/efforts` to select its reasoning effort.
-The portable reasoning levels are `none`, `low`, `medium`, and `high`.
+The portable reasoning levels are `none`, `low`, `medium`, and `high`. The
+selected model and reasoning effort are stored on the session row, so
+reopening a session (`babypanda open <session-id>`) restores the settings you
+last used.
 
 ## Install the binary (Ubuntu / WSL)
 
@@ -315,6 +318,9 @@ erDiagram
         number messages_count
         number tokens_in_context_window
         string project_directory
+        string provider
+        string model
+        string reasoning_effort
     }
     MESSAGE {
         number message_index PK

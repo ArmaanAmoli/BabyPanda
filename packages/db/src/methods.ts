@@ -1,6 +1,6 @@
 import { db } from './index.db';
 import { Session, Message, ApiKeys } from './db/schema';
-import { Role, type ApiKeyType } from '@baby-panda/types';
+import { Role, type ApiKeyType, type ReasoningEffort } from '@baby-panda/types';
 import { asc, desc, eq, and, ne, gt, gte } from 'drizzle-orm';
 import { ulid } from 'ulid';
 interface APIProvider {
@@ -178,7 +178,17 @@ export async function getSessions() {
   const sessions = await db.select().from(Session);
   return sessions;
 }
-export async function updateSession(sessionId: string, updatedValue: { messagesCount: number }) {
+// `undefined` fields are skipped by drizzle, so callers may update any
+// subset of the columns (e.g. only the model settings).
+export async function updateSession(
+  sessionId: string,
+  updatedValue: {
+    messagesCount?: number;
+    provider?: string;
+    model?: string;
+    reasoningEffort?: ReasoningEffort;
+  },
+) {
   await db.update(Session).set(updatedValue).where(eq(Session.id, sessionId));
 }
 export async function getSession(sessionId: string) {
