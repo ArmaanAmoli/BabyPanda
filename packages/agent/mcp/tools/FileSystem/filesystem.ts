@@ -81,7 +81,7 @@ name or a nearby comment) to uniquely identify the location you mean.`,
     }
     throw new Error(`string not found`);
   } catch (err) {
-    throw new Error(`An error occured while editing file: ${err}`);
+    throw new Error(`An error occured while editing file: ${err}`, { cause: err });
   }
 }
 
@@ -91,7 +91,7 @@ export async function write(path: string, content: string) {
     await fs.promises.writeFile(path, content);
     return true;
   } catch (err) {
-    throw new Error(`An error occured while writing file: ${err}`);
+    throw new Error(`An error occured while writing file: ${err}`, { cause: err });
   }
 }
 
@@ -100,7 +100,7 @@ export async function mkdir(path: string) {
     await fs.promises.mkdir(path);
     return true;
   } catch (err) {
-    throw new Error(`An error occured while making directory: ${err}`);
+    throw new Error(`An error occured while making directory: ${err}`, { cause: err });
   }
 }
 
@@ -249,6 +249,7 @@ export async function list(path: string) {
   } catch (e) {
     throw new Error(
       `/packages/agent/mcp/tools/filesystem.ts:134:142 Error occured in list tool ${e}`,
+      { cause: e },
     );
   }
 }
@@ -289,6 +290,7 @@ export async function del(path: string, options?: RmOptions) {
   } catch (e) {
     throw new Error(
       `/packages/agent/mcp/tools/filesystem.ts:173:179 Error occured in delete tool ${e}`,
+      { cause: e },
     );
   }
 }
