@@ -34,16 +34,26 @@ export function CommandMenu({
 export function ProviderSetupBox({
 	provider,
 	onSubmit,
+	changeMode = false,
 }: {
 	provider: ProviderInfo;
 	onSubmit: (key: string) => void;
+	/** True when replacing an already-saved key instead of the first setup. */
+	changeMode?: boolean;
 }) {
 	const [key, setKey] = React.useState('');
 	return (
 		<Box flexDirection="column" paddingX={1} paddingTop={1}>
 			<Text color="#f0c674">
-				{provider.provider} API key is required to start BabyPanda
+				{changeMode
+					? `Enter a new ${provider.provider} API key to replace the saved one`
+					: `${provider.provider} API key is required to start BabyPanda`}
 			</Text>
+			{changeMode && (
+				<Text dimColor>
+					Press escape to cancel — the saved key stays in place.
+				</Text>
+			)}
 			<InlineInput
 				value={key}
 				placeholder="Paste your API key and press enter"
@@ -61,16 +71,26 @@ export function ProviderSetupBox({
  * skipped: web search is a convenience, not a requirement to run, so the copy
  * says plainly what stops working and how to come back to it later.
  */
-export function WebApiKeyBox({onSubmit}: {onSubmit: (key: string) => void}) {
+export function WebApiKeyBox({
+	onSubmit,
+	changeMode = false,
+}: {
+	onSubmit: (key: string) => void;
+	/** True when replacing an already-saved key instead of adding the first one. */
+	changeMode?: boolean;
+}) {
 	const [key, setKey] = React.useState('');
 	return (
 		<Box flexDirection="column" paddingX={1} paddingTop={1}>
 			<Text color="#f0c674">
-				Add an Exa API key to enable web search? (optional)
+				{changeMode
+					? 'Enter a new Exa API key to replace the saved one'
+					: 'Add an Exa API key to enable web search? (optional)'}
 			</Text>
 			<Text dimColor>
-				Without it the agent cannot use web_search or get_web_page. Press escape
-				to skip — you can add it later with /web-api-keys.
+				{changeMode
+					? 'Press escape to cancel — the saved key stays in place.'
+					: 'Without it the agent cannot use web_search or get_web_page. Press escape to skip — you can add it later with /web-api-keys.'}
 			</Text>
 			<InlineInput
 				value={key}
