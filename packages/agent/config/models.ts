@@ -14,10 +14,10 @@ const ProvidersEnumSchema = z.enum(ProvidersEnum);
  * - `parts`: the multimodal parts array (`[{ type: 'text', text }]`) that
  *   moonshotai/kimi-k3.1-pro documents for user messages.
  */
-export enum ContentFormat {
-  string = 'string',
-  parts = 'parts',
-}
+// export enum ContentFormat {
+//   string = 'string',
+//   parts = 'parts',
+// }
 
 const ModelDetailSchema = z.object({
   contextLength: z.number(),
@@ -30,7 +30,7 @@ const ModelDetailSchema = z.object({
    * those fields are omitted for it instead of failing the whole request.
    */
   supportsOpenAiExtensions: z.boolean().default(true),
-  contentFormat: z.enum(ContentFormat).default(ContentFormat.string),
+  multimodal: z.boolean().default(false),
 });
 
 export type ModelDetails = z.infer<typeof ModelDetailSchema>;
@@ -70,10 +70,12 @@ export const Models: ModelsType = {
         // NVIDIA documents `low | high | max`; the endpoint also accepts
         // `none`/`minimal`/`medium`/`xhigh` but runs them at `max`.
         reasoningEfforts: [ReasoningEffort.low, ReasoningEffort.high, ReasoningEffort.max],
+        multimodal: true,
       },
       'stepfun-ai/step-5-preview': {
         contextLength: 1_000_000,
         reasoningEfforts: [ReasoningEffort.low, ReasoningEffort.medium, ReasoningEffort.high],
+        multimodal: true,
       },
 
       'nvidia/nemotron-3-ultra-550b-a55b': {
@@ -96,6 +98,7 @@ export const Models: ModelsType = {
         // instead says `low | medium | high`, which conflicts; the schema is
         // the contract our request is validated against.
         reasoningEfforts: [ReasoningEffort.none, ReasoningEffort.low, ReasoningEffort.high],
+        multimodal: true,
       },
       'mistralai/mistral-large-4-1t-a52b': {
         contextLength: 262000,
@@ -105,6 +108,7 @@ export const Models: ModelsType = {
         // an omitted field is "served as none", which the current docs
         // contradict. Trust the vendor docs, not that enum.
         reasoningEfforts: [ReasoningEffort.low, ReasoningEffort.medium, ReasoningEffort.high],
+        multimodal: true,
       },
       'minimaxai/minimax-m3.1-flash': {
         contextLength: 262000,
@@ -117,6 +121,7 @@ export const Models: ModelsType = {
           ReasoningEffort.xhigh,
           ReasoningEffort.max,
         ],
+        multimodal: true,
       },
       'meta/muse-glimmer-30b': {
         contextLength: 131000,
@@ -128,6 +133,7 @@ export const Models: ModelsType = {
           ReasoningEffort.high,
           ReasoningEffort.max,
         ],
+        multimodal: true,
       },
       'moonshotai/kimi-k3.1-pro': {
         contextLength: 1_000_000,
@@ -135,7 +141,7 @@ export const Models: ModelsType = {
         // `medium` are outside its enum and would be rejected.
         reasoningEfforts: [ReasoningEffort.low, ReasoningEffort.high, ReasoningEffort.max],
         supportsOpenAiExtensions: false,
-        contentFormat: ContentFormat.parts,
+        multimodal: true,
       },
     },
   },
