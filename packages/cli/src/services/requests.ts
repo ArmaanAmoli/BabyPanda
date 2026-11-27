@@ -7,6 +7,7 @@ import type {ReasoningEffort} from '@baby-panda/types';
 import type {ChatMessage, ToolCallBatch, ToolCallEntry} from '../types';
 import {encodeToolCallBatch} from '../types';
 import {logError} from '@baby-panda/utils';
+import {userContentToDisplay} from '../utils/userContent';
 const cwd = process.cwd().replaceAll('/', '-').replace('-', '');
 const getServerBaseUrl = () => `http://localhost:${getServerPort()}`;
 
@@ -208,12 +209,17 @@ function buildChatMessages(messagesList: unknown[]): ChatMessage[] {
 			continue;
 		}
 		const record = entry as Record<string, unknown>;
+		// A parts-array content (a user message with pasted images) renders as
+		// its text plus one [🖼 image N] marker per image part, matching the
+		// live echo; any other non-string content is shown as raw JSON.
 		const content =
 			typeof record.content === 'string'
 				? record.content
-				: record.content == null
-					? ''
-					: JSON.stringify(record.content);
+				: Array.isArray(record.content)
+					? userContentToDisplay(record.content)
+					: record.content == null
+						? ''
+						: JSON.stringify(record.content);
 		const role = isRole(record.role)
 			? record.role
 			: typeof record.tool_call_id === 'string'
