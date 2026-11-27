@@ -7,7 +7,6 @@ Exit banner
 
 <img width="885" height="475" alt="image" src="https://github.com/user-attachments/assets/4558bdb1-2623-4d44-9741-4d6d06eec82b" />
 
-
 > **Only the NVIDIA NIM provider is currently supported.** Other providers are
 > not ready for use, even though provider data is stored in the database.
 

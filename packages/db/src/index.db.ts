@@ -74,6 +74,9 @@ if (!migrationTableExists) {
  * on-disk record is essential for standalone binaries, whose next process
  * must not replay destructive table-rebuild migrations.
  */
+export async function syncWAL(): Promise<void> {
+  db.run('PRAGMA wal_checkpoint(TRUNCATE);');
+}
 export async function runMigrations(): Promise<void> {
   if (migrationsRun) return;
   const appliedRows = db.$client.query(`SELECT name FROM ${migrationTable};`).all() as {

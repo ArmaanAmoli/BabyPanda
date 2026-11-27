@@ -233,6 +233,5 @@ export async function getMessagesForSummary(sessionId: string, index: number = 0
 }
 
 export function closeDatabase() {
-  db.run('PRAGMA wal_checkpoint(TRUNCATE);');
   db.$client.close();
 }
