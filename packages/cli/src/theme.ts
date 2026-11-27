@@ -39,3 +39,19 @@ export const DIFF_ADDED_TEXT = STATUS_DONE;
 export const DIFF_REMOVED_TEXT = STATUS_FAILED;
 export const DIFF_ADDED_BACKGROUND = '#182819';
 export const DIFF_REMOVED_BACKGROUND = '#271617';
+
+/**
+ * Slash-menu accents. This is the one place a hue is used outside the status
+ * palette: a menu row has two halves that must read differently at a glance —
+ * the name you type and the sentence explaining it — and a neutral pair does
+ * not separate them.
+ */
+
+/** Slash-menu command or skill name. */
+export const MENU_COMMAND = '#6cb6ff';
+
+/** Slash-menu description, the explanatory half of the row. */
+export const MENU_DESCRIPTION = '#9a9a9a';
+
+/** Full-width tint behind the highlighted slash-menu row. */
+export const MENU_ROW_HIGHLIGHT = '#1b2836';
