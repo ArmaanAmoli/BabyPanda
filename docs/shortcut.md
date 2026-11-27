@@ -37,6 +37,7 @@ Active while the prompt box has focus.
 | `Ctrl+Z`      | Undo                                                                  |
 | `Ctrl+Y`      | Redo                                                                  |
 | `Ctrl+L`      | Clear the whole prompt box                                            |
+| `Ctrl+O`      | Paste an image from the clipboard as a chip (Linux/WSL)               |
 
 `Ctrl+J` is the newline key to rely on. Terminals without the Kitty keyboard
 protocol send `Shift+Enter` as a bare carriage return, which is
@@ -73,6 +74,31 @@ as one action and its newlines are normalised.
 A collapsed chip is atomic: the cursor cannot come to rest inside one, and one
 `Backspace` or `Delete` removes it whole. An expanded chip is ordinary text and
 edits character by character.
+
+### Pasting images
+
+`Ctrl+O` reads the clipboard image and inserts it as a one-row chip, for
+example `[🖼 image-1.png · 1920×1080 · 1.2 MB]`. The key is `Ctrl+O` rather
+than `Ctrl+V` because terminals (Windows Terminal included) bind `Ctrl+V` to
+their own text paste and never forward it; text pasting stays on bracketed
+paste as described above.
+
+- The reader is Linux/WSL-only: it tries `wl-paste`, then `xclip`, then falls
+  back to `powershell.exe` through WSL interop, which downscales the image to
+  at most 1568 px on its long side. Any source is capped at 20 MB of base64.
+- A clipboard holding no image just shows a "No image on clipboard" notice.
+- An image chip is atomic like a paste chip (the cursor cannot enter it, one
+  `Backspace`/`Delete` removes it, undo/redo works), but it never expands.
+- The prompt keeps an `[image: image-N.png]` placeholder where the chip sits,
+  so the model can correlate the text with the images. Submitting sends the
+  message as text plus image parts (base64 data URLs); nothing is written to
+  disk — the data URL lives in the message content stored in the database.
+- The chat shows each image as its full chip (name, dimensions, size) in
+  place of its placeholder, both live and after a history reload. There are no
+  inline thumbnails.
+- Slash **commands** cannot carry images (submit is blocked with a notice). A
+  **skill invocation** can: the images become part of the user message that
+  follows the skill, never of the skill's arguments.
 
 ## Chat area
 

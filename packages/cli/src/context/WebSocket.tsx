@@ -20,6 +20,7 @@ import {
 import usePendingPermissionMessages from '../hooks/usePendingPermissionMessages';
 import {useToolCalls} from '../hooks/useToolCalls';
 import {takePendingSkillMessage} from '../utils/pendingSkillMessages';
+import {userContentToDisplay} from '../utils/userContent';
 import {setTimeout} from 'node:timers';
 import {useMessageHistory} from '../hooks/useMessageHistroy';
 import {appendMessageHistory} from '../utils/appendMessageHistory';
@@ -146,7 +147,7 @@ export function SocketProvider({children}: ReactChildPropInterface) {
 									...prev,
 									{
 										role: Role.user,
-										content: pendingMessage,
+										content: userContentToDisplay(pendingMessage),
 										createdAt: Date.now(),
 									},
 								]);

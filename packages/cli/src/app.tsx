@@ -5,11 +5,14 @@ import PromptBox from './components/promptBox';
 import {GAP_CHAT_BOX_PROMPT_BOX, PADDING_APP} from './layout';
 import {getPromptLineCount, getPromptWrapWidth} from './utils/promptLayout';
 import {
+	getImageSegments,
+	initializeImageIdFromHistory,
 	isEmptyPrompt,
 	promptText,
 	textValue,
 	type PromptValue,
 } from './utils/promptValue';
+import {buildUserContent, userContentToDisplay} from './utils/userContent';
 import {
 	CommandMenu,
 	ProviderSetupBox,
@@ -90,7 +93,7 @@ export default function App() {
 		null,
 	);
 	const [showWebKeyPrompt, setShowWebKeyPrompt] = useState(false);
-	const [webKeyPromptDismissed, setWebKeyPromptDismissed] = useState(false);
+	// const [webKeyPromptDismissed, setWebKeyPromptDismissed] = useState(false);
 	// `/api-key` flow: which credential is being changed — a model provider
 	// name (e.g. Nvidia) or EXA_PROVIDER. `null` = no key-change box open.
 	const [keyChangeTarget, setKeyChangeTarget] = useState<string | null>(null);
@@ -329,24 +332,6 @@ export default function App() {
 		};
 	}, []);
 
-	// const retryProviderLoad = () => {
-	// 	setProviderLoadError(null);
-	// 	setProvidersLoaded(false);
-	// 	settings.providers.setProviders([]);
-	// 	void getProviders()
-	// 		.then(providers => {
-	// 			settings.providers.setProviders(providers);
-	// 			setProviderLoadError(null);
-	// 			if (!providers.some(provider => provider.hasKey)) {
-	// 				setSetupProviderName(undefined);
-	// 			}
-	// 			setProvidersLoaded(true);
-	// 		})
-	// 		.catch(error => {
-	// 			setProviderLoadError(String(error));
-	// 		});
-	// };
-
 	// Web search is optional, so a missing key is not an error: prompt once at
 	// startup and leave a notice behind if the user skips it.
 	// Only check after providers have loaded so the NVIDIA key prompt
@@ -455,10 +440,17 @@ export default function App() {
 		if (isEmptyPrompt(prompt)) {
 			return;
 		}
+		const images = getImageSegments(prompt);
 		if (isCommand) {
 			if (showProviderMenu || showModelMenu || showEffortMenu || showKeyMenu)
 				return;
-			const parts = promptText(prompt).trim().split(/\s+/);
+			// Image chips are never skill arguments: the invocation is parsed
+			// from the text only, with an image acting as a space so tokens
+			// never merge across one. The images ride on the user message.
+			const invocationText = prompt.segments
+				.map(segment => (segment.kind === 'image' ? ' ' : segment.text))
+				.join('');
+			const parts = invocationText.trim().split(/\s+/);
 			const token = (parts[0] ?? '').substring(1);
 			// commands win collisions; otherwise a matching skill name activates the skill
 			const skill = skills.find(item => item.name === token);
@@ -470,8 +462,13 @@ export default function App() {
 					parts.slice(1),
 					skill.arguments?.length ?? 0,
 				);
-				if (message) {
-					enqueuePendingSkillMessage(skill.name, message);
+				if (message || images.length > 0) {
+					const placeholders = images.map(image => image.text).join(' ');
+					const messageText = [message, placeholders].filter(Boolean).join(' ');
+					enqueuePendingSkillMessage(
+						skill.name,
+						buildUserContent(messageText, prompt),
+					);
 				}
 				const skillMessage: WsEventMessage = {
 					eventType: WsEventTypes.skill,
@@ -481,6 +478,12 @@ export default function App() {
 				socket?.send(JSON.stringify(skillMessage));
 				setPrompt(textValue(''));
 				setIsCommand(false);
+				return;
+			}
+			// Commands take text only; dropping pasted images silently would
+			// surprise the user, so the submit is blocked instead.
+			if (images.length > 0) {
+				showClipboardStatus("Commands can't carry images — remove them first");
 				return;
 			}
 			// execute command
@@ -516,9 +519,14 @@ export default function App() {
 			setSlashMenuOpen(false);
 			return;
 		}
+		const content = buildUserContent(promptText(prompt), prompt);
 		setMessageHistory(prev => [
 			...prev,
-			{role: Role.user, content: promptText(prompt), createdAt: Date.now()},
+			{
+				role: Role.user,
+				content: userContentToDisplay(content),
+				createdAt: Date.now(),
+			},
 		]);
 		lastRole.current = Role.user;
 		setPrompt(textValue(''));
@@ -528,14 +536,18 @@ export default function App() {
 		const wsMessage: WsEventMessage = {
 			eventType: WsEventTypes.message,
 			role: Role.user,
-			content: promptText(prompt),
+			content,
 		};
 		socket?.send(JSON.stringify(wsMessage));
 	};
 
 	useEffect(() => {
 		const getHistory = async () => {
-			setMessageHistory(await getMessages(sessionId));
+			const history = await getMessages(sessionId);
+			// Continue image numbering after the highest chip already in the
+			// transcript, so a paste after a reload never reuses a name.
+			initializeImageIdFromHistory(history.map(message => message.content));
+			setMessageHistory(history);
 		};
 		getHistory();
 	}, []);
@@ -648,7 +660,11 @@ export default function App() {
 			// waiting its turn.
 			if (webKeyPromptVisible) {
 				setShowWebKeyPrompt(false);
-				setWebKeyPromptDismissed(true);
+				return;
+			}
+			if (showChangeKeyBox) {
+				// cancel the change; the saved key is untouched
+				setKeyChangeTarget(null);
 				return;
 			}
 			if (showChangeKeyBox) {
@@ -697,24 +713,7 @@ export default function App() {
 							<PermissionBox />
 						</Box>
 					)}
-					{/* 
-					{providerLoadError && (
-						<Box
-							height={setupHeight}
-							width="100%"
-						>
-							<Text color="#d66b6b">
-								Failed to load providers: {providerLoadError}
-							</Text>
-							<Box
-								flexDirection="row"
-								marginTop={1}
-								onPress={retryProviderLoad}
-							>
-								<Text color="#60a5fa">Retry</Text>
-							</Box>
-						</Box>
-					)} */}
+
 					{needsProviderKey && !setupProvider && (
 						<Box height={setupHeight} width="100%">
 							<CommandMenu
@@ -737,7 +736,6 @@ export default function App() {
 										.then(() => {
 											setWebKeyConfigured(true);
 											setShowWebKeyPrompt(false);
-											setWebKeyPromptDismissed(false);
 											showClipboardStatus(
 												'Exa API key saved — web search is enabled',
 											);
@@ -939,6 +937,7 @@ export default function App() {
 								active={focus === 'PromptBox'}
 								maxHeight={promptHeight}
 								menuOpen={showSlashMenu}
+								onStatus={showClipboardStatus}
 							/>
 						</Box>
 					)}

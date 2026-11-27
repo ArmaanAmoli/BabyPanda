@@ -14,14 +14,17 @@ import {
 } from '../utils/promptLayout';
 import {
 	applyPaste,
-	getPasteRangeAfter,
-	getPasteRangeBefore,
+	createImageSegment,
+	getChipRangeAfter,
+	getChipRangeBefore,
+	isChipSegment,
 	isEmptyPrompt,
 	promptText,
 	replaceRange,
 	textValue,
 	type PromptValue,
 } from '../utils/promptValue';
+import {readClipboardImage} from '../utils/readClipboardImage';
 
 const CURSOR_COLOR = '#ffffff';
 const SCROLLBAR_TRACK = '│';
@@ -45,6 +48,8 @@ export interface PromptBoxArgs {
 	maxHeight?: number;
 	/** When a slash menu is open it owns up/down/enter; the input only filters. */
 	menuOpen?: boolean;
+	/** Transient status line for clipboard image pastes (the app's toast). */
+	onStatus?: (message: string) => void;
 }
 
 interface Snapshot {
@@ -139,6 +144,7 @@ function PromptInput({
 	maxLines,
 	menuOpen,
 	active,
+	onStatus,
 }: {
 	value: PromptValue;
 	placeholder: string;
@@ -148,6 +154,7 @@ function PromptInput({
 	maxLines: number;
 	menuOpen: boolean;
 	active: boolean;
+	onStatus?: (message: string) => void;
 }) {
 	const text = promptText(value);
 	const wrapWidth = Math.max(1, width - SCROLLBAR_WIDTH);
@@ -249,6 +256,38 @@ function PromptInput({
 		[cursor, onChange, value],
 	);
 
+	// Clipboard image reads are async (a PowerShell cold start is seconds), so
+	// the continuation must not commit against the value and cursor captured
+	// when the key was pressed — the user may keep typing while it runs.
+	const latestRef = React.useRef({value, cursor, commit});
+	latestRef.current = {value, cursor, commit};
+	const imageReadBusyRef = React.useRef(false);
+
+	const pasteImageFromClipboard = async () => {
+		if (imageReadBusyRef.current) return;
+		imageReadBusyRef.current = true;
+		onStatus?.('Reading clipboard…');
+		try {
+			const image = await readClipboardImage();
+			if (!image) {
+				onStatus?.('No image on clipboard');
+				return;
+			}
+
+			const segment = createImageSegment(image);
+			const latest = latestRef.current;
+			latest.commit(
+				replaceRange(latest.value, latest.cursor, latest.cursor, segment),
+				latest.cursor + segment.text.length,
+			);
+			onStatus?.(`Pasted ${segment.name} (Ctrl+O)`);
+		} catch (error) {
+			onStatus?.(error instanceof Error ? error.message : String(error));
+		} finally {
+			imageReadBusyRef.current = false;
+		}
+	};
+
 	const restore = React.useCallback(
 		(snapshot: Snapshot) => {
 			lastPushedRef.current = snapshot.value;
@@ -293,12 +332,7 @@ function PromptInput({
 		for (const segment of value.segments) {
 			const segmentEnd = position + segment.text.length;
 
-			if (
-				segment.kind === 'paste' &&
-				segment.collapsed &&
-				offset > position &&
-				offset < segmentEnd
-			) {
+			if (isChipSegment(segment) && offset > position && offset < segmentEnd) {
 				return direction === -1 ? position : segmentEnd;
 			}
 
@@ -337,7 +371,7 @@ function PromptInput({
 	};
 
 	const deleteBackward = () => {
-		const chip = getPasteRangeBefore(value, cursor);
+		const chip = getChipRangeBefore(value, cursor);
 		if (chip) {
 			commit(replaceRange(value, chip.start, chip.end, null), chip.start);
 			return;
@@ -350,7 +384,7 @@ function PromptInput({
 	};
 
 	const deleteForward = () => {
-		const chip = getPasteRangeAfter(value, cursor);
+		const chip = getChipRangeAfter(value, cursor);
 		if (chip) {
 			commit(replaceRange(value, chip.start, chip.end, null), chip.start);
 			return;
@@ -536,6 +570,12 @@ function PromptInput({
 					redo();
 				} else if (input === 'l') {
 					commit(textValue(''), 0);
+				} else if (input === 'o') {
+					// Ctrl+O rather than Ctrl+V: terminals (Windows Terminal among
+					// them) bind Ctrl+V to their own text paste and never forward
+					// it, while Ctrl+O is unbound and reaches us under the Kitty
+					// keyboard protocol too. Text paste stays on bracketed paste.
+					void pasteImageFromClipboard();
 				}
 
 				// Every other control combination is somebody else's.
@@ -702,6 +742,7 @@ export default function PromptBox({
 	active = true,
 	maxHeight = 8,
 	menuOpen = false,
+	onStatus,
 }: PromptBoxArgs) {
 	const terminal = useTerminal();
 	const width = Math.max(10, terminal.columns - 2 * PADDING_APP - 1);
@@ -720,6 +761,7 @@ export default function PromptBox({
 					maxLines={inputHeight}
 					menuOpen={menuOpen}
 					active={active}
+					onStatus={onStatus}
 				/>
 			) : (
 				<Text dimColor>{placeholder}</Text>

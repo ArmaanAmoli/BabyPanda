@@ -22,4 +22,13 @@ describe('pendingSkillMessages', () => {
 	test('taking from an empty queue is undefined', () => {
 		expect(takePendingSkillMessage('never-parked')).toBeUndefined();
 	});
+
+	test('parked content can be multimodal parts (images join the message)', () => {
+		const content = [
+			{type: 'text' as const, text: 'review this [image: image-1.png]'},
+			{type: 'image' as const, image: 'data:image/png;base64,AAA='},
+		];
+		enqueuePendingSkillMessage('review', content);
+		expect(takePendingSkillMessage('review')).toEqual(content);
+	});
 });
