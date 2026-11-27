@@ -16,6 +16,7 @@ function session(
 		parentSessionId: null,
 		messagesCount: 0,
 		tokensInContextWindow: 0,
+		name: 'untitled-1',
 		...overrides,
 	};
 }

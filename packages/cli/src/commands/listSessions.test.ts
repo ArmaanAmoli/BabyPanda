@@ -6,6 +6,7 @@ function session(
 	id: string,
 	createdAt: number,
 	messagesCount: number,
+	name = 'untitled-1',
 ): SessionSummary {
 	return {
 		id,
@@ -13,6 +14,7 @@ function session(
 		parentSessionId: null,
 		messagesCount,
 		tokensInContextWindow: 0,
+		name,
 	};
 }
 
@@ -20,15 +22,15 @@ const NOW = new Date(2026, 10, 17, 12, 0).getTime();
 const HOUR = 3_600_000;
 
 const SESSIONS = [
-	session('01M77HWGB50QE8H3MTHFGPC4XY', NOW - 2 * HOUR, 2),
-	session('01M76GD4617ZTSHNMWRWZ322Z0', NOW - 30 * HOUR, 277),
+	session('01M77HWGB50QE8H3MTHFGPC4XY', NOW - 2 * HOUR, 2, 'untitled-2'),
+	session('01M76GD4617ZTSHNMWRWZ322Z0', NOW - 30 * HOUR, 277, 'refactor auth'),
 ];
 
 describe('formatSessionTable', () => {
 	test('the header names every column', () => {
 		const [header] = formatSessionTable(SESSIONS, NOW);
 		expect(header).toBe(
-			'  #  SESSION ID                  MESSAGES  CREATED           AGE',
+			'  #  SESSION ID                  NAME           MESSAGES  CREATED           AGE',
 		);
 	});
 
@@ -38,6 +40,12 @@ describe('formatSessionTable', () => {
 		expect(rows[1]).toContain('01M77HWGB50QE8H3MTHFGPC4XY');
 		expect(rows[1]?.startsWith('  1  ')).toBe(true);
 		expect(rows[2]?.startsWith('  2  ')).toBe(true);
+	});
+
+	test('the name column carries the session label', () => {
+		const rows = formatSessionTable(SESSIONS, NOW);
+		expect(rows[1]).toContain('untitled-2');
+		expect(rows[2]).toContain('refactor auth');
 	});
 
 	test('numeric columns are right aligned so magnitudes line up', () => {

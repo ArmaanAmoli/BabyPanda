@@ -9,6 +9,7 @@ function session(id: string, messagesCount = 0): SessionSummary {
 		parentSessionId: null,
 		messagesCount,
 		tokensInContextWindow: 0,
+		name: 'untitled-1',
 	};
 }
 
