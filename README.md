@@ -85,6 +85,8 @@ Once the command is registered (see [System commands](#system-commands)),
 
 Provider API keys are stored in the local BabyPanda database. Configure a
 provider from the setup prompt when the CLI starts, or use `/provider` later.
+Change a saved key at any time with `/api-key` — it covers the Nvidia provider
+key and the Exa web-search key (`/web-api-keys` also reaches the Exa key).
 Do not paste provider keys into source code, logs, issues, or pull requests.
 
 Use `/model` to select a model and `/efforts` to select its reasoning effort.

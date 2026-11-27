@@ -132,6 +132,8 @@ Typed into the prompt box and submitted with `Enter`.
 | `/model`               | Switch model                              |
 | `/efforts`             | Set reasoning effort                      |
 | `/sandbox`             | Toggle the shell sandbox                  |
+| `/api-key`             | Change the saved Nvidia or Exa API key    |
+| `/web-api-keys`        | Add or change the Exa key for web search  |
 | `/<skill-name> <args>` | Activate a skill, with optional arguments |
 
 ## Known quirks
