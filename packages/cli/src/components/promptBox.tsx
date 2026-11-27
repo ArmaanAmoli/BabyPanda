@@ -3,7 +3,7 @@ import {Box, Text, useInput, type DOMElement} from 'ink';
 import {useTerminal} from '../hooks/useTerminal';
 import {useScroll} from '../hooks/useScroll';
 import {RULE_COLOR} from '../theme';
-import {PADDING_APP} from '../layout';
+import {getInputColumnWidth} from '../layout';
 import {
 	SCROLLBAR_WIDTH,
 	getColumnAtOffset,
@@ -772,7 +772,7 @@ export default function PromptBox({
 	onStatus,
 }: PromptBoxArgs) {
 	const terminal = useTerminal();
-	const width = Math.max(10, terminal.columns - 2 * PADDING_APP - 1);
+	const width = getInputColumnWidth(terminal.columns);
 	const inputHeight = Math.max(1, maxHeight - 2);
 
 	return (
