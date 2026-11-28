@@ -1,41 +1,21 @@
 import { afterEach, describe, expect, test } from 'bun:test';
 import { Database } from 'bun:sqlite';
-import { mkdirSync, mkdtempSync, rmSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { mkdirSync } from 'node:fs';
 import path from 'node:path';
-import { pathToFileURL } from 'node:url';
+import { runInFreshProcess, temporaryHome } from './isolatedDatabase';
 
-const repoRoot = path.resolve(import.meta.dir, '../../../..');
-const dbModule = pathToFileURL(path.join(repoRoot, 'packages/db/src/index.ts')).href;
-const temporaryHomes: string[] = [];
-
-function runInFreshProcess(home: string, body: string) {
-  const source = `
-    import * as database from ${JSON.stringify(dbModule)};
-    ${body}
-  `;
-  const result = Bun.spawnSync({
-    cmd: [process.execPath, '-e', source],
-    cwd: repoRoot,
-    env: { ...process.env, HOME: home, IN_DEV_MODE: 'false' },
-    stdout: 'pipe',
-    stderr: 'pipe',
-  });
-  expect(result.exitCode, result.stderr.toString()).toBe(0);
-  const output = result.stdout.toString().trim();
-  return output ? (JSON.parse(output) as unknown) : undefined;
-}
+const temporaryHomes: { home: string; dispose: () => void }[] = [];
 
 afterEach(() => {
-  for (const home of temporaryHomes.splice(0)) {
-    rmSync(home, { recursive: true, force: true });
+  for (const created of temporaryHomes.splice(0)) {
+    created.dispose();
   }
 });
 
 describe('embedded migrations', () => {
   test('preserve web credential types and session history across processes', () => {
-    const home = mkdtempSync(path.join(tmpdir(), 'babypanda-migrations-'));
-    temporaryHomes.push(home);
+    const { home, dispose } = temporaryHome();
+    temporaryHomes.push({ home, dispose });
 
     runInFreshProcess(
       home,
@@ -72,8 +52,8 @@ describe('embedded migrations', () => {
   });
 
   test('recover an Exa key whose type was reset by an older binary', () => {
-    const home = mkdtempSync(path.join(tmpdir(), 'babypanda-migrations-'));
-    temporaryHomes.push(home);
+    const { home, dispose } = temporaryHome();
+    temporaryHomes.push({ home, dispose });
     const dbDirectory = path.join(home, '.babypanda', 'db');
     mkdirSync(dbDirectory, { recursive: true });
     const legacy = new Database(path.join(dbDirectory, 'db.db'));
@@ -105,8 +85,8 @@ describe('embedded migrations', () => {
   });
 
   test('session model settings are stored and restored across processes', () => {
-    const home = mkdtempSync(path.join(tmpdir(), 'babypanda-migrations-'));
-    temporaryHomes.push(home);
+    const { home, dispose } = temporaryHome();
+    temporaryHomes.push({ home, dispose });
 
     const sessionId = runInFreshProcess(
       home,
@@ -147,8 +127,8 @@ describe('embedded migrations', () => {
   });
 
   test('sessions created before the model settings columns exist read back as null', () => {
-    const home = mkdtempSync(path.join(tmpdir(), 'babypanda-migrations-'));
-    temporaryHomes.push(home);
+    const { home, dispose } = temporaryHome();
+    temporaryHomes.push({ home, dispose });
     const dbDirectory = path.join(home, '.babypanda', 'db');
     mkdirSync(dbDirectory, { recursive: true });
     const legacy = new Database(path.join(dbDirectory, 'db.db'));

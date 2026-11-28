@@ -9,6 +9,13 @@ import getProjectName from './src/getProjectName';
 import { dbToAgentMessages } from './src/dbToAgentMessage';
 import { formatErrorChain } from './src/formatErrorChain';
 import {
+  UNTITLED_SESSION_NAME_PREFIX,
+  MAX_SESSION_NAME_LENGTH,
+  formatUntitledSessionName,
+  untitledSessionNameNumber,
+  normalizeSessionName,
+} from './src/sessionName';
+import {
   getSkillsFiles,
   getSkillsInstructions,
   getSkillByName,
@@ -27,6 +34,11 @@ export {
   getProjectName,
   dbToAgentMessages,
   formatErrorChain,
+  UNTITLED_SESSION_NAME_PREFIX,
+  MAX_SESSION_NAME_LENGTH,
+  formatUntitledSessionName,
+  untitledSessionNameNumber,
+  normalizeSessionName,
   getSkillsFiles,
   getSkillsInstructions,
   getSkillByName,

@@ -116,6 +116,53 @@ export async function startSession() {
 	const sessionId = decoder.decode(sessionIdUint);
 	return sessionId;
 }
+
+/** The label the status bar shows for a session. */
+export async function getSessionName(sessionId: string): Promise<string> {
+	const res = await app.fetch(
+		new Request(`${getServerBaseUrl()}/get-session-name`, {
+			method: 'POST',
+			headers: {'content-type': 'application/json'},
+			body: JSON.stringify({sessionId}),
+		}),
+	);
+	if (!res.ok) {
+		throw new Error(`Unable to load the session name (${res.status})`);
+	}
+	const payload = (await res.json()) as {name?: unknown};
+	if (typeof payload.name !== 'string') {
+		throw new Error('The server did not return a session name');
+	}
+	return payload.name;
+}
+
+/**
+ * Renames a session and resolves with the stored label.
+ *
+ * The server owns the naming rules, so its message is surfaced unchanged:
+ * it already says what was wrong with the requested name.
+ */
+export async function renameSession(
+	sessionId: string,
+	name: string,
+): Promise<string> {
+	const res = await app.fetch(
+		new Request(`${getServerBaseUrl()}/rename-session`, {
+			method: 'POST',
+			headers: {'content-type': 'application/json'},
+			body: JSON.stringify({sessionId, name}),
+		}),
+	);
+	if (!res.ok) {
+		const details = await res.text();
+		throw new Error(details || `Unable to rename the session (${res.status})`);
+	}
+	const payload = (await res.json()) as {name?: unknown};
+	if (typeof payload.name !== 'string') {
+		throw new Error('The server did not return the new session name');
+	}
+	return payload.name;
+}
 /* 
 async function registerProvider(details: APIProvider) {
 	const req = new Request(`${getServerBaseUrl()}/add-provider`, {

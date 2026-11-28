@@ -25,6 +25,7 @@ function buildColumns(now: number): Column[] {
 			value: (_session, index) => String(index + 1),
 		},
 		{header: 'SESSION ID', align: 'left', value: session => session.id},
+		{header: 'NAME', align: 'left', value: session => session.name},
 		{
 			header: 'MESSAGES',
 			align: 'right',

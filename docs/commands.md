@@ -95,10 +95,10 @@ babypanda list
 ```text
 Sessions in /home/me/project (3)
 
-  #  SESSION ID                  MESSAGES  CREATED           AGE
-  1  01M77HWGB50QE8H3MTHFGPC4XY         2  2026-11-17 10:00  2h ago
-  2  01M76GD4617ZTSHNMWRWZ322Z0       277  2026-11-16 06:00  1d ago
-  3  01M72PYB2NDHZC635C0W3FC3YK       258  2026-11-10 12:29  2026-11-10 12:29
+  #  SESSION ID                  NAME           MESSAGES  CREATED           AGE
+  1  01M77HWGB50QE8H3MTHFGPC4XY  refactor auth         2  2026-11-17 10:00  2h ago
+  2  01M76GD4617ZTSHNMWRWZ322Z0  untitled-2          277  2026-11-16 06:00  1d ago
+  3  01M72PYB2NDHZC635C0W3FC3YK  untitled-1          258  2026-11-10 12:29  2026-11-10 12:29
 
 Open one with `babypanda open <session-id>`, remove one with `babypanda delete <session-id>`.
 ```
@@ -108,6 +108,21 @@ Newest first. `--json` emits the same data as
 
 Sessions are scoped to the directory they were created in, so `babypanda list`
 only ever shows the ones belonging to `process.cwd()`.
+
+## Session names
+
+Every session carries a name. A new one starts as `untitled-<n>`, numbered per
+directory, and `/rename-session <name>` inside the terminal UI changes it:
+
+```bash
+/rename-session refactor auth
+```
+
+The name is shown next to the session id in the terminal's status bar and in the
+`NAME` column above. Names are unique inside a directory — two projects may
+both have an `untitled-1` — and a name is 1-64 characters with no control
+characters. Renaming a session frees its old number, so the next new session in
+that directory reuses it rather than climbing without bound.
 
 ## Opening a session
 

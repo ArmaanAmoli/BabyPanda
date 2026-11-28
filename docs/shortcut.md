@@ -86,8 +86,8 @@ paste as described above.
 - The reader is Linux/WSL-only: it tries `wl-paste`, then `xclip`, then falls
   back to `powershell.exe` through WSL interop, which downscales the image to
   at most 1568 px on its long side. Any source is capped at 20 MB of base64.
-- Both kinds of copy work: image data (a screenshot, or a browser's *Copy
-  image*) and a file copied in Explorer, which puts only a path on the
+- Both kinds of copy work: image data (a screenshot, or a browser's _Copy
+  image_) and a file copied in Explorer, which puts only a path on the
   clipboard — the fallback then reads the file back from disk and re-encodes
   it as PNG. Copying a non-image file still shows "No image on clipboard".
 - **Several images at once**: select several image files in Explorer and copy
@@ -169,6 +169,7 @@ Typed into the prompt box and submitted with `Enter`.
 | `/sandbox`             | Toggle the shell sandbox                  |
 | `/api-key`             | Change the saved Nvidia or Exa API key    |
 | `/web-api-keys`        | Add or change the Exa key for web search  |
+| `/rename-session`      | Rename this session                       |
 | `/<skill-name> <args>` | Activate a skill, with optional arguments |
 
 ## Known quirks

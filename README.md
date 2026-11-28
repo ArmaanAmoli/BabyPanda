@@ -95,6 +95,11 @@ selected model and reasoning effort are stored on the session row, so
 reopening a session (`babypanda open <session-id>`) restores the settings you
 last used.
 
+Every session also carries a name. A new one starts as `untitled-<n>`, numbered
+per directory, and `/rename-session <name>` changes it — the name is unique
+inside a directory and appears next to the session id in the status bar and in
+the `NAME` column of `babypanda list`.
+
 ## Install the binary (Ubuntu / WSL)
 
 For a pre-built binary on Ubuntu or WSL (x86_64):
@@ -320,6 +325,7 @@ erDiagram
         number messages_count
         number tokens_in_context_window
         string project_directory
+        string name
         string provider
         string model
         string reasoning_effort
@@ -364,6 +370,8 @@ The local server currently provides:
 | ------ | ------------------- | ------------------------------------------------------------------------------------------------------------------------ |
 | `POST` | `/start-session`    | Create and return a new session ID.                                                                                      |
 | `POST` | `/get-session`      | List sessions for the current project directory.                                                                         |
+| `POST` | `/get-session-name` | Return a session's name; requires a `sessionId` JSON field.                                                              |
+| `POST` | `/rename-session`   | Rename a session; requires `sessionId` and `name` JSON fields.                                                           |
 | `POST` | `/get-messages`     | Return cleaned message history; requires a `sessionId` JSON field.                                                       |
 | `POST` | `/add-provider`     | Store provider data; requires `key`, `provider`, and `endpoint`. NVIDIA NIM remains the only supported runtime provider. |
 | `GET`  | `/ws?sessionId=...` | Upgrade to a WebSocket for streamed messages, tool events, and permission events.                                        |

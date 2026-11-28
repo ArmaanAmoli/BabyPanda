@@ -15,6 +15,7 @@ export async function getProjectSessions(): Promise<SessionSummary[]> {
 			parentSessionId: row.parentSessionId,
 			messagesCount: row.messagesCount,
 			tokensInContextWindow: row.tokensInContextWindow,
+			name: row.name,
 		}))
 		.sort((a, b) => b.createdAt - a.createdAt);
 }

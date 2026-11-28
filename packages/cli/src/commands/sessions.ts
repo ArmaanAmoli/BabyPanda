@@ -20,6 +20,8 @@ export interface SessionSummary {
 	parentSessionId: string | null;
 	messagesCount: number;
 	tokensInContextWindow: number;
+	/** Human-facing label, unique inside the project directory. */
+	name: string;
 }
 
 /** Directory a session belongs to. `createSession` stores `process.cwd()`. */

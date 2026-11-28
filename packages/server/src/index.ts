@@ -6,6 +6,8 @@ import {
   getProviders,
   getWebApiKeys,
   getSessionsByProjectDirectory,
+  getSessionName,
+  renameSession,
 } from '@baby-panda/db';
 import { BabyPandaAgent } from '@baby-panda/agent';
 // import { cleanMessageHistroy } from './utils/cleanMessageHistory';
@@ -86,6 +88,59 @@ app.post('/get-session', async () => {
   return new Response(JSON.stringify(sessions), {
     status: 201,
     statusText: 'Created',
+  });
+});
+
+app.post('/get-session-name', async (c) => {
+  const body = await c.req.json();
+  if (!body.sessionId) {
+    return new Response('Session id not attached', {
+      status: 400,
+      statusText: 'Bad Request',
+    });
+  }
+  const name = await getSessionName(body.sessionId);
+  if (name === null) {
+    return new Response(`No session with id ${body.sessionId}`, {
+      status: 404,
+      statusText: 'Not Found',
+    });
+  }
+  return new Response(JSON.stringify({ name }), { status: 200, statusText: 'OK' });
+});
+
+// The message body carries the reason, so the CLI can show it verbatim.
+const RENAME_FAILURES: Record<string, { status: 400 | 404 | 409; message: string }> = {
+  'not-found': { status: 404, message: 'that session no longer exists' },
+  'invalid-name': {
+    status: 400,
+    message: 'a session name must be 1-64 characters with no control characters',
+  },
+  'name-taken': {
+    status: 409,
+    message: 'another session in this directory already has that name',
+  },
+};
+
+app.post('/rename-session', async (c) => {
+  const body = await c.req.json();
+  if (!body.sessionId || typeof body.name !== 'string') {
+    return new Response('Session id and name not attached', {
+      status: 400,
+      statusText: 'Bad Request',
+    });
+  }
+  const result = await renameSession(body.sessionId, body.name);
+  if (!result.ok) {
+    const failure = RENAME_FAILURES[result.reason]!;
+    return new Response(failure.message, {
+      status: failure.status,
+      statusText: failure.message,
+    });
+  }
+  return new Response(JSON.stringify({ name: result.name }), {
+    status: 200,
+    statusText: 'OK',
   });
 });
 
