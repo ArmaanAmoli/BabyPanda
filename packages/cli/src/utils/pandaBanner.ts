@@ -354,7 +354,7 @@ function rightColumn(sessionId: string): string[] {
 		'',
 		dim('─'.repeat(RIGHT_COLUMN_WIDTH)),
 		dim('terminal coding agent'),
-		`\x1b[38;2;120;220;160m●${RESET} ` + dim('v0.0.2 · ready'),
+		`\x1b[38;2;120;220;160m●${RESET} ` + dim('v0.0.3 · ready'),
 		dim(`session ${sessionId}`),
 	];
 }
@@ -375,7 +375,7 @@ export function pandaBannerRows(sessionId: string, columns: number): string[] {
 			dim('BABY PANDA'),
 			dim('─'.repeat(RIGHT_COLUMN_WIDTH)),
 			dim('terminal coding agent'),
-			`\x1b[38;2;120;220;160m●${RESET} ` + dim('v0.0.2 · ready'),
+			`\x1b[38;2;120;220;160m●${RESET} ` + dim('v0.0.3 · ready'),
 			dim(`session ${sessionId}`),
 		];
 	}
