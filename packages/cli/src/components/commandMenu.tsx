@@ -9,14 +9,19 @@ import {MENU_COMMAND, MENU_DESCRIPTION, MENU_ROW_HIGHLIGHT} from '../theme';
 import {
 	buildSlashMenuLayout,
 	padEndToWidth,
+	resolveSlashMenuWindow,
 	type SlashMenuEntry,
 	type SlashMenuRow,
 } from '../utils/slashMenuLayout';
 
 /**
- * The slash-command menu: one row per command or skill, the name you type on
+ * The slash-command menu: one entry per command or skill, the name you type on
  * the left and the sentence explaining it on the right, with the highlighted
- * row tinted across its full width.
+ * entry tinted across its full width.
+ *
+ * A description that does not fit on its row wraps onto the rows below it,
+ * indented to the description column, so nothing is cut off. An entry therefore
+ * owns as many terminal rows as its description needs.
  *
  * It sits directly under the prompt box, whose bottom rule separates the two,
  * and it owns up/down/enter while it is open — the prompt box keeps only the
@@ -30,16 +35,14 @@ export function SlashCommandMenu({
 }: {
 	items: SlashMenuEntry[];
 	onSelect: (value: string) => void;
+	/** Terminal rows the menu may occupy; defaults to the whole list. */
 	limit?: number;
 	/** When false the menu stops listening, so another component can own input. */
 	isFocused?: boolean;
 }) {
 	const terminal = useTerminal();
 	const width = getInputColumnWidth(terminal.columns);
-	const visibleCount = Math.max(
-		1,
-		Math.min(items.length, limit ?? items.length),
-	);
+	const rowBudget = Math.max(1, limit ?? Number.MAX_SAFE_INTEGER);
 
 	// A filtered list is a different list, so the highlight starts at its top
 	// again. Keeping the list beside the index is what tells the two apart
@@ -52,16 +55,12 @@ export function SlashCommandMenu({
 		[items, width],
 	);
 
-	// Keep the highlighted row on screen, centred once the list is longer than
-	// the window so stepping down never looks like the list jumped.
-	const windowTop = Math.max(
-		0,
-		Math.min(
-			selectedIndex - Math.floor(visibleCount / 2),
-			items.length - visibleCount,
-		),
+	// Only the entries that fit in the row budget are drawn, and the window
+	// follows the highlight so a long list stays reachable from either end.
+	const window = React.useMemo(
+		() => resolveSlashMenuWindow(layout.rowHeights, selectedIndex, rowBudget),
+		[layout.rowHeights, selectedIndex, rowBudget],
 	);
-	const visibleRows = layout.rows.slice(windowTop, windowTop + visibleCount);
 
 	// The step is applied to the stored index rather than the one this render
 	// closed over: two arrow keys arriving in the same tick must move the
@@ -98,20 +97,25 @@ export function SlashCommandMenu({
 
 	return (
 		<Box flexDirection="column" width={width} flexShrink={0}>
-			{visibleRows.map((row, index) => (
-				<SlashMenuRow
-					key={row.value}
-					row={row}
-					nameWidth={layout.nameWidth}
-					width={width}
-					isSelected={windowTop + index === selectedIndex}
-				/>
+			{layout.rows.slice(window.start, window.end).map((row, offset) => (
+				<React.Fragment key={row.value}>
+					<SlashMenuEntry
+						row={row}
+						nameWidth={layout.nameWidth}
+						width={width}
+						isSelected={window.start + offset === selectedIndex}
+					/>
+				</React.Fragment>
 			))}
 		</Box>
 	);
 }
 
-function SlashMenuRow({
+/**
+ * One entry: its first row carries the name, and every row after it is indented
+ * to the description column so the wrapped lines read as one block.
+ */
+function SlashMenuEntry({
 	row,
 	nameWidth,
 	width,
@@ -123,17 +127,26 @@ function SlashMenuRow({
 	isSelected: boolean;
 }) {
 	return (
-		<Box
-			width={width}
-			height={1}
-			flexShrink={0}
-			backgroundColor={isSelected ? MENU_ROW_HIGHLIGHT : undefined}
-		>
-			<Text color={MENU_COMMAND} bold={isSelected}>
-				{padEndToWidth(row.name, nameWidth)}
-			</Text>
-			<Text color={MENU_DESCRIPTION}>{row.description}</Text>
-		</Box>
+		<>
+			{row.descriptionLines.map((line, lineIndex) => (
+				<Box
+					key={lineIndex}
+					width={width}
+					height={1}
+					flexShrink={0}
+					backgroundColor={isSelected ? MENU_ROW_HIGHLIGHT : undefined}
+				>
+					{lineIndex === 0 ? (
+						<Text color={MENU_COMMAND} bold={isSelected}>
+							{padEndToWidth(row.name, nameWidth)}
+						</Text>
+					) : (
+						<Text>{' '.repeat(nameWidth)}</Text>
+					)}
+					<Text color={MENU_DESCRIPTION}>{line}</Text>
+				</Box>
+			))}
+		</>
 	);
 }
 

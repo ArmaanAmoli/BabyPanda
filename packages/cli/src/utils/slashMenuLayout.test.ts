@@ -4,6 +4,7 @@ import {
 	getSlashMenuHeight,
 	padEndToWidth,
 	resolveNameColumnWidth,
+	resolveSlashMenuWindow,
 	truncateToWidth,
 	type SlashMenuEntry,
 } from './slashMenuLayout';
@@ -11,6 +12,9 @@ import {
 function entry(name: string, description = 'a description'): SlashMenuEntry {
 	return {name, description, value: `command:${name}`};
 }
+
+const LONG =
+	'You MUST use this before any creative work — creating features, building components, adding functionality.';
 
 describe('truncateToWidth', () => {
 	test('leaves text that already fits untouched', () => {
@@ -65,19 +69,28 @@ describe('resolveNameColumnWidth', () => {
 	});
 
 	test('never grows past the cap, however long the names are', () => {
+		// The cap applies to the name itself; the gap is added on top, so a
+		// capped name still has air between it and the description.
 		const width = resolveNameColumnWidth([entry('a'.repeat(60))], 200);
-		expect(width).toBe(26);
+		expect(width).toBe(26 + 2);
+	});
+
+	test('a name that exactly fills the cap still keeps its gap', () => {
+		const width = resolveNameColumnWidth([entry('a'.repeat(26))], 200);
+		expect(width).toBe(28);
 	});
 
 	test('gives the description its share on a narrow terminal', () => {
 		// A 30-character name would want 32 columns; 40 columns only leave the
-		// description 16, so the name column is capped at 24 instead.
-		expect(resolveNameColumnWidth([entry('a'.repeat(30))], 40)).toBe(24);
-		expect(resolveNameColumnWidth([entry('a'.repeat(30))], 24)).toBe(14);
+		// description 20, so the name column is capped at 20 instead.
+		expect(resolveNameColumnWidth([entry('a'.repeat(30))], 40)).toBe(20);
+		expect(resolveNameColumnWidth([entry('a'.repeat(30))], 24)).toBe(12);
 	});
 
-	test('still leaves the name column at least one column', () => {
-		expect(resolveNameColumnWidth([entry('model')], 1)).toBe(1);
+	test('still leaves the name column room for one character', () => {
+		// Even with no width to spare the column keeps one character plus the
+		// gap, so the name never collides with the description.
+		expect(resolveNameColumnWidth([entry('model')], 1)).toBe(3 + 2);
 	});
 });
 
@@ -87,24 +100,41 @@ describe('buildSlashMenuLayout', () => {
 		entry('web-api-keys', 'add or change the Exa key for web search'),
 	];
 
-	test('every row is cut to the available width', () => {
-		const {rows} = buildSlashMenuLayout(entries, 40);
-		for (const row of rows) {
-			expect(row.name.length + row.description.length).toBeLessThanOrEqual(40);
+	test('a description that fits stays on one line', () => {
+		const {rows} = buildSlashMenuLayout(entries, 80);
+		expect(rows[0]!.descriptionLines).toEqual(['switch model']);
+	});
+
+	test('a description that does not fit wraps instead of being cut', () => {
+		const {rows, nameWidth} = buildSlashMenuLayout(entries, 40);
+		const lines = rows[1]!.descriptionLines;
+
+		expect(lines.length).toBeGreaterThan(1);
+		// Nothing is dropped: the whole sentence is still there, just spread
+		// over several rows. Wrapping breaks after a space, so the join has to
+		// collapse the run it leaves behind.
+		expect(lines.join(' ').replace(/\s+/g, ' ')).toContain(
+			'add or change the Exa key for web search',
+		);
+		for (const line of lines) {
+			expect(line.length).toBeLessThanOrEqual(40 - nameWidth);
 		}
 	});
 
-	test('descriptions start at the same column on every row', () => {
+	test('every row of an entry is inside the terminal width', () => {
+		const {rows, nameWidth} = buildSlashMenuLayout(entries, 40);
+		for (const row of rows) {
+			for (const line of row.descriptionLines) {
+				expect(nameWidth + line.length).toBeLessThanOrEqual(40);
+			}
+		}
+	});
+
+	test('descriptions start at the same column on every entry', () => {
 		const {rows, nameWidth} = buildSlashMenuLayout(entries, 60);
 		for (const row of rows) {
 			expect(padEndToWidth(row.name, nameWidth)).toHaveLength(nameWidth);
 		}
-	});
-
-	test('a long description is the one that gets cut', () => {
-		const {rows} = buildSlashMenuLayout(entries, 40);
-		expect(rows[0]!.description).toBe('switch model');
-		expect(rows[1]!.description.endsWith('…')).toBe(true);
 	});
 
 	test('the value survives the layout untouched', () => {
@@ -114,18 +144,73 @@ describe('buildSlashMenuLayout', () => {
 			'command:web-api-keys',
 		]);
 	});
+
+	test('an entry with no description still owns its row', () => {
+		const {rows, rowHeights} = buildSlashMenuLayout([entry('model', '')], 80);
+		expect(rows[0]!.descriptionLines).toEqual(['']);
+		expect(rowHeights).toEqual([1]);
+	});
+
+	test('row heights count the wrapped lines', () => {
+		const {rowHeights} = buildSlashMenuLayout(
+			[entry('model', 'switch model'), entry('advisor', LONG)],
+			40,
+		);
+		expect(rowHeights[0]).toBe(1);
+		expect(rowHeights[1]).toBeGreaterThan(1);
+	});
 });
 
 describe('getSlashMenuHeight', () => {
-	test('one row per entry while they all fit', () => {
-		expect(getSlashMenuHeight(6, 20)).toBe(6);
+	test('one row per entry while every description fits', () => {
+		expect(getSlashMenuHeight([entry('model', 'switch model')], 80, 20)).toBe(
+			1,
+		);
 	});
 
-	test('the limit wins when there are more entries than rows', () => {
-		expect(getSlashMenuHeight(40, 12)).toBe(12);
+	test('counts the wrapped lines, not the entries', () => {
+		const height = getSlashMenuHeight([entry('advisor', LONG)], 40, 20);
+		expect(height).toBeGreaterThan(1);
+	});
+
+	test('the limit wins when the list is taller than the budget', () => {
+		expect(getSlashMenuHeight([entry('advisor', LONG)], 40, 2)).toBe(2);
 	});
 
 	test('an empty menu takes no rows at all', () => {
-		expect(getSlashMenuHeight(0, 12)).toBe(0);
+		expect(getSlashMenuHeight([], 80, 12)).toBe(0);
+	});
+});
+
+describe('resolveSlashMenuWindow', () => {
+	const heights = [1, 3, 1, 2];
+
+	test('shows everything while it all fits', () => {
+		expect(resolveSlashMenuWindow(heights, 0, 10)).toEqual({start: 0, end: 4});
+	});
+
+	test('keeps the selected entry inside the window', () => {
+		const window = resolveSlashMenuWindow(heights, 3, 4);
+		expect(window.start).toBeLessThanOrEqual(3);
+		expect(window.end).toBeGreaterThan(3);
+	});
+
+	test('never spends more than the budget', () => {
+		for (let index = 0; index < heights.length; index++) {
+			const window = resolveSlashMenuWindow(heights, index, 4);
+			const used = heights
+				.slice(window.start, window.end)
+				.reduce((a, b) => a + b, 0);
+			expect(used).toBeLessThanOrEqual(4);
+		}
+	});
+
+	test('a window that cannot hold the selected entry still shows it', () => {
+		expect(resolveSlashMenuWindow(heights, 1, 1)).toEqual({start: 1, end: 2});
+	});
+
+	test('an empty list or a zero budget shows nothing', () => {
+		expect(resolveSlashMenuWindow([], 0, 10)).toEqual({start: 0, end: 0});
+		expect(resolveSlashMenuWindow(heights, 0, 0)).toEqual({start: 0, end: 0});
 	});
 });

@@ -78,11 +78,6 @@ const entries: SlashMenuEntry[] = [
 let emitter: EventEmitter | undefined;
 let selected: string[] = [];
 
-/** Mirrors NAME_COLUMN_GAP in the layout module. */
-const NAME_COLUMN_GAP = 2;
-const NAME_COLUMN_WIDTH =
-	Math.max(...entries.map(entry => entry.name.length)) + NAME_COLUMN_GAP;
-
 function Harness({items, limit}: {items: SlashMenuEntry[]; limit?: number}) {
 	const context = useStdin() as unknown as {
 		internal_eventEmitter: EventEmitter;
@@ -149,16 +144,19 @@ const ENTER = '\r';
 // eslint-disable-next-line no-control-regex
 const ANSI_ESCAPE = /\u001b\[[0-9;]*m/g;
 
+/** Mirrors NAME_COLUMN_GAP in the layout module. */
+const NAME_COLUMN_GAP = 2;
+const NAME_COLUMN_WIDTH =
+	Math.max(...entries.map(entry => entry.name.length)) + NAME_COLUMN_GAP;
+
 describe('slash command menu', () => {
-	test('renders one row per entry, name first and description second', async () => {
+	test('renders one entry per command, name first and description second', async () => {
 		const {instance, rows} = await renderMenu();
 		const lines = rows();
 
-		expect(lines).toHaveLength(entries.length);
 		expect(lines[0]).toContain('brainstorming');
 		expect(lines[0]).toContain('You MUST use this before any creative work');
-		expect(lines[2]).toBe('model'.padEnd(NAME_COLUMN_WIDTH) + 'switch model');
-		expect(lines[3]).toBe(
+		expect(lines.at(-1)).toBe(
 			'efforts'.padEnd(NAME_COLUMN_WIDTH) + 'set reasoning effort',
 		);
 
@@ -171,11 +169,14 @@ describe('slash command menu', () => {
 
 		// The name column is shared, so the description of a short command
 		// starts exactly where a long skill's does.
-		lines.forEach((line, index) => {
-			expect(line.slice(0, NAME_COLUMN_WIDTH)).toBe(
-				entries[index]!.name.padEnd(NAME_COLUMN_WIDTH),
+		for (const entry of entries) {
+			const firstRow = lines.find(line =>
+				line.startsWith(entry.name.padEnd(NAME_COLUMN_WIDTH)),
 			);
-		});
+			expect(firstRow).toBeDefined();
+			expect(firstRow!.slice(0, NAME_COLUMN_WIDTH).trimEnd()).toBe(entry.name);
+			expect(firstRow![NAME_COLUMN_WIDTH]).not.toBe(' ');
+		}
 
 		instance.unmount();
 	});
@@ -189,19 +190,54 @@ describe('slash command menu', () => {
 		instance.unmount();
 	});
 
-	test('a description too long for the row is cut with an ellipsis', async () => {
+	test('a long description wraps onto indented rows instead of being cut', async () => {
 		const {instance, rows} = await renderMenu();
 		const lines = rows();
 
-		expect(lines[0]!.endsWith('…')).toBe(true);
-		expect(lines[1]!.endsWith('…')).toBe(true);
-		// A short description is left whole.
-		expect(lines[2]).not.toContain('…');
+		// The first entry's description is far longer than one row, so it owns
+		// several; none of them ends in an ellipsis.
+		const firstEntryRows = lines.slice(
+			0,
+			lines.findIndex(line => line.startsWith('wireframe-suite')),
+		);
+		expect(firstEntryRows.length).toBeGreaterThan(1);
+		for (const line of firstEntryRows) {
+			expect(line).not.toContain('…');
+		}
+
+		// Every row after the first is indented to the description column, so
+		// the wrapped block reads as one entry.
+		for (const line of firstEntryRows.slice(1)) {
+			expect(line.slice(0, NAME_COLUMN_WIDTH)).toBe(
+				' '.repeat(NAME_COLUMN_WIDTH),
+			);
+			expect(line.slice(NAME_COLUMN_WIDTH)).not.toBe('');
+		}
 
 		instance.unmount();
 	});
 
-	test('arrow keys move the highlight and enter picks the highlighted row', async () => {
+	test('nothing is dropped from a wrapped description', async () => {
+		const {instance, rows} = await renderMenu();
+		const lines = rows();
+
+		const firstEntryRows = lines.slice(
+			0,
+			lines.findIndex(line => line.startsWith('wireframe-suite')),
+		);
+		const rejoined = firstEntryRows
+			.map(line => line.slice(NAME_COLUMN_WIDTH))
+			.join(' ')
+			.replace(/\s+/g, ' ');
+
+		expect(rejoined).toContain(
+			'You MUST use this before any creative work — creating features, building components, adding functionality.',
+		);
+
+		instance.unmount();
+	});
+
+	test('arrow keys move the highlight and enter picks the highlighted entry', async () => {
 		const {instance, emit} = await renderMenu();
 
 		emit(DOWN);
@@ -228,24 +264,28 @@ describe('slash command menu', () => {
 		emit(DOWN);
 		await sleep(50);
 		emit(ENTER);
-		await waitFor(() => selected.length === 1, 'third row selected');
+		await waitFor(() => selected.length === 1, 'third entry selected');
 		expect(selected).toEqual(['command:model']);
 
 		instance.unmount();
 	});
 
-	test('the limit caps how many rows are drawn', async () => {
-		const {instance, rows} = await renderMenu({limit: 2});
+	test('the row budget caps how many rows are drawn', async () => {
+		const {instance, rows} = await renderMenu({limit: 3});
+		const lines = rows();
 
-		expect(rows()).toHaveLength(2);
+		// The budget is in rows, not entries, so a wrapped entry that does not
+		// fit is left out whole rather than being split across the fold.
+		expect(lines.length).toBeGreaterThan(0);
+		expect(lines.length).toBeLessThanOrEqual(3);
 
 		instance.unmount();
 	});
 
-	test('a list longer than the limit still reaches every entry', async () => {
-		const {instance, emit} = await renderMenu({limit: 2});
+	test('a list taller than the budget still reaches every entry', async () => {
+		const {instance, emit} = await renderMenu({limit: 3});
 
-		// Past the window the highlight keeps moving, and the last entry is
+		// Past the budget the highlight keeps moving, and the last entry is
 		// still selectable rather than being stranded below the fold.
 		emit(DOWN);
 		emit(DOWN);

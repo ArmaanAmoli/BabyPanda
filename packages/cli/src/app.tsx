@@ -2,7 +2,11 @@ import React from 'react';
 import {Box, Text, useApp} from 'ink';
 import {useState, useEffect, useRef} from 'react';
 import PromptBox from './components/promptBox';
-import {GAP_CHAT_BOX_PROMPT_BOX, PADDING_APP} from './layout';
+import {
+	GAP_CHAT_BOX_PROMPT_BOX,
+	PADDING_APP,
+	getInputColumnWidth,
+} from './layout';
 import {getPromptLineCount, getPromptWrapWidth} from './utils/promptLayout';
 import {
 	getImageSegments,
@@ -195,10 +199,13 @@ export default function App() {
 		}
 		for (const skill of skills) {
 			if (skill.name.includes(slashQuery)) {
+				// The argument hint belongs to the explanation, not the name: in
+				// the name column it stretches the column until every name has to
+				// be cut short to make room for one long one.
 				const hint = skill.argumentHint ? ` ${skill.argumentHint}` : '';
 				items.push({
-					name: `${skill.name}${hint}`,
-					description: `${skill.description} (${skill.source})`,
+					name: skill.name,
+					description: `${skill.description}${hint} (${skill.source})`,
 					value: `skill:${skill.name}`,
 				});
 			}
@@ -297,8 +304,10 @@ export default function App() {
 	const keyMenuHeight = showKeyMenu
 		? Math.min(keyMenuItems.length, menuLimit) + 2
 		: 0;
+	// The menu's height is the wrapped description lines of its entries, so it
+	// has to be measured at the same width the menu draws at.
 	const slashMenuHeight = showSlashMenu
-		? getSlashMenuHeight(slashItems.length, menuLimit)
+		? getSlashMenuHeight(slashItems, getInputColumnWidth(columns), menuLimit)
 		: 0;
 	const bottomHeight =
 		menuHeight +
