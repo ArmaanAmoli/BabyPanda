@@ -1,33 +1,151 @@
 import React from 'react';
-import {Box, Text} from 'ink';
-import SelectInput from 'ink-select-input';
+import {Box, Text, useInput} from 'ink';
 import type {ProviderInfo} from '../services/requests';
 import {InlineInput} from './promptBox';
+import {useTerminal} from '../hooks/useTerminal';
+import {getInputColumnWidth} from '../layout';
+import {MENU_COMMAND, MENU_DESCRIPTION, MENU_ROW_HIGHLIGHT} from '../theme';
+import {
+	buildSlashMenuLayout,
+	padEndToWidth,
+	resolveSlashMenuWindow,
+	type SlashMenuEntry,
+	type SlashMenuRow,
+} from '../utils/slashMenuLayout';
 
-export function CommandMenu({
-	title,
+/**
+ * The slash-command menu: one entry per command or skill, the name you type on
+ * the left and the sentence explaining it on the right, with the highlighted
+ * entry tinted across its full width.
+ *
+ * A description that does not fit on its row wraps onto the rows below it,
+ * indented to the description column, so nothing is cut off. An entry therefore
+ * owns as many terminal rows as its description needs.
+ *
+ * It sits directly under the prompt box, whose bottom rule separates the two,
+ * and it owns up/down/enter while it is open — the prompt box keeps only the
+ * keystrokes that filter the list.
+ */
+export function SlashCommandMenu({
 	items,
 	onSelect,
 	limit,
 	isFocused = true,
 }: {
-	title: string;
-	items: Array<{label: string; value: string}>;
+	items: SlashMenuEntry[];
 	onSelect: (value: string) => void;
+	/** Terminal rows the menu may occupy; defaults to the whole list. */
 	limit?: number;
 	/** When false the menu stops listening, so another component can own input. */
 	isFocused?: boolean;
 }) {
+	const terminal = useTerminal();
+	const width = getInputColumnWidth(terminal.columns);
+	const rowBudget = Math.max(1, limit ?? Number.MAX_SAFE_INTEGER);
+
+	// A filtered list is a different list, so the highlight starts at its top
+	// again. Keeping the list beside the index is what tells the two apart
+	// without an effect that would fight the keystroke that caused the change.
+	const [selection, setSelection] = React.useState({items, index: 0});
+	const selectedIndex = selection.items === items ? selection.index : 0;
+
+	const layout = React.useMemo(
+		() => buildSlashMenuLayout(items, width),
+		[items, width],
+	);
+
+	// Only the entries that fit in the row budget are drawn, and the window
+	// follows the highlight so a long list stays reachable from either end.
+	const window = React.useMemo(
+		() => resolveSlashMenuWindow(layout.rowHeights, selectedIndex, rowBudget),
+		[layout.rowHeights, selectedIndex, rowBudget],
+	);
+
+	// The step is applied to the stored index rather than the one this render
+	// closed over: two arrow keys arriving in the same tick must move the
+	// highlight twice, not once.
+	const move = React.useCallback(
+		(delta: number) => {
+			setSelection(current => {
+				const index = current.items === items ? current.index : 0;
+				return {items, index: (index + delta + items.length) % items.length};
+			});
+		},
+		[items],
+	);
+
+	useInput(
+		(_input, key) => {
+			if (key.upArrow) {
+				move(-1);
+				return;
+			}
+
+			if (key.downArrow) {
+				move(1);
+				return;
+			}
+
+			if (key.return) {
+				const item = items[selectedIndex];
+				if (item) onSelect(item.value);
+			}
+		},
+		{isActive: isFocused},
+	);
+
 	return (
-		<Box flexDirection="column" paddingX={1} paddingTop={1}>
-			<Text color="#ffffff">{title}</Text>
-			<SelectInput
-				items={items}
-				limit={limit}
-				isFocused={isFocused}
-				onSelect={item => onSelect(item.value)}
-			/>
+		<Box flexDirection="column" width={width} flexShrink={0}>
+			{layout.rows.slice(window.start, window.end).map((row, offset) => (
+				<React.Fragment key={row.value}>
+					<SlashMenuEntry
+						row={row}
+						nameWidth={layout.nameWidth}
+						width={width}
+						isSelected={window.start + offset === selectedIndex}
+					/>
+				</React.Fragment>
+			))}
 		</Box>
+	);
+}
+
+/**
+ * One entry: its first row carries the name, and every row after it is indented
+ * to the description column so the wrapped lines read as one block.
+ */
+function SlashMenuEntry({
+	row,
+	nameWidth,
+	width,
+	isSelected,
+}: {
+	row: SlashMenuRow;
+	nameWidth: number;
+	width: number;
+	isSelected: boolean;
+}) {
+	return (
+		<>
+			{row.descriptionLines.map((line, lineIndex) => (
+				<Box
+					key={lineIndex}
+					width={width}
+					height={1}
+					flexShrink={0}
+					backgroundColor={isSelected ? MENU_ROW_HIGHLIGHT : undefined}
+				>
+					{lineIndex === 0 ? (
+						<Text color={MENU_COMMAND} bold={isSelected}>
+							{padEndToWidth(row.name, nameWidth)}
+						</Text>
+					) : (
+						<Text>{' '.repeat(nameWidth)}</Text>
+					)}
+					<Text color={MENU_DESCRIPTION}>{line}</Text>
+				</Box>
+			))}
+		</>
 	);
 }
 
