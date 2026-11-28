@@ -63,27 +63,27 @@ async function renderRow(
 }
 
 describe('status bar', () => {
-	test('the session label is the last thing on the row', async () => {
+	test('the session label follows the session id, behind a dot', async () => {
 		const row = await renderRow(WIDE);
-		expect(row.endsWith('untitled-1')).toBe(true);
-		expect(row).toContain(`Session ${SESSION_ID}`);
+		expect(row).toContain(`Session ${SESSION_ID} · untitled-1 · Nvidia`);
 	});
 
-	test('the model details fill the space before the label', async () => {
+	test('the model details come after the label', async () => {
 		const row = await renderRow(WIDE);
 		expect(row).toContain('Nvidia · moonshotai/kimi-k3.1-pro · effort: high');
 		expect(row).toContain('128,000 context · 3% used');
+		expect(row.indexOf('untitled-1')).toBeLessThan(row.indexOf('Nvidia'));
 	});
 
-	test('a narrow terminal drops the model tail before the label', async () => {
-		const row = await renderRow(50, {sessionName: 'refactor auth'});
-		expect(row.endsWith('refactor auth')).toBe(true);
+	test('a narrow terminal drops the tail, never the label', async () => {
+		const row = await renderRow(50);
+		expect(row).toContain(`Session ${SESSION_ID} · untitled-1`);
 		expect(row).not.toContain('% used');
 	});
 
 	test('no label leaves the row without one', async () => {
 		const row = await renderRow(WIDE, {sessionName: ''});
-		expect(row).toContain(`Session ${SESSION_ID}`);
+		expect(row).toContain(`Session ${SESSION_ID} · Nvidia`);
 		expect(row).not.toContain('untitled-1');
 	});
 

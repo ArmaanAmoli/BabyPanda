@@ -43,9 +43,10 @@ function contextUsedPercent(
  * The single row under the prompt: what the session is, which model answers
  * it, and how much context is left.
  *
- * The session label is the last thing on the row. The left group grows, so
- * the name is pushed against the right edge of the terminal and the model
- * details give up their tail first when the terminal is narrow.
+ * The session's label sits directly after its id, separated by the same dot
+ * the rest of the row uses, so the two identifiers read as one unit before the
+ * model details. When the terminal is too narrow for the whole row, the tail
+ * is what goes — never the label.
  */
 export function StatusBar({
 	sessionId,
@@ -62,26 +63,23 @@ export function StatusBar({
 }: StatusBarProps) {
 	return (
 		<Box height={1} paddingX={1}>
-			<Box flexGrow={1}>
-				{responding && (
-					<>
-						<Text color={STATUS_RUNNING}>{SPINNER_FRAMES[spinnerFrame]} </Text>
-						<Text dimColor>{statusLabel} · </Text>
-					</>
-				)}
-				<Text dimColor>
-					Session {sessionId} · {provider} · {model} · effort: {reasoningEffort}{' '}
-					· {contextWindow.toLocaleString()} context ·{' '}
-					{contextUsedPercent(contextWindow, contextWindowUsed)}% used
-				</Text>
-				{webSearchOff && (
-					<Text color={WEB_SEARCH_OFF_COLOR}>{WEB_SEARCH_OFF_NOTICE}</Text>
-				)}
-			</Box>
-			{sessionName !== '' && (
-				<Box flexShrink={0} marginLeft={1}>
-					<Text color={TEXT_WHITE}>{sessionName}</Text>
-				</Box>
+			{responding && (
+				<>
+					<Text color={STATUS_RUNNING}>{SPINNER_FRAMES[spinnerFrame]} </Text>
+					<Text dimColor>{statusLabel} · </Text>
+				</>
+			)}
+			<Text dimColor>
+				Session {sessionId}
+				{sessionName !== '' && ' · '}
+				{sessionName !== '' && <Text color={TEXT_WHITE}>{sessionName}</Text>}
+				{' · '}
+				{provider} · {model} · effort: {reasoningEffort} ·{' '}
+				{contextWindow.toLocaleString()} context ·{' '}
+				{contextUsedPercent(contextWindow, contextWindowUsed)}% used
+			</Text>
+			{webSearchOff && (
+				<Text color={WEB_SEARCH_OFF_COLOR}>{WEB_SEARCH_OFF_NOTICE}</Text>
 			)}
 		</Box>
 	);

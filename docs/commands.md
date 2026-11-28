@@ -118,7 +118,7 @@ directory, and `/rename-session <name>` inside the terminal UI changes it:
 /rename-session refactor auth
 ```
 
-The name is shown at the right edge of the terminal's status bar and in the
+The name is shown next to the session id in the terminal's status bar and in the
 `NAME` column above. Names are unique inside a directory — two projects may
 both have an `untitled-1` — and a name is 1-64 characters with no control
 characters. Renaming a session frees its old number, so the next new session in

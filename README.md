@@ -97,8 +97,8 @@ last used.
 
 Every session also carries a name. A new one starts as `untitled-<n>`, numbered
 per directory, and `/rename-session <name>` changes it — the name is unique
-inside a directory and appears at the right edge of the status bar and in the
-`NAME` column of `babypanda list`.
+inside a directory and appears next to the session id in the status bar and in
+the `NAME` column of `babypanda list`.
 
 ## Install the binary (Ubuntu / WSL)
 
