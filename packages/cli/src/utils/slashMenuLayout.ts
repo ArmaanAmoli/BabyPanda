@@ -52,8 +52,14 @@ const ELLIPSIS = '…';
 /** Columns of air between the name column and the description. */
 const NAME_COLUMN_GAP = 2;
 
-/** Widest the name column grows, so one long skill name cannot own the row. */
-const NAME_COLUMN_MAX = 26;
+/**
+ * Widest the name column grows. Model names run past thirty characters, and a
+ * name is the thing being picked, so cutting one loses the only information the
+ * row carries. The description's share is protected by the ceiling in
+ * `resolveNameColumnWidth` instead, which is what actually binds on a narrow
+ * terminal.
+ */
+const NAME_COLUMN_MAX = 40;
 
 /** Share of the row the name column may take before the description wraps. */
 const NAME_COLUMN_SHARE = 0.5;
@@ -126,6 +132,10 @@ export function buildSlashMenuLayout(
 	availableWidth: number,
 ): SlashMenuLayout {
 	const nameWidth = resolveNameColumnWidth(entries, availableWidth);
+	// The name is cut to the text width, not the column width: cutting it to
+	// the column would let a capped name fill the gap and run into the
+	// description.
+	const nameTextWidth = Math.max(1, nameWidth - NAME_COLUMN_GAP);
 	const descriptionWidth = Math.max(1, availableWidth - nameWidth);
 
 	const rows = entries.map(entry => {
@@ -135,7 +145,7 @@ export function buildSlashMenuLayout(
 
 		return {
 			value: entry.value,
-			name: truncateToWidth(entry.name, nameWidth),
+			name: truncateToWidth(entry.name, nameTextWidth),
 			// An empty description still owns its row: the name has to sit on a
 			// row of its own rather than disappearing.
 			descriptionLines: descriptionLines.length > 0 ? descriptionLines : [''],

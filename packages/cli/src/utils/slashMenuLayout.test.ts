@@ -72,12 +72,21 @@ describe('resolveNameColumnWidth', () => {
 		// The cap applies to the name itself; the gap is added on top, so a
 		// capped name still has air between it and the description.
 		const width = resolveNameColumnWidth([entry('a'.repeat(60))], 200);
-		expect(width).toBe(26 + 2);
+		expect(width).toBe(40 + 2);
 	});
 
 	test('a name that exactly fills the cap still keeps its gap', () => {
-		const width = resolveNameColumnWidth([entry('a'.repeat(26))], 200);
-		expect(width).toBe(28);
+		const width = resolveNameColumnWidth([entry('a'.repeat(40))], 200);
+		expect(width).toBe(42);
+	});
+
+	test('a long model name is not cut on a wide terminal', () => {
+		const {rows, nameWidth} = buildSlashMenuLayout(
+			[entry('minimaxai/minimax-m2.1-flash', '262,000 context')],
+			125,
+		);
+		expect(rows[0]!.name).toBe('minimaxai/minimax-m2.1-flash');
+		expect(nameWidth).toBe('minimaxai/minimax-m2.1-flash'.length + 2);
 	});
 
 	test('gives the description its share on a narrow terminal', () => {
