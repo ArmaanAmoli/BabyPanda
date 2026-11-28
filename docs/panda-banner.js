@@ -155,7 +155,7 @@ function rightColumn(sessionId) {
     "",
     dim("─".repeat(29)),
     dim("terminal coding agent"),
-    `\x1b[38;2;120;220;160m●${RESET} ` + dim("v0.0.2 · ready"),
+    `\x1b[38;2;120;220;160m●${RESET} ` + dim("v0.0.3 · ready"),
     dim(`session ${sessionId}`),
   ];
 }

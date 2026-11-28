@@ -50,7 +50,7 @@ describe('panda banner', () => {
 		for (const marker of [
 			'ready',
 			'terminal coding agent',
-			'v0.0.2',
+			'v0.0.3',
 			'BABY',
 			'PANDA',
 		]) {
@@ -130,7 +130,7 @@ describe('panda banner', () => {
 	 * the digest as well.
 	 */
 	test('the rasterised artwork has not drifted from the reference', () => {
-		expect(checksum(pandaBannerRows(SESSION, 200))).toBe('55905a4b2f3ac1ba');
-		expect(checksum(pandaBannerRows(SESSION, 80))).toBe('f687c64f137d7576');
+		expect(checksum(pandaBannerRows(SESSION, 200))).toBe('3588054404430854');
+		expect(checksum(pandaBannerRows(SESSION, 80))).toBe('db312b893e7c27a0');
 	});
 });
