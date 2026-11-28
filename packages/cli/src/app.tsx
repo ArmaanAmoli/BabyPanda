@@ -19,7 +19,6 @@ import {
 } from './utils/promptValue';
 import {buildUserContent, userContentToDisplay} from './utils/userContent';
 import {
-	CommandMenu,
 	ProviderSetupBox,
 	SlashCommandMenu,
 	WebApiKeyBox,
@@ -162,14 +161,20 @@ export default function App() {
 		isCommand && command === '/efforts' && activeProvider != null;
 	const showKeyMenu = isCommand && command === '/api-key';
 	const keyMenuItems = React.useMemo(() => {
-		const items = settings.providers.providers.map(provider => ({
-			label: `${provider.provider} — model provider${
-				provider.hasKey ? ' (key saved)' : ' (no key yet)'
-			}`,
-			value: provider.provider,
-		}));
+		const items: SlashMenuEntry[] = settings.providers.providers.map(
+			provider => ({
+				name: provider.provider,
+				description: `model provider${
+					provider.hasKey ? ' · key saved' : ' · no key yet'
+				}`,
+				value: provider.provider,
+			}),
+		);
 		items.push({
-			label: `Exa — web search${webKeyConfigured ? ' (key saved)' : ' (no key yet)'}`,
+			name: EXA_PROVIDER,
+			description: `web search${
+				webKeyConfigured ? ' · key saved' : ' · no key yet'
+			}`,
 			value: EXA_PROVIDER,
 		});
 		return items;
@@ -213,6 +218,39 @@ export default function App() {
 		}
 		return items;
 	}, [skills, slashQuery]);
+	// The provider list is shared by the first-run setup and `/provider`: both
+	// are picking a model provider, and the key state is what differs.
+	const providerItems = React.useMemo(
+		() =>
+			settings.providers.providers.map(provider => ({
+				name: provider.provider,
+				description: provider.hasKey
+					? 'model provider'
+					: 'model provider · API key required',
+				value: provider.provider,
+			})),
+		[settings.providers.providers],
+	);
+	const modelItems = React.useMemo(
+		() =>
+			(activeProvider?.models ?? []).map(model => ({
+				name: model.model,
+				description: `${model.contextLength.toLocaleString()} context${
+					model.model === settings.model.model ? ' · in use' : ''
+				}`,
+				value: model.model,
+			})),
+		[activeProvider, settings.model.model],
+	);
+	const effortItems = React.useMemo(
+		() =>
+			settings.model.reasoningEfforts.map(effort => ({
+				name: effort,
+				description: effort === settings.model.reasoningEffort ? 'in use' : '',
+				value: effort,
+			})),
+		[settings.model.reasoningEfforts, settings.model.reasoningEffort],
+	);
 	const showSlashMenu =
 		slashMenuOpen &&
 		!showProviderMenu &&
@@ -259,18 +297,20 @@ export default function App() {
 		pendingPermissionMessages.length > 0
 			? Math.min(permissionContentHeight, permissionMaxHeight)
 			: 0;
-	const setupItemCount = needsProviderKey
-		? settings.providers.providers.length
-		: 0;
 	const setupLimit = Math.max(
 		1,
 		rows - statusHeight - promptHeight - activityHeight - 2,
 	);
-	const setupHeight = needsProviderKey
-		? setupProvider
-			? 4
-			: Math.min(setupItemCount, setupLimit) + 2
-		: 0;
+	// Every menu is measured at the width it draws at, because its height is
+	// the wrapped description lines of its entries rather than the entry count.
+	const menuWidth = getInputColumnWidth(columns);
+	const setupMenuHeight =
+		needsProviderKey && !setupProvider
+			? getSlashMenuHeight(providerItems, menuWidth, setupLimit)
+			: 0;
+	// The first-run key prompt carries a title, an escape hint and the input.
+	const setupBoxHeight = needsProviderKey && setupProvider ? 4 : 0;
+	const setupHeight = setupMenuHeight + setupBoxHeight;
 	// The Exa prompt is optional and comes second: while a provider key is
 	// still missing it stays hidden, so the two never compete for keystrokes
 	// and the provider is always resolved first.
@@ -280,13 +320,6 @@ export default function App() {
 		!needsProviderKey &&
 		!providerLoadError;
 	const webKeyPromptHeight = webKeyPromptVisible ? 5 : 0;
-	const menuItemCount = showProviderMenu
-		? settings.providers.providers.length
-		: showModelMenu
-			? (activeProvider?.models.length ?? 0)
-			: showEffortMenu
-				? settings.model.reasoningEfforts.length
-				: 0;
 	// Both change-key boxes carry a title, an escape hint and the input, so
 	// they need 5 rows (the first-run provider setup box stays at 4).
 	const changeKeyHeight = showChangeKeyBox ? 5 : 0;
@@ -298,30 +331,38 @@ export default function App() {
 			activityHeight -
 			setupHeight -
 			changeKeyHeight -
-			2,
+			1,
 	);
-	const menuHeight =
-		menuItemCount > 0 ? Math.min(menuItemCount, menuLimit) + 2 : 0;
-	const keyMenuHeight = showKeyMenu
-		? Math.min(keyMenuItems.length, menuLimit) + 2
+	const providerMenuHeight = showProviderMenu
+		? getSlashMenuHeight(providerItems, menuWidth, menuLimit)
 		: 0;
-	// The menu's height is the wrapped description lines of its entries, so it
-	// has to be measured at the same width the menu draws at.
+	const modelMenuHeight = showModelMenu
+		? getSlashMenuHeight(modelItems, menuWidth, menuLimit)
+		: 0;
+	const effortMenuHeight = showEffortMenu
+		? getSlashMenuHeight(effortItems, menuWidth, menuLimit)
+		: 0;
+	const keyMenuHeight = showKeyMenu
+		? getSlashMenuHeight(keyMenuItems, menuWidth, menuLimit)
+		: 0;
 	const slashMenuHeight = showSlashMenu
-		? getSlashMenuHeight(slashItems, getInputColumnWidth(columns), menuLimit)
+		? getSlashMenuHeight(slashItems, menuWidth, menuLimit)
 		: 0;
 	// The menu is the last thing above the status bar, so it is the one that
 	// owes the gap.
 	const slashMenuGap = showSlashMenu ? GAP_MENU_STATUS_BAR : 0;
 	const bottomHeight =
-		menuHeight +
+		setupMenuHeight +
+		providerMenuHeight +
+		modelMenuHeight +
+		effortMenuHeight +
 		keyMenuHeight +
 		slashMenuHeight +
 		slashMenuGap +
 		statusHeight +
 		promptHeight +
 		activityHeight +
-		setupHeight +
+		setupBoxHeight +
 		webKeyPromptHeight +
 		changeKeyHeight;
 	const chatHeight = Math.max(1, rows - bottomHeight - GAP_CHAT_BOX_PROMPT_BOX);
@@ -774,13 +815,9 @@ export default function App() {
 					)}
 
 					{needsProviderKey && !setupProvider && (
-						<Box height={setupHeight} width="100%">
-							<CommandMenu
-								title="Choose a provider to get started"
-								items={settings.providers.providers.map(provider => ({
-									label: provider.provider,
-									value: provider.provider,
-								}))}
+						<Box height={setupMenuHeight} width="100%">
+							<SlashCommandMenu
+								items={providerItems}
 								onSelect={setSetupProviderName}
 								limit={setupLimit}
 							/>
@@ -882,7 +919,7 @@ export default function App() {
 					)}
 
 					{needsProviderKey && setupProvider && (
-						<Box height={setupHeight} width="100%">
+						<Box height={setupBoxHeight} width="100%">
 							<ProviderSetupBox
 								provider={setupProvider}
 								onSubmit={key => {
@@ -933,47 +970,40 @@ export default function App() {
 					{!needsProviderKey && !showWebKeyPrompt && (
 						<>
 							{showProviderMenu && (
-								<CommandMenu
-									title="Select provider"
-									items={settings.providers.providers.map(provider => ({
-										label: `${provider.provider}${
-											provider.hasKey ? '' : ' (API key required)'
-										}`,
-										value: provider.provider,
-									}))}
-									onSelect={selectProvider}
-									limit={menuLimit}
-								/>
+								<Box height={providerMenuHeight} width="100%">
+									<SlashCommandMenu
+										items={providerItems}
+										onSelect={selectProvider}
+										limit={menuLimit}
+									/>
+								</Box>
 							)}
 							{showModelMenu && (
-								<CommandMenu
-									title={`Models from ${activeProvider?.provider}`}
-									items={(activeProvider?.models ?? []).map(model => ({
-										label: model.model,
-										value: model.model,
-									}))}
-									onSelect={selectModel}
-									limit={menuLimit}
-								/>
+								<Box height={modelMenuHeight} width="100%">
+									<SlashCommandMenu
+										items={modelItems}
+										onSelect={selectModel}
+										limit={menuLimit}
+									/>
+								</Box>
 							)}
 							{showEffortMenu && (
-								<CommandMenu
-									title="Select reasoning effort"
-									items={settings.model.reasoningEfforts.map(effort => ({
-										label: effort,
-										value: effort,
-									}))}
-									onSelect={selectEffort}
-									limit={menuLimit}
-								/>
+								<Box height={effortMenuHeight} width="100%">
+									<SlashCommandMenu
+										items={effortItems}
+										onSelect={selectEffort}
+										limit={menuLimit}
+									/>
+								</Box>
 							)}
 							{showKeyMenu && (
-								<CommandMenu
-									title="Change which API key?"
-									items={keyMenuItems}
-									onSelect={onKeyMenuSelect}
-									limit={menuLimit}
-								/>
+								<Box height={keyMenuHeight} width="100%">
+									<SlashCommandMenu
+										items={keyMenuItems}
+										onSelect={onKeyMenuSelect}
+										limit={menuLimit}
+									/>
+								</Box>
 							)}
 						</>
 					)}

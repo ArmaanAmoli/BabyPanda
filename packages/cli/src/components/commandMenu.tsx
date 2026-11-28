@@ -1,6 +1,5 @@
 import React from 'react';
 import {Box, Text, useInput} from 'ink';
-import SelectInput from 'ink-select-input';
 import type {ProviderInfo} from '../services/requests';
 import {InlineInput} from './promptBox';
 import {useTerminal} from '../hooks/useTerminal';
@@ -147,33 +146,6 @@ function SlashMenuEntry({
 				</Box>
 			))}
 		</>
-	);
-}
-
-export function CommandMenu({
-	title,
-	items,
-	onSelect,
-	limit,
-	isFocused = true,
-}: {
-	title: string;
-	items: Array<{label: string; value: string}>;
-	onSelect: (value: string) => void;
-	limit?: number;
-	/** When false the menu stops listening, so another component can own input. */
-	isFocused?: boolean;
-}) {
-	return (
-		<Box flexDirection="column" paddingX={1} paddingTop={1}>
-			<Text color="#ffffff">{title}</Text>
-			<SelectInput
-				items={items}
-				limit={limit}
-				isFocused={isFocused}
-				onSelect={item => onSelect(item.value)}
-			/>
-		</Box>
 	);
 }
 
