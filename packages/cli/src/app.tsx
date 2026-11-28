@@ -40,6 +40,7 @@ import {useSession} from './hooks/useSession';
 import {
 	PermissionBox,
 	getPermissionBoxHeight,
+	usePermissionModal,
 } from './components/permissionBox';
 import usePendingPermissionMessages from './hooks/usePendingPermissionMessages';
 import {useMessageHistory} from './hooks/useMessageHistroy';
@@ -112,6 +113,10 @@ export default function App() {
 	const clipboardStatusTimer = useRef<
 		ReturnType<typeof setTimeout> | undefined
 	>(undefined);
+	// While a permission prompt is up this takes the app's own keypresses, so
+	// Tab, the chat shortcuts and the escape handler cannot act on a tree the
+	// user is not looking at.
+	usePermissionModal();
 	const {rows, columns} = useTerminal();
 	const {focusMessage, moveFocus, focusedMessageIndex} = useVisibleMessages();
 	const settings = useSettings();
@@ -278,14 +283,15 @@ export default function App() {
 	// the permission box grows with the command length so every option
 	// stays visible; it is capped so the prompt and status bar keep room
 	const permissionContent = pendingPermissionMessages.at(-1)?.content;
-	const permissionBoxWidth = Math.max(
-		10,
-		Math.floor((columns - 2 * PADDING_APP) / 2),
-	);
+	const permissionBoxWidth = getInputColumnWidth(columns);
 	const permissionContentHeight =
 		permissionContent == null
 			? 0
 			: getPermissionBoxHeight(permissionContent, permissionBoxWidth);
+	// A permission prompt is modal: the prompt box and the command menu step out
+	// of the way while it is up. Their state lives here, not in them, so hiding
+	// them loses nothing — the prompt text is still in `prompt` when they return.
+	const permissionPending = pendingPermissionMessages.length > 0;
 	const permissionMaxHeight = Math.max(
 		4,
 		rows - statusHeight - promptHeight - GAP_CHAT_BOX_PROMPT_BOX - 1,
@@ -333,24 +339,29 @@ export default function App() {
 			changeKeyHeight -
 			1,
 	);
-	const providerMenuHeight = showProviderMenu
-		? getSlashMenuHeight(providerItems, menuWidth, menuLimit)
-		: 0;
-	const modelMenuHeight = showModelMenu
-		? getSlashMenuHeight(modelItems, menuWidth, menuLimit)
-		: 0;
-	const effortMenuHeight = showEffortMenu
-		? getSlashMenuHeight(effortItems, menuWidth, menuLimit)
-		: 0;
-	const keyMenuHeight = showKeyMenu
-		? getSlashMenuHeight(keyMenuItems, menuWidth, menuLimit)
-		: 0;
-	const slashMenuHeight = showSlashMenu
+	const providerMenuHeight =
+		showProviderMenu && !permissionPending
+			? getSlashMenuHeight(providerItems, menuWidth, menuLimit)
+			: 0;
+	const modelMenuHeight =
+		showModelMenu && !permissionPending
+			? getSlashMenuHeight(modelItems, menuWidth, menuLimit)
+			: 0;
+	const effortMenuHeight =
+		showEffortMenu && !permissionPending
+			? getSlashMenuHeight(effortItems, menuWidth, menuLimit)
+			: 0;
+	const keyMenuHeight =
+		showKeyMenu && !permissionPending
+			? getSlashMenuHeight(keyMenuItems, menuWidth, menuLimit)
+			: 0;
+	const slashMenuVisible = showSlashMenu && !permissionPending;
+	const slashMenuHeight = slashMenuVisible
 		? getSlashMenuHeight(slashItems, menuWidth, menuLimit)
 		: 0;
 	// The menu is the last thing above the status bar, so it is the one that
 	// owes the gap.
-	const slashMenuGap = showSlashMenu ? GAP_MENU_STATUS_BAR : 0;
+	const slashMenuGap = slashMenuVisible ? GAP_MENU_STATUS_BAR : 0;
 	const bottomHeight =
 		setupMenuHeight +
 		providerMenuHeight +
@@ -808,8 +819,8 @@ export default function App() {
 					justifyContent={'flex-end'}
 					overflow="hidden"
 				>
-					{pendingPermissionMessages.length > 0 && (
-						<Box height={activityHeight} width="50%">
+					{permissionPending && (
+						<Box height={activityHeight} width="100%">
 							<PermissionBox />
 						</Box>
 					)}
@@ -969,7 +980,7 @@ export default function App() {
 
 					{!needsProviderKey && !showWebKeyPrompt && (
 						<>
-							{showProviderMenu && (
+							{showProviderMenu && !permissionPending && (
 								<Box height={providerMenuHeight} width="100%">
 									<SlashCommandMenu
 										items={providerItems}
@@ -978,7 +989,7 @@ export default function App() {
 									/>
 								</Box>
 							)}
-							{showModelMenu && (
+							{showModelMenu && !permissionPending && (
 								<Box height={modelMenuHeight} width="100%">
 									<SlashCommandMenu
 										items={modelItems}
@@ -987,7 +998,7 @@ export default function App() {
 									/>
 								</Box>
 							)}
-							{showEffortMenu && (
+							{showEffortMenu && !permissionPending && (
 								<Box height={effortMenuHeight} width="100%">
 									<SlashCommandMenu
 										items={effortItems}
@@ -996,7 +1007,7 @@ export default function App() {
 									/>
 								</Box>
 							)}
-							{showKeyMenu && (
+							{showKeyMenu && !permissionPending && (
 								<Box height={keyMenuHeight} width="100%">
 									<SlashCommandMenu
 										items={keyMenuItems}
@@ -1008,25 +1019,28 @@ export default function App() {
 						</>
 					)}
 
-					{!needsProviderKey && !showWebKeyPrompt && !showChangeKeyBox && (
-						<Box height={promptHeight} width="100%">
-							<PromptBox
-								placeholder={'Write a message... '}
-								value={prompt}
-								onChange={onChange}
-								onSubmit={onSubmit}
-								active={focus === 'PromptBox'}
-								maxHeight={promptHeight}
-								menuOpen={showSlashMenu}
-								onStatus={showClipboardStatus}
-							/>
-						</Box>
-					)}
+					{!needsProviderKey &&
+						!showWebKeyPrompt &&
+						!showChangeKeyBox &&
+						!permissionPending && (
+							<Box height={promptHeight} width="100%">
+								<PromptBox
+									placeholder={'Write a message... '}
+									value={prompt}
+									onChange={onChange}
+									onSubmit={onSubmit}
+									active={focus === 'PromptBox'}
+									maxHeight={promptHeight}
+									menuOpen={showSlashMenu}
+									onStatus={showClipboardStatus}
+								/>
+							</Box>
+						)}
 
 					{/* The slash menu hangs off the bottom of the prompt box: the
 					    box's own rule separates the input from the list, exactly as
 					    the reference layout does. */}
-					{showSlashMenu && (
+					{slashMenuVisible && (
 						<Box height={slashMenuHeight} width="100%">
 							<SlashCommandMenu
 								items={slashItems}
