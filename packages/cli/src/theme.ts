@@ -55,3 +55,11 @@ export const MENU_DESCRIPTION = '#9a9a9a';
 
 /** Full-width tint behind the highlighted slash-menu row. */
 export const MENU_ROW_HIGHLIGHT = '#1b2836';
+
+/**
+ * Border of the permission prompt. It is the one modal surface in the UI — the
+ * only thing that takes the keyboard away from the prompt box — so it is drawn
+ * as a box rather than a rule, and in the accent hue rather than the neutral
+ * rule colour.
+ */
+export const PERMISSION_BORDER = '#4f7fb5';
