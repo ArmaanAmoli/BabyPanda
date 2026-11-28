@@ -53,7 +53,7 @@ const page: DocPage = {
         'Your message is queued, persisted to SQLite and pushed onto the in-memory history.',
         'The context is assembled: system instructions, project memory, `AGENT.md`/`BABYPANDA.md` if present, the available skills, the compaction summary and the message history.',
         'The request is streamed to the provider. Answer text and reasoning text arrive as separate streams and are rendered as they land.',
-        'If the model asks for a tool, the agent emits a permission event and waits. You choose **Allow once**, **Always allow** or **Deny**.',
+        'If the model asks for a tool, the agent emits a permission event and waits. You choose **Allow**, **Don\u2019t Allow** or **Always Allow** — or press `Escape`, which is the same as Don\u2019t Allow.',
         'Allowed tools run through the MCP client, their results are persisted and sent back to the model, and the loop continues.',
         'When the model answers without requesting a tool, the loop ends and the status bar stops spinning.',
       ],
@@ -77,9 +77,9 @@ const page: DocPage = {
       kind: 'table',
       head: ['Option', 'Effect'],
       rows: [
-        ['Allow once', 'Runs this call only.'],
-        ['Always allow', 'Runs this call and every later `shell` call in this session.'],
-        ['Deny', 'The call is refused and the reason is sent back to the model.'],
+        ['Allow', 'Runs this call only.'],
+        ['Always Allow', 'Runs this and every later `shell` call in this session.'],
+        ['Don\u2019t Allow', 'The call is refused and the reason is sent back to the model.'],
       ],
     },
     {

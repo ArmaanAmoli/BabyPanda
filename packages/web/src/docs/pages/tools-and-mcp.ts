@@ -59,9 +59,9 @@ const page: DocPage = {
       kind: 'table',
       head: ['Decision', 'Effect'],
       rows: [
-        ['Allow once', 'Runs this call only'],
-        ['Always allow', 'Runs this and every later `shell` call in the session'],
-        ['Deny', 'The call is refused and the reason goes back to the model'],
+        ['Allow', 'Runs this call only'],
+        ['Always Allow', 'Runs this and every later `shell` call in the session'],
+        ['Don\u2019t Allow', 'The call is refused and the reason goes back to the model'],
       ],
     },
     {

@@ -49,7 +49,7 @@ const page: DocPage = {
     {
       kind: 'code',
       lang: 'text',
-      code: '◆ read  packages/agent/agent.ts\n   Allow once / Always allow / Deny\n\n◆ shell bun --version\n   Allow once / Always allow / Deny',
+      code: '◆ read  packages/agent/agent.ts\n   Allow / Don\u2019t Allow / Always Allow\n\n◆ shell bun --version\n   Allow / Don\u2019t Allow / Always Allow',
     },
     {
       kind: 'p',

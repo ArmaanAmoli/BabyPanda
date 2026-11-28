@@ -17,7 +17,7 @@ export const DOC_GROUPS: DocGroup[] = [
   {
     title: 'CLI',
     tab: 'reference',
-    pages: ['cli/commands', 'cli/interface'],
+    pages: ['cli/commands', 'cli/interface', 'cli/slash-commands', 'cli/shortcuts'],
   },
   {
     title: 'Concepts',

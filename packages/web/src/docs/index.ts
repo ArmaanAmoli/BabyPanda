@@ -11,6 +11,8 @@ import install from './pages/install';
 import quickstart from './pages/quickstart';
 import cliCommands from './pages/cli-commands';
 import cliInterface from './pages/cli-interface';
+import cliSlashCommands from './pages/cli-slash-commands';
+import cliShortcuts from './pages/cli-shortcuts';
 import sessions from './pages/sessions';
 import providers from './pages/providers';
 import toolsAndMcp from './pages/tools-and-mcp';
@@ -30,6 +32,8 @@ export const DOC_PAGES: DocPage[] = [
   quickstart,
   cliCommands,
   cliInterface,
+  cliSlashCommands,
+  cliShortcuts,
   sessions,
   providers,
   toolsAndMcp,
