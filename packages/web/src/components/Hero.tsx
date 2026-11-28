@@ -15,7 +15,7 @@ export default function Hero() {
           <img
             src={hero.image.src}
             alt={hero.image.alt}
-            className="w-full max-w-[1200px] mx-auto h-auto rounded-xl border border-ink/15 shadow-xl"
+            className="w-full max-w-[1200px] mx-auto h-auto rounded-xl border border-border shadow-xl"
           />
         </div>
       )}
