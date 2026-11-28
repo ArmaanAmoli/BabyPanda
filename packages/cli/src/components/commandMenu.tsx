@@ -30,17 +30,24 @@ export function SlashCommandMenu({
 	items,
 	onSelect,
 	limit,
+	width: widthProp,
 	isFocused = true,
 }: {
 	items: SlashMenuEntry[];
 	onSelect: (value: string) => void;
 	/** Terminal rows the menu may occupy; defaults to the whole list. */
 	limit?: number;
+	/**
+	 * Terminal columns the menu occupies. Defaults to the input column width,
+	 * which is what every full-width menu wants; a menu drawn inside a border
+	 * passes the width its host leaves it.
+	 */
+	width?: number;
 	/** When false the menu stops listening, so another component can own input. */
 	isFocused?: boolean;
 }) {
 	const terminal = useTerminal();
-	const width = getInputColumnWidth(terminal.columns);
+	const width = widthProp ?? getInputColumnWidth(terminal.columns);
 	const rowBudget = Math.max(1, limit ?? Number.MAX_SAFE_INTEGER);
 
 	// A filtered list is a different list, so the highlight starts at its top
