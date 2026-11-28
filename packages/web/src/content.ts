@@ -3,10 +3,12 @@
 // Components read from `content` and never hard-code copy, URLs or commands.
 // Replace every value marked with a trailing `// SAMPLE` comment.
 
-// Public-folder assets are written root-absolute; prefix them with Vite's
-// BASE_URL so they also resolve under a GitHub Pages project subpath
-// (e.g. https://<user>.github.io/<repo>/).
-const asset = (path: string) => `${import.meta.env.BASE_URL}${path.replace(/^\//, '')}`;
+import { assetUrl, docsUrl } from '@/theme';
+
+// Public-folder assets are written root-absolute; `assetUrl` resolves them
+// against the deployed base path so they also work under a GitHub Pages
+// project subpath (e.g. https://<user>.github.io/<repo>/).
+const asset = assetUrl;
 
 /** Site-wide identity: document <title>, meta description, nav brand, halftone banner meta. */
 export interface SiteContent {
@@ -166,6 +168,7 @@ export const content: Content = {
         links: [
           { label: 'GitHub', href: 'https://github.com/ArmaanAmoli/BabyPanda' },
           { label: 'Releases', href: 'https://github.com/ArmaanAmoli/BabyPanda/releases' },
+          { label: 'Docs', href: docsUrl() },
         ],
       },
       {

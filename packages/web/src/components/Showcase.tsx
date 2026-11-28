@@ -15,7 +15,7 @@ export default function Showcase() {
             <img
               src={item.src}
               alt={item.alt}
-              className="w-full max-w-[1100px] h-auto rounded-xl border border-ink/15 shadow-xl"
+              className="w-full max-w-[1100px] h-auto rounded-xl border border-border shadow-xl"
             />
           </div>
         ))}

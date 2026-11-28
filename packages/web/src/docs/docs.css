@@ -1,0 +1,52 @@
+/* Docs-only rules. Tailwind utilities and the shared theme live in
+   src/index.css; this file holds the few things a utility class cannot
+   express cleanly (list markers, the scroll-spy rail, the drawer). */
+
+.docs-body a {
+  color: var(--color-accent);
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+}
+
+.docs-body a:hover {
+  text-decoration-thickness: 2px;
+}
+
+/* The right rail's scroll-spy marker: a hairline that grows alongside the
+   active entry, in the accent colour. */
+.docs-toc-active::before {
+  content: '';
+  position: absolute;
+  left: -13px;
+  top: 2px;
+  bottom: 2px;
+  width: 2px;
+  border-radius: 1px;
+  background: var(--color-accent);
+}
+
+/* Keep the sidebar and the right rail independently scrollable without
+   showing a scrollbar until they are actually used. */
+.docs-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in oklab, var(--color-ink) 18%, transparent) transparent;
+}
+
+.docs-scroll::-webkit-scrollbar {
+  width: 8px;
+}
+
+.docs-scroll::-webkit-scrollbar-thumb {
+  background: color-mix(in oklab, var(--color-ink) 18%, transparent);
+  border-radius: 4px;
+}
+
+.docs-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* Anchor targets sit below the sticky top bar. */
+.docs-body :target {
+  scroll-margin-top: 84px;
+}

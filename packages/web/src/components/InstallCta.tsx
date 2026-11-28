@@ -34,7 +34,7 @@ export default function InstallCta() {
       {/* Translucent + lightly blurred, no border, so the dot field shows
           through and the card reads as part of the banner. */}
       <div className="pointer-events-auto w-full max-w-6xl rounded-lg bg-bg/40 px-6 py-5 backdrop-blur-[3px]">
-        <div className="relative overflow-hidden rounded-md border border-ink/10 bg-bg/50">
+        <div className="relative overflow-hidden rounded-md border border-rule bg-bg/50">
           {/* The command is the one text that stays mono: the UA stylesheet
               forces monospace on pre/code, so font-mono is set explicitly.
               text-sm only from xl up: the 119-char command needs ~1000px at
@@ -48,7 +48,7 @@ export default function InstallCta() {
             type="button"
             onClick={copy}
             aria-label={`Copy command: ${step.command}`}
-            className="absolute right-2 top-1/2 -translate-y-1/2 rounded-sm border border-ink/15 bg-bg p-1.5 text-ink/60 transition-colors hover:border-ink/40 hover:text-ink"
+            className="absolute right-2 top-1/2 -translate-y-1/2 rounded-sm border border-border bg-bg p-1.5 text-muted transition-colors hover:border-border-strong hover:text-ink"
           >
             {copied ? (
               <Check size={14} className="text-accent" aria-hidden="true" />

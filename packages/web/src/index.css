@@ -1,10 +1,32 @@
 @import 'tailwindcss';
 
 @theme {
-  /* Brand palette: panda black/white with one bamboo-green accent. */
+  /* Brand palette: panda black/white with one bamboo-green accent.
+     Mirrored for JS consumers in src/theme.ts. */
   --color-bg: #0b0b0a;
   --color-ink: #f1efe8;
   --color-accent: #8fd16a;
+
+  /* Surfaces. The page only ever needed one raised plane — the install card
+     floating over the dot banner — and spelled it as `bg-bg/40` + `bg-bg/50`.
+     Naming it lets the docs reuse the same surface without a new colour. */
+  --color-surface: #141412;
+  --color-surface-strong: #1c1c19;
+
+  /* Rules, borders and muted text. Each value below is the exact colour the
+     page already produced through an opacity modifier on `--color-ink`, so
+     naming them changes nothing visually:
+       --color-rule         == border-ink/10
+       --color-border       == border-ink/15
+       --color-border-strong== border-ink/40
+       --color-muted        == text-ink/60
+       --color-faint        == text-ink/45
+     The landing page and the docs both read from these. */
+  --color-rule: color-mix(in oklab, var(--color-ink) 10%, transparent);
+  --color-border: color-mix(in oklab, var(--color-ink) 15%, transparent);
+  --color-border-strong: color-mix(in oklab, var(--color-ink) 40%, transparent);
+  --color-muted: color-mix(in oklab, var(--color-ink) 60%, transparent);
+  --color-faint: color-mix(in oklab, var(--color-ink) 45%, transparent);
 
   /* Montserrat is the site face, loaded from Google Fonts (see index.html).
      Exceptions: the install command keeps font-mono, and the dot-banner navbar

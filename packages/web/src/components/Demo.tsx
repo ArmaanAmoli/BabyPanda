@@ -9,7 +9,7 @@ export default function Demo() {
           {demo.title}
         </h2>
       </div>
-      <div className="mx-auto max-w-[1200px] rounded-xl border border-ink/15 overflow-hidden shadow-xl">
+      <div className="mx-auto max-w-[1200px] rounded-xl border border-border overflow-hidden shadow-xl">
         <video
           src={demo.video.src}
           autoPlay

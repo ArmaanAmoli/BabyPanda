@@ -5,6 +5,7 @@ import Showcase from '@/components/Showcase';
 import InstallCta from '@/components/InstallCta';
 import HalftoneWordmarkFooter from '@/components/ui/halftone-wordmark-footer';
 import { content } from '@/content';
+import { BRAND } from '@/theme';
 
 export default function App() {
   // Document title and meta description come from content.site at runtime.
@@ -32,7 +33,7 @@ export default function App() {
           height="700px"
           crop={0.15}
           dotGap={5.5}
-          palette={{ background: '#0b0b0a', ink: '#f1efe8', warm: '#8fd16a' }}
+          palette={{ background: BRAND.bg, ink: BRAND.ink, warm: BRAND.accent }}
         />
         <InstallCta />
       </div>
@@ -42,8 +43,8 @@ export default function App() {
         <Showcase />
       </main>
       {/* Copyright and licence line at the very end of the page. */}
-      <footer className="border-t border-ink/10">
-        <p className="mx-auto w-full max-w-5xl px-5 py-6 text-[11px] font-medium uppercase tracking-[0.18em] text-ink/45">
+      <footer className="border-t border-rule">
+        <p className="mx-auto w-full max-w-5xl px-5 py-6 text-[11px] font-medium uppercase tracking-[0.18em] text-faint">
           {content.footer.meta}
         </p>
       </footer>
