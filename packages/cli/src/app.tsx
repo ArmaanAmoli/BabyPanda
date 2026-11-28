@@ -4,6 +4,7 @@ import {useState, useEffect, useRef} from 'react';
 import PromptBox from './components/promptBox';
 import {
 	GAP_CHAT_BOX_PROMPT_BOX,
+	GAP_MENU_STATUS_BAR,
 	PADDING_APP,
 	getInputColumnWidth,
 } from './layout';
@@ -309,10 +310,14 @@ export default function App() {
 	const slashMenuHeight = showSlashMenu
 		? getSlashMenuHeight(slashItems, getInputColumnWidth(columns), menuLimit)
 		: 0;
+	// The menu is the last thing above the status bar, so it is the one that
+	// owes the gap.
+	const slashMenuGap = showSlashMenu ? GAP_MENU_STATUS_BAR : 0;
 	const bottomHeight =
 		menuHeight +
 		keyMenuHeight +
 		slashMenuHeight +
+		slashMenuGap +
 		statusHeight +
 		promptHeight +
 		activityHeight +
@@ -1000,6 +1005,10 @@ export default function App() {
 							/>
 						</Box>
 					)}
+
+					{/* Breathing room between the menu's last row and the status
+					    bar, so a wrapped continuation does not read as part of it. */}
+					{slashMenuGap > 0 && <Box height={slashMenuGap} width="100%" />}
 					{!needsProviderKey && !showWebKeyPrompt && !showChangeKeyBox && (
 						<Box height={statusHeight}>
 							<StatusBar

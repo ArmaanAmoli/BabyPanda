@@ -13,6 +13,14 @@ export const PADDING_APP = 2;
 export const GAP_CHAT_BOX_PROMPT_BOX = 1;
 
 /**
+ * Blank rows between an open menu and the status bar.
+ *
+ * A menu's last row is often a wrapped continuation of a description, and
+ * running it straight into the status line makes the two read as one block.
+ */
+export const GAP_MENU_STATUS_BAR = 1;
+
+/**
  * Terminal columns the prompt box occupies: the app column less the one column
  * its scrollbar permanently reserves.
  *
