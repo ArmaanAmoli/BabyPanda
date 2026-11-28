@@ -4,6 +4,7 @@ import Demo from '@/components/Demo';
 import Showcase from '@/components/Showcase';
 import InstallCta from '@/components/InstallCta';
 import HalftoneWordmarkFooter from '@/components/ui/halftone-wordmark-footer';
+import Navbar from '@/components/Navbar';
 import { content } from '@/content';
 import { BRAND } from '@/theme';
 
@@ -18,12 +19,13 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-bg font-sans text-ink">
-      {/* The halftone dots banner opens the page; its link columns act as the
-          navigation, so there is no separate navbar. w-full is required:
-          without it the canvas collapses to 0px. The relative wrapper hosts
-          the hovering install card over the banner's empty middle, and carries
-          the #install anchor so the hero CTA scrolls here. */}
-      <div id="install" className="relative w-full">
+      <Navbar />
+      {/* The halftone dots banner opens the page; its link columns stay as they
+          were. w-full is required: without it the canvas collapses to 0px. The
+          relative wrapper hosts the hovering install card over the banner's
+          empty middle, and carries the #install anchor so the hero CTA scrolls
+          here. scroll-mt keeps that anchor clear of the sticky navbar. */}
+      <div id="install" className="relative w-full scroll-mt-14">
         <HalftoneWordmarkFooter
           wordmark={content.footer.wordmark}
           label={content.footer.label}
